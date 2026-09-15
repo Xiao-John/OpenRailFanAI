@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 数据库（M11.1 起；本地 SQLite 与运行产物，绝不入库）
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+backend/data/
+# 离线车次目录缓存（约 2.5MB 生成物；预热脚本会重建）
+backend/app/data/.train_cache.json
+*.train_cache.json
+
+# 环境变量（含密钥，绝不入库）
+.env
+.env.local
+.env.*.local
+.envrc
+*.key
+*.pem
+secrets/
+
+# Node
+node_modules/
+frontend/dist/
+
+# 系统 / 编辑器
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# 导出产物（本地打包，不入库）
+dist/

@@ -1,0 +1,23 @@
+# FastAPI 后端核心
+fastapi>=0.111
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pydantic-settings>=2.3
+
+# LLM（OpenAI 兼容接口）
+openai>=1.34
+
+# 拼音（站名同音纠错："太安"→"泰安"；纯 Python 无外部依赖）
+pypinyin>=0.51
+
+# HTTP 数据源抓取（含 HTTP/2 与 brotli 解压，用于浏览器级请求头模拟）
+httpx[http2]>=0.27
+brotli>=1.1
+
+# 12306 实时查询（MCP Server）
+mcp-server-12306>=0.3
+
+# 会话状态：会话由前端维护并随请求回传，服务端不落库
+
+# 开发
+python-dotenv>=1.0
