@@ -6,6 +6,8 @@
 
 中国铁路爱好者领域的 **RAG / Agent 对话助手**：用户输入一句自然语言，系统按三层流水线 **意图分类 → 关键信息抽取 → 数据检索（真实数据源） → 回答生成** 处理。数据能力覆盖车次担当车组（rail.re）、两站余票与车次经停（12306）、径路与里程（黄河铁路网）、车站当日到发（12306 车站大屏）、站点/拍车点检索；参数类问题走网络搜索 + 模型知识并标注不确定性。
 
+> **使用声明**：本项目**可自由使用（含商业用途，代码许可见仓库 `LICENSE`）**，按「现状」提供、**不提供任何担保**，因使用产生的后果由使用者自行承担；**不得滥用**（高频/并发抓取、绕过限流与反爬、整表转载或转售第三方数据）；数据来源与抓取纪律见 `docs/datasources.md`，完整免责声明见应用内「免责声明」页（`#/doc/disclaimer`）。
+
 ## 二、技术栈与运行前提
 
 | 项 | 值 |
@@ -111,6 +113,6 @@ scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预
 
 **数据源工具（重点）**：`tools/emu_routing.py`（rail.re 交路）、`tools/rail_line.py`（径路解析，含 800KB 页面抗噪定位）、`tools/_rt12306.py`（12306 实时共享助手）、`tools/_http.py`（浏览器级请求头 + `format_error()`）、`tools/registry.py`（工具注册表）。
 
-**前端**（`frontend/`）：`src/main.js`（hash 路由 `#/c/<id>` `#/doc/<key>`、SSE 消费、对话列表、AbortController、编辑重发）、`src/store.js`（对话/主题持久化，localStorage 容量上限）、`src/pages.js`（帮助/关于/免责静态页，正文为【待补充】占位）、`index.html`（移动优先三端自适应 UI）、`tests/store.test.mjs`（node 直跑前端数据层单测）。
+**前端**（`frontend/`）：`src/main.js`（hash 路由 `#/c/<id>` `#/doc/<key>`、SSE 消费、对话列表、AbortController、编辑重发）、`src/store.js`（对话/主题持久化，localStorage 容量上限）、`src/pages.js`（帮助/关于/免责静态页：免责声明正文已填写，其余待补充）、`index.html`（移动优先三端自适应 UI）、`tests/store.test.mjs`（node 直跑前端数据层单测）。
 
 **配套文档**：`docs/datasources.md`（数据源端点、参数、字段与踩坑）、`docs/run.md`（安装、配置、启动、测试、数据准备）。
