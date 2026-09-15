@@ -126,10 +126,18 @@ async def get_text_ex(
     if headers:
         merged.update(headers)
     truncated = False
+    # ⚠️ trust_env=False：**本函数带 SSRF 防护，绝不能走环境/系统代理**。
+    # 原因有二：
+    #   1) 走代理后 `assert_public_url` 的校验形同虚设 —— 真正发起连接的是代理，
+    #      它完全可以访问我们刚拦下的内网地址（防护被绕过）；
+    #   2) macOS 系统代理一旦开启（含本机代理软件），环回地址请求也会被塞进代理，
+    #      本地服务返回 502，表现为"莫名其妙的抓取失败"（实测踩过）。
+    # 需要代理时应显式配置，而不是隐式继承环境。
     async with httpx.AsyncClient(
         timeout=settings.http_timeout,
         follow_redirects=True,
         headers=merged,
+        trust_env=False,
     ) as client:
         async with client.stream("GET", url, params=params) as resp:
             resp.raise_for_status()
@@ -239,10 +247,18 @@ async def post_text(
     merged["Content-Type"] = "application/x-www-form-urlencoded"
     if headers:
         merged.update(headers)
+    # ⚠️ trust_env=False：**本函数带 SSRF 防护，绝不能走环境/系统代理**。
+    # 原因有二：
+    #   1) 走代理后 `assert_public_url` 的校验形同虚设 —— 真正发起连接的是代理，
+    #      它完全可以访问我们刚拦下的内网地址（防护被绕过）；
+    #   2) macOS 系统代理一旦开启（含本机代理软件），环回地址请求也会被塞进代理，
+    #      本地服务返回 502，表现为"莫名其妙的抓取失败"（实测踩过）。
+    # 需要代理时应显式配置，而不是隐式继承环境。
     async with httpx.AsyncClient(
         timeout=timeout or max(settings.http_timeout, 30.0),
         follow_redirects=True,
         headers=merged,
+        trust_env=False,
     ) as client:
         async with client.stream("POST", url, data=data) as resp:
             resp.raise_for_status()
