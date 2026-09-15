@@ -126,6 +126,19 @@ bash scripts/android/run-emulator.sh ui         # dump 界面文本
 bash scripts/android/run-emulator.sh screenshot /tmp/shot.png
 ```
 
+再配合 CDP 在设备上执行任意 JS（debug 构建自动开启 WebView 远程调试）：
+
+```bash
+python3 scripts/android/cdp.py --targets                     # 列出可调试页面
+python3 scripts/android/cdp.py "document.title"              # 执行任意 JS
+python3 scripts/android/cdp.py --screenshot /tmp/s.png       # 由渲染器截图
+```
+
+> ⚠️ **别用 `adb exec-out screencap` 判断布局**：模拟器软件渲染下它抓的是合成器
+> 的最后一帧，可能明显滞后（本项目实测拿到过"引导条只画了一半、页头按钮还没出现"
+> 的中间态，据此误判成布局 bug）。`--screenshot` 走渲染器，与 DOM 测量同一时刻，
+> 两者交叉验证才可靠。
+
 再配合端口转发就能直接调设备内的后端（验证整链而无需手点界面）：
 
 ```bash

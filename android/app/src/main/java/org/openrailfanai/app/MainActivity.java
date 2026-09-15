@@ -94,6 +94,15 @@ public class MainActivity extends Activity {
         // ---- WebView ----
         web = new WebView(this);
         web.setVisibility(View.GONE);
+        // 仅在 debuggable 构建里开启 WebView 远程调试：可用 CDP 在真机/模拟器上直接执行
+        // 任意 JS（查布局、量尺寸、模拟点击），比"改一次探针就重装一次包"高效得多。
+        // 用 ApplicationInfo 的 debuggable 标志判断，无需为 BuildConfig 开启 buildConfig 特性。
+        boolean debuggable =
+            (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        if (debuggable) {
+            WebView.setWebContentsDebuggingEnabled(true);
+            Log.i(TAG, "已开启 WebView 远程调试（debug 构建）");
+        }
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);        // 前端用 localStorage 存对话与供应商设置
