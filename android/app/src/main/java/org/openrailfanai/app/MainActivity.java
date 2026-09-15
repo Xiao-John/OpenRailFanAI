@@ -120,6 +120,7 @@ public class MainActivity extends Activity {
                     pageLoaded = true;
                     boot("页面加载完成：" + url);
                     showWebView();
+                    probeRenderedPage(view);
                 }
             }
 
@@ -206,6 +207,8 @@ public class MainActivity extends Activity {
             if (!Python.isStarted()) {
                 Python.start(new AndroidPlatform(getApplicationContext()));
             }
+            boot("Python 已启动（" + Python.getInstance().getModule("sys").get("version") + "）");
+            startPythonLogPump();       // 从此刻起把 Python 日志同步到屏幕
             PyObject server = Python.getInstance().getModule("server");
             boot("调用 server.serve()…");
             // serve() 内部起 uvicorn 并常驻；就绪/失败都通过回调回到主线程
@@ -333,6 +336,46 @@ public class MainActivity extends Activity {
     }
 
     // ---------------------------------------------------------------- Python 回调
+    /**
+     * 页面加载完成后，用 JS 把"实际渲染出来的内容"读回来并写进启动日志。
+     *
+     * 为什么需要：`onPageFinished` 只说明文档加载完了，**不代表界面渲染正确** ——
+     * 前端脚本一旦抛错（或资源 404），页面会停在静态骨架甚至全空，而
+     * WebView 不会因此报任何错。上一版"白屏但日志显示一切正常"正是这个盲区。
+     * 这里把 DOM 的关键事实（正文、脚本错误横幅、未配置模型引导条、消息区子节点数）
+     * 一次性取回来，让"是否真的渲染成应用界面"可以被文本核对，不依赖人工看截图。
+     */
+    private void probeRenderedPage(WebView view) {
+        final String js =
+            "(function(){try{"
+            + "var err=document.getElementById('boot-error');"
+            + "var chat=document.getElementById('chat');"
+            + "var notice=document.getElementById('llm-notice');"
+            + "var txt=(document.body.innerText||'').replace(/\\s+/g,' ').trim().slice(0,300);"
+            + "return JSON.stringify({"
+            + "  title:document.title,"
+            + "  chatChildren:chat?chat.childElementCount:-1,"
+            + "  bootError:(err&&err.style.display!=='none')?err.textContent.slice(0,300):null,"
+            + "  noticeShown:!!(notice&&notice.className.indexOf('hidden')<0),"
+            + "  bodyText:txt});"
+            + "}catch(e){return JSON.stringify({jsError:String(e)});}})()";
+        view.evaluateJavascript(js, value -> boot("页面自检：" + value));
+        // 再探一次：首探发生在 onPageFinished 的瞬间，而界面上的异步状态
+        // （如"未配置模型"引导条要等 /api/providers 返回后才决定显隐）此时往往还没落定。
+        // 间隔一次可区分"确实没显示"与"还没来得显示"。
+        view.postDelayed(() -> {
+            if (web != null) {
+                web.evaluateJavascript(js, value -> boot("页面自检(+8s)：" + value));
+            }
+        }, 8000);
+    }
+
+    /** 供 Python 调用：后端启动的某个阶段（用于定位"卡在哪一步"）。 */
+    @SuppressWarnings("unused")
+    public void onBootStage(final String stage) {
+        boot("  · " + stage);
+    }
+
     /** 供 Python 调用：后端已在 127.0.0.1:port 上就绪。selfCheck 为自检结论（可为空）。 */
     @SuppressWarnings("unused")
     public void onServerReady(final int readyPort, final String selfCheck) {
@@ -351,6 +394,47 @@ public class MainActivity extends Activity {
     public void onStartupFailed(final String detail) {
         fail("后端启动失败：\n" + detail
                 + "\n\n（若上面提到 HTTP 非 200／Connection refused，请把整屏内容反馈给开发者）");
+    }
+
+    /**
+     * 把 Python 侧的日志搬运到屏幕上（轮询模块内的环形缓冲）。
+     *
+     * 为什么需要：Python 的 logging 输出只进 logcat，而真机排障拿不到 logcat ——
+     * 上一版卡在 serve() 里时，界面上永远停在"调用 server.serve()…"，
+     * Python 那侧发生了什么（导入到哪、报了什么错）完全不可见。
+     * 轮询开销极小（只读一个 deque），且不依赖回调时机。
+     */
+    private void startPythonLogPump() {
+        final PyObject[] server = new PyObject[1];
+        final Thread t = new Thread(() -> {
+            int shown = 0;
+            while (!pageLoaded && !isFinishing()) {
+                try {
+                    if (server[0] == null) {
+                        server[0] = Python.getInstance().getModule("server");
+                    }
+                    String text = server[0].callAttr("recent_logs", 60).toString();
+                    if (text != null && !text.isEmpty()) {
+                        String[] lines = text.split("\n");
+                        if (lines.length > shown) {
+                            for (int i = shown; i < lines.length; i++) {
+                                boot("py| " + lines[i]);
+                            }
+                            shown = lines.length;
+                        }
+                    }
+                } catch (Throwable ignored) {
+                    // Python 可能尚未初始化或正忙；下一轮再试
+                }
+                try {
+                    Thread.sleep(1200);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+        }, "python-log-pump");
+        t.setDaemon(true);
+        t.start();
     }
 
     @Override

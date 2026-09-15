@@ -214,6 +214,24 @@ def _unsupported_param(e: Exception) -> str | None:
     return None
 
 
+def _cause_chain(e: Exception, limit: int = 6) -> str:
+    """把异常的因果链拼成一行（`←` 连接），便于一眼看出真实原因。
+
+    为什么需要：openai SDK 会把底层错误包装（`APIConnectionError: Connection error.`），
+    只看最外层完全无法判断是 DNS、TLS 还是超时 —— 在 Android 上排障时正是如此。
+    仅写服务端日志，不进入给用户看的文案。
+    """
+    parts: list[str] = []
+    seen: set[int] = set()
+    cur: BaseException | None = e
+    while cur is not None and len(parts) < limit and id(cur) not in seen:
+        seen.add(id(cur))
+        text = str(cur).strip() or "(无描述)"
+        parts.append(f"{type(cur).__name__}: {text}")
+        cur = cur.__cause__ or cur.__context__
+    return ("  ←  " + "  ←  ".join(parts[1:])) if len(parts) > 1 else ""
+
+
 def _err_diagnostic(e: Exception, *, provider: Provider | None = None, dialect: str = "") -> str:
     """把 OpenAI 相关异常转成**可操作且不含上游原文**的中文诊断。
 
@@ -221,7 +239,12 @@ def _err_diagnostic(e: Exception, *, provider: Provider | None = None, dialect: 
     而上游异常原文可能带 Key 片段、组织 ID、内网地址或请求头。
     因此这里只保留"状态码级别"的提示，完整原文只写服务端日志。
     """
-    _log.warning("LLM 调用失败（详情仅记日志）: %s: %s", type(e).__name__, e)
+    # exc_info=True + 因果链：SDK 常把底层错误包一层（如 APIConnectionError 包住
+    # httpx 的 SSLError），只打最外层名字根本定位不到原因（Android 上排障时踩过）。
+    _log.warning(
+        "LLM 调用失败（详情仅记日志）: %s: %s%s",
+        type(e).__name__, e, _cause_chain(e), exc_info=True,
+    )
     status = _status_of(e)
     where = ""
     if provider is not None:

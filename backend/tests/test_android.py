@@ -252,6 +252,40 @@ def test_env_example_covers_frontend_dir():
     print("[PASS] .env.example 已包含 FRONTEND_DIR")
 
 
+def test_shell_scripts_avoid_cjk_variable_capture():
+    """shell 脚本里 `$VAR` 后**紧跟非 ASCII 字符**会踩坑，必须写成 `${VAR}`。
+
+    原因：`echo "…$VAR（说明）"` 里，bash 会把全角括号的首字节吞进变量名，
+    于是报 `VAR<乱码>: unbound variable` —— 而这个错误**只有执行到那一行才会出现**，
+    `bash -n` 也查不出来（语法本身是合法的）。本项目已因此踩坑三次
+    （setup-toolchain.sh / setup.sh / setup-emulator.sh），所以固化成测试。
+
+    另外顺带做一遍 `bash -n` 语法检查：脚本是交付路径的一部分，语法错误不该等到用户才发现。
+    """
+    import re
+    import subprocess
+
+    bad: list[str] = []
+    scripts = sorted(
+        p for p in REPO_ROOT.rglob("*.sh")
+        if ".android-build" not in p.parts and "node_modules" not in p.parts
+    )
+    assert scripts, "没有找到任何 shell 脚本（检查方式可能已失效）"
+
+    cjk_after_var = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)(?=[^\x00-\x7f])")
+    for p in scripts:
+        text = p.read_text(encoding="utf-8", errors="replace")
+        for name in cjk_after_var.findall(text):
+            bad.append(f"{p.relative_to(REPO_ROOT)}: ${name} 后紧跟非 ASCII 字符 → 应写成 ${{{name}}}")
+        # bash -n：语法检查（能查出括号/引号不配等问题）
+        proc = subprocess.run(["bash", "-n", str(p)], capture_output=True, text=True)
+        if proc.returncode != 0:
+            bad.append(f"{p.relative_to(REPO_ROOT)}: bash -n 失败：{proc.stderr.strip()[:200]}")
+
+    assert not bad, "shell 脚本问题：\n  " + "\n  ".join(bad)
+    print(f"[PASS] {len(scripts)} 个 shell 脚本：无「变量后紧跟中文」隐患，且 bash -n 全部通过")
+
+
 def test_apk_assets_satisfy_index_html_references():
     """构建产物里的前端资源必须能满足 index.html 的全部本地引用。
 
@@ -334,6 +368,73 @@ def test_mcp_package_kept_out_of_normal_resolution():
     print("[PASS] mcp-server-12306 已移出常规解析集合，运行时依赖显式在列；setup.sh 两步安装 + 可切换镜像")
 
 
+def test_python_callbacks_use_attribute_access():
+    """Python 调 Java 回调必须用属性调用，不能用 `callAttr`。
+
+    真机事故：`activity.callAttr("onServerReady", port)` —— `callAttr` 是
+    **Java 侧调用 Python 对象**（PyObject）的 API；Java 对象进到 Python 里是
+    Chaquopy 的 `JavaObject`，要像普通属性那样调用。用错之后**每个回调**都抛
+    `AttributeError: 'MainActivity' object has no attribute 'callAttr'` 并被吞掉：
+    后端其实已正常监听、自检也通过，界面却永远停在"调用 server.serve()…"。
+    这个错误在桌面上完全测不出来，只有真机 logcat 才看得到。
+    """
+    srv = (ANDROID_DIR / "app/src/main/python/server.py").read_text(encoding="utf-8")
+    # 用 AST 找**真实的属性访问**，而不是搜文本 —— 否则文档字符串里
+    # "曾经误写成 activity.callAttr(...)" 这样的解释性文字会被误判。
+    import ast
+
+    offenders = [
+        node.attr
+        for node in ast.walk(ast.parse(srv))
+        if isinstance(node, ast.Attribute) and node.attr == "callAttr"
+    ]
+    assert not offenders, (
+        "server.py 仍在用 callAttr 调用 Java（应改为 getattr(activity, method)(...)）："
+        "callAttr 是 Java 侧调用 Python 对象的 API，Java 对象在 Python 侧只能按属性调用"
+    )
+    assert "getattr(activity, method)" in srv, (
+        "未用 getattr(activity, method)(...) 调用 Java 回调 —— Java 对象在 Python 侧是 "
+        "JavaObject，只能按属性调用"
+    )
+    print("[PASS] Java 回调使用属性调用（不再误用 callAttr）")
+
+
+def test_android_sets_tls_ca_bundle():
+    """Android 必须把 httpx2 的信任库指向**文件形式**的 CA 证书束。
+
+    真机事故：`httpx2`（openai SDK 与 mcp-server-12306 都用它）默认走 truststore
+    读平台信任库，而 Chaquopy 的 Python 在 Android 上读不到系统 CA，于是所有 HTTPS
+    请求都报 `CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate`。
+    修法是让 httpx2 采用 SSL_CERT_FILE（它会优先读该变量）。
+    """
+    srv = (ANDROID_DIR / "app/src/main/python/server.py").read_text(encoding="utf-8")
+    assert "_ensure_ca_bundle" in srv, "缺少 CA 证书束准备逻辑"
+    assert "SSL_CERT_FILE" in srv, "未设置 SSL_CERT_FILE（httpx2 不会改用文件证书束）"
+    # 必须校验候选是不是真实文件：Chaquopy 下 certifi 的路径可能落在 .imy 归档里
+    assert "os.path.isfile" in srv, (
+        "未校验候选证书束是否为真实文件 —— Chaquopy 下 certifi.where() 可能是归档内路径，"
+        "直接交给 ssl.create_default_context(cafile=...) 依然会失败"
+    )
+    serve_body = srv.split("def serve(", 1)[1]
+    assert "_ensure_ca_bundle()" in serve_body, "serve() 未调用 _ensure_ca_bundle()"
+    assert serve_body.index("_ensure_ca_bundle()") < serve_body.index("import app"), (
+        "必须在导入后端之前准备好信任库（导入过程本身可能就会创建 HTTP 客户端）"
+    )
+    print("[PASS] Android 启动时把 httpx2 信任库指向真实的 CA 证书束文件")
+
+
+def test_llm_diagnostics_include_cause_chain():
+    """LLM 失败日志必须能看出**根本原因**（含因果链）。
+
+    真机排障时只看到 `APIConnectionError: Connection error.` 完全无法定位，
+    真实原因（SSLCertVerificationError）被包在里面。
+    """
+    text = (REPO_ROOT / "backend/app/llm/client.py").read_text(encoding="utf-8")
+    assert "_cause_chain" in text, "缺少因果链辅助函数"
+    assert "exc_info=True" in text, "失败日志未带 exc_info（拿不到完整堆栈）"
+    print("[PASS] LLM 失败日志含因果链与堆栈（能定位 SSL/DNS/超时等真实原因）")
+
+
 def test_server_selfcheck_covers_entry_script():
     """启动自检必须包含入口脚本 —— 它是"白屏"类故障的唯一自动防线。"""
     srv = (ANDROID_DIR / "app/src/main/python/server.py").read_text(encoding="utf-8")
@@ -372,7 +473,11 @@ def main():
     test_frontend_dir_setting_is_honoured()
     test_env_example_covers_frontend_dir()
     test_mcp_package_kept_out_of_normal_resolution()
+    test_shell_scripts_avoid_cjk_variable_capture()
     test_apk_assets_satisfy_index_html_references()
+    test_python_callbacks_use_attribute_access()
+    test_android_sets_tls_ca_bundle()
+    test_llm_diagnostics_include_cause_chain()
     test_server_selfcheck_covers_entry_script()
     test_frontend_reports_boot_errors()
     print("\nAndroid 一体化约束测试全部通过 ✔")

@@ -111,6 +111,29 @@ bash scripts/android/build.sh assembleRelease
 | WebView | `onReceivedError`（主框架加载失败）与 `onReceivedHttpError`（**静态资源 404 走这条**）都显示出来 |
 | 前端 | `index.html` 内联脚本在任何模块之前注册 `error` / `unhandledrejection` 捕获，横幅显示"资源加载失败：<URL>"或脚本错误行号 |
 | Python | 起服务后自检 `/` 与 `/src/main.js`；不通过则把结论 + 最近日志回传给界面 |
+| Python | 启动**逐阶段回报**（选端口 / 准备 TLS / 导入 app / 导入 uvicorn / 起服务 / 自检），卡住时最后一条就是答案 |
+| WebView | 页面加载完成后用 JS 把**实际渲染结果**读回日志（标题、消息区子节点数、错误横幅、引导条是否显示、正文摘录）——`onPageFinished` 只说明文档加载完，不代表渲染正确 |
+
+### 真机（模拟器）自测
+
+没有实体机也能完整验证，工具链同样装在 `.android-build/` 内：
+
+```bash
+bash scripts/android/setup-emulator.sh --avd     # 装 emulator + 系统镜像并建 AVD（约 1.7GB）
+bash scripts/android/run-emulator.sh start      # headless 启动（约 6s 就绪）
+bash scripts/android/run-emulator.sh install    # 装 APK 并前台抓 logcat
+bash scripts/android/run-emulator.sh ui         # dump 界面文本
+bash scripts/android/run-emulator.sh screenshot /tmp/shot.png
+```
+
+再配合端口转发就能直接调设备内的后端（验证整链而无需手点界面）：
+
+```bash
+adb forward tcp:<设备内端口> tcp:<设备内端口>
+curl -s http://127.0.0.1:<端口>/api/providers
+curl -s -XPOST http://127.0.0.1:<端口>/api/chat -H 'Content-Type: application/json' \
+  -d '{"message":"G1今天由哪组动车组担当？","api_key":"...","base_url":"...","model":"..."}'
+```
 
 > 其中的 `/src/main.js` 检查是有来历的：静态资源 404 **不会**触发 WebView 的
 > `onReceivedError`，只会让页面悄悄少掉全部脚本（看起来就是白屏）。首版在 assets
@@ -125,10 +148,9 @@ bash scripts/android/build.sh assembleRelease
 
 ## 已知限制
 
-- **真机运行尚未回归验证**。已验证的是：构建成功、Chaquopy 在 Android 上确实装上了
-  全部依赖、以及**在与 Android 完全相同的依赖环境**（`--no-deps` 纯 Python 清单 +
-  pydantic v1 + fastapi 0.125 + 无 jiter/pydantic-settings）下跑通全量测试
-  （26/26 套件）。真机首次启动、WebView 渲染、长时间后台行为需要实机确认。
+- **已在 Android 15 arm64 模拟器上实测通过**：启动各阶段、前端渲染（DOM 探针核对到完整界面文本）、
+  设备内真实问答（12306 + rail.re + LLM 全链，返回正确担当车组）。仍未验证的是**实体机**上的
+  长时间后台回收行为、以及不同厂商 WebView 版本的兼容性。
 - **本地字典默认不打**，因此 `rail.mileage`、车站档案、离线时刻这类依赖字典的工具
   会如实报告不可用；需要完整功能请用 `-PincludeDict=true` 构建。
 - 后端跑在应用进程内，**没有前台 Service**：切到后台久了可能被系统回收，

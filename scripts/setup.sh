@@ -92,7 +92,7 @@ _pip() {
 }
 
 if [ -n "$PIP_INDEX" ]; then
-  echo "    pip 源：$PIP_INDEX（临时生效，未写入 pip.conf；用 PIP_INDEX= 可切回官方源）"
+  echo "    pip 源：${PIP_INDEX}（临时生效，未写入 pip.conf；用 PIP_INDEX= 可切回官方源）"
 else
   echo "    pip 源：PyPI 官方源"
 fi
