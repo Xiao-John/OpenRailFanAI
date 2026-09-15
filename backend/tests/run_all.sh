@@ -10,6 +10,14 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# 用哪个解释器跑（可用环境变量覆盖）。默认仓库自带 venv；
+# Android 一体化版本需要验证"纯 Python 依赖集 + pydantic v1"下的行为，
+# 这时指向另一个 venv 即可跑同一套测试，例如：
+#   PYTHON=$PWD/../.android-build/venv-nodeps/bin/python bash tests/run_all.sh
+PYTHON="${PYTHON:-.venv/bin/python}"
+[ -x "$PYTHON" ] || { echo "找不到解释器：$PYTHON" >&2; exit 1; }
+echo "解释器：$PYTHON ($("$PYTHON" -c 'import sys; print(sys.version.split()[0])'))"
+
 SUITES=(
   # 基础能力
   test_dates
@@ -48,6 +56,8 @@ SUITES=(
   test_perf_fastpath
   # LLM 多供应商 / 双 API 方言（chat.completions 与 responses，含自动探测与参数降级；全部无网络）
   test_llm_providers
+  # Android 一体化约束（依赖版本锁定 / 兼容层 / 工程接线；全部无网络）
+  test_android
   # 前端数据层（多对话逻辑，需 node）
   test_frontend_store
 )
@@ -57,7 +67,7 @@ PASSED=0
 
 for suite in "${SUITES[@]}"; do
   echo "──────── ${suite} ────────"
-  if PYTHONPATH=. .venv/bin/python "tests/${suite}.py"; then
+  if PYTHONPATH=. "$PYTHON" "tests/${suite}.py"; then
     PASSED=$((PASSED + 1))
   else
     FAILED+=("${suite}")

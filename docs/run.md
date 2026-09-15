@@ -44,6 +44,17 @@ cd backend && python3 -m venv .venv && .venv/bin/python -m pip install -r requir
 | 性能与本地字典 | `FASTPATH_ENABLED=true`（确定性快路径，出问题置 false 回退纯 LLM）、`LLM_STRUCTURED_NO_THINK=true`、`DICT_DB_PATH=data/dict.db`、`DICT_GTFS_MAX_AGE_DAYS=5`、`DICT_SITE_MIN_INTERVAL_S=2.0`（个人站点间隔下限，勿调小） |
 | 其他 | `TRAIN_CACHE_TTL_DAYS=30`、`TICKET_PRESALE_DAYS=15`、`HUB_PROBE_PAIRS=北京:上海,北京:广州,北京:哈尔滨,上海:广州` |
 
+### Android 一体化版本
+
+把后端与前端一起打进 APK、在设备内运行（UI 用系统自带 WebView，不引入 Web 组件框架）：
+`bash scripts/android/setup-toolchain.sh` 一次性装工具链 → `bash scripts/android/build.sh`。
+完整说明见 [`android.md`](android.md)。
+
+> ⚠️ 它带来两条**不能随意升级**的依赖约束：
+> `pydantic` 必须留在 **v1**（v2 依赖 Rust 扩展 pydantic-core，Android 无轮子），
+> `fastapi` 必须留在 **0.125.x**（0.126.0 起移除 pydantic v1 支持）。
+> 升级这两个包前请先确认 Android 侧仍可构建，并跑 `backend/tests/run_all.sh`。
+
 ### 自备 Key 与自定义供应商
 
 三种方式任选，越靠后优先级越高（请求级 > `LLM_PROVIDER` > `.env` 默认三件套）：

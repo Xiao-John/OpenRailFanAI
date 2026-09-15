@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  只放行到本机回环地址的明文流量。
+
+  后端 uvicorn 跑在 127.0.0.1 上（HTTP，无 TLS），而 Android 9+ 默认禁止明文流量。
+  这里**不**用 android:usesCleartextTraffic="true"（那会对全网放行），
+  而是只给 127.0.0.1/localhost 开口子，其余仍强制 HTTPS。
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

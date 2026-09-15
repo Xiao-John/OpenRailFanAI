@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 
 from app.config import get_settings
 
@@ -44,8 +44,7 @@ class ChatRequest(BaseModel):
     # repr=False：**任何**日志/异常里打印 ChatRequest 都不应带出 Key
     api_key: Optional[str] = Field(None, repr=False, description="用户自带的 API Key（仅随本次请求使用，不落库不写日志）")
 
-    @field_validator("provider", "model", "base_url", "api_key")
-    @classmethod
+    @validator("provider", "model", "base_url", "api_key")
     def _check_optional_text(cls, v: Optional[str]) -> Optional[str]:
         """可选字段统一去空白；并限制长度，避免超长串进入下游/日志。"""
         if v is None:
@@ -71,8 +70,7 @@ class ChatRequest(BaseModel):
             if v
         }
 
-    @field_validator("message")
-    @classmethod
+    @validator("message")
     def _check_message(cls, v: str) -> str:
         """空消息与超长消息必须被拒绝（超长输入会直接放大 token 成本与延迟）。
 

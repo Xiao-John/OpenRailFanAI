@@ -66,11 +66,21 @@ def _include_routes() -> None:
 _include_routes()
 
 
-# 前端静态托管：仓库根目录下的 frontend/（含 index.html）
-_frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+# 前端静态托管：默认取仓库根目录下的 frontend/（含 index.html）；
+# 打包分发（Android/PyInstaller）时仓库结构不存在，用 FRONTEND_DIR 指定解包后的目录。
+_frontend_dir = (
+    Path(settings.frontend_dir).expanduser()
+    if settings.frontend_dir
+    else Path(__file__).resolve().parents[2] / "frontend"
+)
 if _frontend_dir.is_dir():
     app.mount(
         "/",
         StaticFiles(directory=str(_frontend_dir), html=True),
         name="frontend",
+    )
+else:
+    # 不静默失败：打错路径时表现为"主页 404 但 /api 正常"，很难排查
+    logging.getLogger("railfan.main").warning(
+        "前端静态目录不存在：%s（主页将 404；打包场景请设置 FRONTEND_DIR）", _frontend_dir
     )

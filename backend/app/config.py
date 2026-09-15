@@ -1,12 +1,19 @@
 """应用配置：统一从环境变量读取（.env / 系统环境）。
 
-使用 pydantic-settings，字段自动映射同名环境变量（大小写不敏感）。
+字段自动映射同名环境变量（**大小写不敏感**，pydantic v1 `BaseSettings` 的默认行为）。
+
+为什么是 pydantic **v1** 而不是 v2：
+    Android 一体化版本把 Python 运行时随 APK 分发，而 pydantic v2 依赖
+    `pydantic-core`（Rust 扩展），Chaquopy/Android 上没有任何可用轮子。
+    v1.10.24+ 起提供 `py3-none-any` 纯 Python 轮子，且 FastAPI 与 openai SDK
+    都仍声明支持 `pydantic>=1.10.13,<3`，因此服务端与 Android 能共用同一份代码。
+    详见 docs/run.md「Android 一体化」一节。
 """
 from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseSettings
 
 # 占位 Key（见 .env.example）：这些值不算"已配置 LLM"
 _PLACEHOLDER_API_KEYS = {
@@ -15,12 +22,12 @@ _PLACEHOLDER_API_KEYS = {
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
+    class Config:
         # 兼容两种启动位置：从 backend/ 或仓库根目录运行
-        env_file=[".env", ".env.local", "../.env"],
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+        env_file = (".env", ".env.local", "../.env")
+        env_file_encoding = "utf-8"
+        # .env 里可能有本文件不认识的键（如历史遗留的账号配置），一律忽略
+        extra = "ignore"
 
     # ---- LLM（OpenAI 兼容接口）----
     # 下面三项是"默认供应商"（向后兼容沿用旧字段名）：未选具体供应商时生效。
@@ -96,6 +103,12 @@ class Settings(BaseSettings):
     # ---- 接口文档暴露（/docs、/redoc、/openapi.json）----
     # 开发期保留便于联调；生产必须关闭或置于鉴权/内网之后（未鉴权的 /docs 会完整暴露接口面）
     enable_api_docs: bool = True
+
+    # ---- 前端静态目录 ----
+    # 留空时按仓库布局推导（backend/app/../../frontend）。
+    # 打包分发场景（Android 一体化 / PyInstaller）里仓库结构并不存在，
+    # 必须用本项显式指定解包后的静态目录，否则主页会 404。
+    frontend_dir: str = ""
 
     # ---- 前端代理目标 ----
     api_base: str = "http://127.0.0.1:8000"

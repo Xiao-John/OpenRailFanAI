@@ -30,7 +30,7 @@ def _env_keys() -> set[str]:
 
 
 def test_env_example_covers_all_settings():
-    fields = {name.upper() for name in Settings.model_fields}
+    fields = {name.upper() for name in Settings.__fields__}
     keys = _env_keys()
     missing = fields - keys - ALLOW_MISSING
     assert not missing, (
@@ -41,7 +41,7 @@ def test_env_example_covers_all_settings():
 
 
 def test_env_example_has_no_unknown_keys():
-    fields = {name.upper() for name in Settings.model_fields}
+    fields = {name.upper() for name in Settings.__fields__}
     unknown = _env_keys() - fields
     assert not unknown, (
         f".env.example 存在 Settings 不认识的键：{sorted(unknown)}（拼写错误或已删除的配置）"

@@ -36,3 +36,11 @@ frontend/dist/
 
 # 导出产物（本地打包，不入库）
 dist/
+
+# Android 构建工具链与产物（自包含，本地生成，不进仓库）
+.android-build/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/keystore.properties

@@ -1,8 +1,14 @@
 # FastAPI 后端核心
-fastapi>=0.111
+# FastAPI 锁在 0.125.x：0.126.0 起**移除**了 pydantic v1 支持
+# （fastapi/types.py 开始 import 仅 v2 存在的 pydantic.main.IncEx），
+# 而 Android 一体化必须用 pydantic v1。升级 FastAPI 前请先确认它是否重新支持 v1，
+# 并重跑 backend/tests/run_all.sh。
+fastapi>=0.125,<0.126
 uvicorn[standard]>=0.30
-pydantic>=2.7
-pydantic-settings>=2.3
+# pydantic 锁在 v1：v2 依赖 pydantic-core(Rust)，Android 上没有可用轮子；
+# v1.10.24+ 提供 py3-none-any 纯 Python 轮子，服务端与 Android 共用同一份代码。
+# FastAPI 与 openai SDK 均声明支持 pydantic>=1.10.13,<3。
+pydantic>=1.10.24,<2
 
 # LLM（OpenAI 兼容接口）
 openai>=1.34
