@@ -71,7 +71,6 @@ curl -s -X POST -d "train_start_date=20260915&train_station_code=VNP" 'https://m
 **端点与能力**：`…/trainStyleBatch/getCarDetail`（**GET**，**车组号 + 逐车厢席别（16 节）+ 座位图 PNG**，**仅动车组**、普速返回空，反查 `carCode → carType/车厢` 可用；**已并入 `emu.routing`**，与 rail.re 双源互证）；`wechat/main/travelServiceQrcodeTrainInfo`（POST，**检票口/候车室/出站口**，按沿途各站，**必须传"今天"**才有实时值）；`…/qrCode/getDeptByTrainCode`（POST，编组参数：辆数/定员/车长/**餐车位置**/母婴台/无障碍卫生间/时速 + 客运段）；`wechat/bigScreen/queryTrainDiagram`（POST，**开行日历** 91 天 `{date,flag}` + 担当局）；`wechat/bigScreen/getStationAddress`、`main/getLCLimitWaitTime`、`main/getTrainMapLine`（车站地址与经纬度 / 换乘预留时间 / 逐区间坐标）。**除 `getCarDetail` 外均为待接入**。
 **判据陷阱**：`getCarDetail` 外层 `status` 可能为 `0` **但 `content.data` 仍有完整数据**——判成败**必须看 `content.data`**，不能看外层 `status`；实测还遇到过一次间歇性返回空数据，**需要重试**。
 **明确无解（均已实测排除）**：正晚点/实际到发（`fact_*` 字段对已完成车次仍为空；大屏 `update_arrive_time` 只是"计划时刻去掉冒号"）、车站实时站台号（当日 515 条 `platform_no` 全空）、候补余票（需登录态）、**车组级配属动车所**（各端点只到"段"级）、普速车组号、`kyfw /otn/resources/js/query/train_list.js`（HTTP 200 但内容停在 2022 年）。
-**数据源政策**：12306 官方公开接口按"公开可用"对待，仅遵守限流纪律（并发/间隔/TTL 缓存）；**个人/社区站点**保持礼遇（≥2s 间隔、可识别 UA、本地缓存、标来源、不整表分发）。**配属能力（车组→动车所）已明确暂缓**：12306 无任何局/段/所字段，只有车迷配属库有，其许可与 robots 状态不适合直接作为上游依赖。
 
 ## 六、rail.re 交路 API（`emu.routing`）
 
