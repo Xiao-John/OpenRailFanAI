@@ -95,7 +95,10 @@ SKIP_TESTS=1 bash scripts/setup.sh    # 跳过测试自检，快速启动
 
 ```bash
 # 1. 后端依赖（必须 Python ≥3.10：3.9 的 TLS 指纹会被 12306 反爬拦截）
-python3.12 -m venv backend/.venv && backend/.venv/bin/pip install -r backend/requirements.txt
+python3.12 -m venv backend/.venv
+M=https://pypi.tuna.tsinghua.edu.cn/simple   # 境内建议走镜像（脚本内建，此处为手工等价命令）
+backend/.venv/bin/pip install -r backend/requirements.txt -i $M
+backend/.venv/bin/pip install --no-deps -r backend/requirements-nodeps.txt -i $M   # 必须 --no-deps，否则 pip 会长时间回溯
 
 # 2. 配置环境变量（.env 放在**仓库根目录**，不是 backend/）
 cp .env.example .env

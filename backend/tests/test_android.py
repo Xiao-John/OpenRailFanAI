@@ -292,6 +292,48 @@ def test_apk_assets_satisfy_index_html_references():
     print(f"[PASS] APK({apk.name}) 内前端资源满足 index.html 的 {len(refs)} 个本地引用")
 
 
+def test_mcp_package_kept_out_of_normal_resolution():
+    """mcp-server-12306 不得出现在常规依赖解析集合里。
+
+    它的元数据依赖 pydantic-settings（要求 pydantic>=2），与本项目的 pydantic<2
+    不可同时满足。放进同一个集合会让 pip 长时间回溯、最终 ResolutionImpossible ——
+    真实现象就是 `setup.sh` 第一步像"卡死"（当时还叠加了 -q，屏幕上什么都没有，
+    用户完全看不出原因）。必须用 --no-deps 单独安装，见 requirements-nodeps.txt。
+    """
+    normal = _req_names(BACKEND_REQ)
+    assert "mcp-server-12306" not in normal, (
+        "backend/requirements.txt 又出现了 mcp-server-12306：它与 pydantic<2 冲突，"
+        "请放 requirements-nodeps.txt 并用 --no-deps 安装"
+    )
+    nodeps = REPO_ROOT / "backend/requirements-nodeps.txt"
+    assert nodeps.exists(), "缺少 backend/requirements-nodeps.txt"
+    assert "mcp-server-12306" in _req_names(nodeps), "requirements-nodeps.txt 里没有该包"
+
+    # 它的真实运行时依赖必须在常规清单里显式列出（--no-deps 不会自动带进来）
+    for dep in ("httpx2", "aiofiles", "pytz"):
+        assert dep in normal, (
+            f"backend/requirements.txt 缺少 {dep}：它是 mcp-server-12306 的真实运行时依赖，"
+            "用 --no-deps 安装后必须由常规清单显式提供"
+        )
+
+    # setup.sh 必须两步走，并把 pip 源做成可切换（默认清华，可 PIP_INDEX= 关掉）
+    setup = (REPO_ROOT / "scripts/setup.sh").read_text(encoding="utf-8")
+    assert "--no-deps -r requirements-nodeps.txt" in setup, "setup.sh 未用 --no-deps 安装该包"
+    assert "PIP_INDEX" in setup and "tuna.tsinghua" in setup, "setup.sh 未提供清华 pip 源"
+    # 真实的 pip 调用行不得带 -q（注释里提到 -q 不算，注释本身是解释这条规矩的）
+    bad_q = [
+        ln.strip() for ln in setup.splitlines()
+        if not ln.strip().startswith("#")
+        and ("_pip " in ln or "pip install" in ln)
+        and " -q" in ln
+    ]
+    assert not bad_q, (
+        f"setup.sh 的 pip 调用带了 -q：{bad_q}\n"
+        "→ 这几步是最容易「看起来卡死」的地方，必须让用户看到 pip 在下载还是求解"
+    )
+    print("[PASS] mcp-server-12306 已移出常规解析集合，运行时依赖显式在列；setup.sh 两步安装 + 可切换镜像")
+
+
 def test_server_selfcheck_covers_entry_script():
     """启动自检必须包含入口脚本 —— 它是"白屏"类故障的唯一自动防线。"""
     srv = (ANDROID_DIR / "app/src/main/python/server.py").read_text(encoding="utf-8")
@@ -329,6 +371,7 @@ def main():
     test_android_project_wiring()
     test_frontend_dir_setting_is_honoured()
     test_env_example_covers_frontend_dir()
+    test_mcp_package_kept_out_of_normal_resolution()
     test_apk_assets_satisfy_index_html_references()
     test_server_selfcheck_covers_entry_script()
     test_frontend_reports_boot_errors()

@@ -20,11 +20,23 @@
 ## 2. 安装依赖
 
 ```bash
-cd backend && python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
+cd backend && python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+.venv/bin/python -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# 必须单独装且必须 --no-deps：它的元数据依赖 pydantic-settings（要求 pydantic>=2），
+# 与本项目的 pydantic<2 不可同时满足，放进同一解析集合会让 pip 长时间回溯（甚至直接
+# ResolutionImpossible）—— 表现为"卡在这一步不动"。其真实运行时依赖（httpx2/aiofiles/pytz）
+# 已在 requirements.txt 中显式列出。详见 backend/requirements-nodeps.txt。
+.venv/bin/python -m pip install --no-deps -r requirements-nodeps.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 依赖含 `mcp-server-12306`（12306 实时查询）、`httpx[http2]`、`brotli`（浏览器级请求头所需）。
 
 ## 3. 配置环境变量
+
+> **pip 源**：境内直连 PyPI 常常极慢或中途停滞，上面的命令统一走清华镜像。
+> `scripts/setup.sh` 已内建该镜像（**只通过命令行参数传入，不写 `~/.pip/pip.conf`**，
+> 属临时生效、不影响你机器上的其它项目）；换成官方源用 `PIP_INDEX= bash scripts/setup.sh`，
+> 换别的镜像用 `PIP_INDEX=<镜像地址> bash scripts/setup.sh`。
 
 复制模板：`cp .env.example .env`（模板在仓库根目录；配置读根目录 `.env`）。
 

@@ -20,8 +20,14 @@ pypinyin>=0.51
 httpx[http2]>=0.27
 brotli>=1.1
 
-# 12306 实时查询（MCP Server）
-mcp-server-12306>=0.3
+# 12306 实时查询所用库的直接运行时依赖。
+# 注意：`mcp-server-12306` **刻意不在这里** —— 它的元数据依赖 pydantic-settings
+# （要求 pydantic>=2），与本文件的 pydantic<2 不可同时满足，会令 pip 长时间回溯
+# （现象：setup.sh 第一步像是"卡死"）。它改由 requirements-nodeps.txt 以
+# `--no-deps` 安装，其真正用到的三个依赖就列在下面这一行里，必须保留。
+httpx2>=2.13
+aiofiles>=23.0
+pytz>=2024.1
 
 # 会话状态：会话由前端维护并随请求回传，服务端不落库
 

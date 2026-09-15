@@ -1,0 +1,20 @@
+# 必须用 `pip install --no-deps` **单独**安装的包（scripts/setup.sh 已按此处理）。
+#
+# 为什么单独一个文件：
+#   mcp-server-12306 的元数据声明依赖 `mcp`（MCP SDK）与 `pydantic-settings`，
+#   而 pydantic-settings 要求 `pydantic>=2`，与本项目的 `pydantic<2`（Android 硬约束，
+#   见 requirements.txt 注释）**不可同时满足**。放进同一个解析集合里，pip 会陷入
+#   长时间回溯：表现就是 `setup.sh` 第一步"卡死"，又因为脚本当时用了 -q，
+#   屏幕上什么都没有，完全看不出原因（真机/真环境实测）。
+#
+# 为什么可以安全地 --no-deps：
+#   本项目只 import `mcp_12306.services` / `mcp_12306.utils`（纯业务代码，
+#   见 backend/app/tools/_rt12306.py 与 station_lookup.py），其 import 链只用到
+#   httpx2 / aiofiles / pytz —— 这三个已在 requirements.txt 中**显式列出**。
+#   整条 MCP SDK 依赖链（mcp / mcp-types / opentelemetry-api / jsonschema / pyjwt /
+#   sse-starlette / python-multipart / cryptography …）只服务于"把 12306 当 MCP
+#   服务器运行"（mcp_12306/server.py 等），本项目不使用。
+#
+# 安装方式（setup.sh 自动执行，手工等价命令）：
+#   .venv/bin/python -m pip install --no-deps -r requirements-nodeps.txt
+mcp-server-12306>=0.3

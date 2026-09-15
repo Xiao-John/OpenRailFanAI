@@ -65,10 +65,63 @@ if [ "$PY_OK" != "1" ]; then
 fi
 echo "    使用 Python $PY_VER ($PYTHON_BIN)"
 
-"$PYTHON_BIN" -m venv "$BACKEND/.venv"
+if [ -x "$BACKEND/.venv/bin/python" ]; then
+  echo "    复用已有虚拟环境 backend/.venv（如需重建：rm -rf backend/.venv 后重跑）"
+else
+  "$PYTHON_BIN" -m venv "$BACKEND/.venv"
+fi
 cd "$BACKEND"
-"$BACKEND/.venv/bin/python" -m pip install --upgrade pip -q
-"$BACKEND/.venv/bin/python" -m pip install -q -r requirements.txt
+
+# ---------------------------------------------------------------------------
+# pip 镜像：默认走清华源。
+#
+# 为什么默认开：境内直连 PyPI 常常极慢甚至中途停滞（本项目实测过多次），
+# 而 setup.sh 的这几步没有任何进度提示时，用户只会看到"卡死"。
+# **只通过命令行参数传入**，不写 ~/.pip/pip.conf、不改全局配置 —— 即"临时生效"，
+# 不影响你机器上的其它项目。要用官方源：PIP_INDEX= bash scripts/setup.sh
+# 换别的镜像：PIP_INDEX=https://mirrors.aliyun.com/pypi/simple bash scripts/setup.sh
+# ---------------------------------------------------------------------------
+PIP_INDEX="${PIP_INDEX-https://pypi.tuna.tsinghua.edu.cn/simple}"
+
+_pip() {
+  if [ -n "$PIP_INDEX" ]; then
+    "$BACKEND/.venv/bin/python" -m pip "$@" -i "$PIP_INDEX" --timeout 30 --retries 3
+  else
+    "$BACKEND/.venv/bin/python" -m pip "$@" --timeout 30 --retries 3
+  fi
+}
+
+if [ -n "$PIP_INDEX" ]; then
+  echo "    pip 源：$PIP_INDEX（临时生效，未写入 pip.conf；用 PIP_INDEX= 可切回官方源）"
+else
+  echo "    pip 源：PyPI 官方源"
+fi
+
+# 刻意**不加 -q**：这几步是首次运行最容易"看起来卡死"的地方，
+# 必须让用户看到 pip 在下载还是在回溯求解。
+if ! _pip install --upgrade pip; then
+  echo "    [错误] pip 自身升级失败。可换源重试：PIP_INDEX=https://mirrors.aliyun.com/pypi/simple bash scripts/setup.sh"
+  exit 1
+fi
+
+if ! _pip install -r requirements.txt; then
+  echo
+  echo "    [错误] 依赖安装失败（上方为 pip 的原始输出）。"
+  echo "       常见原因：网络到源不可达；或依赖版本约束冲突。"
+  echo "       换源重试：PIP_INDEX=https://mirrors.aliyun.com/pypi/simple bash scripts/setup.sh"
+  echo "       走官方源：PIP_INDEX= bash scripts/setup.sh"
+  exit 1
+fi
+
+# 单独装、且**必须 --no-deps**：mcp-server-12306 声明的 pydantic-settings 要求
+# pydantic>=2，与本项目的 pydantic<2（Android 硬约束）不可同时满足 ——
+# 放进同一个解析集合会让 pip 长时间回溯，甚至直接 ResolutionImpossible。
+# 其真正用到的 httpx2/aiofiles/pytz 已在 requirements.txt 里显式列出。
+# 详见 backend/requirements-nodeps.txt。
+if ! _pip install --no-deps -r requirements-nodeps.txt; then
+  echo "    [错误] mcp-server-12306（12306 实时查询库）安装失败，上方为原始输出"
+  exit 1
+fi
 echo "    依赖安装完成"
 
 echo "==> [1.5/5] 预热离线/静态数据（兜底数据，避免首个请求触发下载）"
