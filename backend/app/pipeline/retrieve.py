@@ -508,7 +508,7 @@ async def retrieve(
             if target_station:
                 plan.append(("station.lookup", {"name": target_station}))
             # 注：不再调用 railre —— rail.re 主站是前端渲染 SPA，`/{站名}` 实测恒 404，
-            # 调用它只会稳定失败并往 note 里塞一条误导性说明（见 docs/review/audit-tools.md P1-3）。
+            # 调用它只会稳定失败并往 note 里塞一条误导性说明（见 审计报告（历史） P1-3）。
             # 车站信息由 station.lookup（12306 站点库）与 cnrail.map（地图外链）覆盖。
             if target_station:
                 plan.append(("cnrail.map", {"location": target_station}))

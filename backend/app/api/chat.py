@@ -117,7 +117,7 @@ async def sessions_info() -> dict:
         "multi_turn": True,
         "cancellable": True,
         "max_history_turns": 6,
-        # 社区版：无需登录、无账户与计费
+        # 无需登录：对话匿名可用（不引入账户与计费）
         "auth_required": False,
         "billing_enabled": False,
     }

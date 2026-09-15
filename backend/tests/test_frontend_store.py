@@ -36,10 +36,10 @@ def test_store_logic():
 
 
 def test_frontend_has_no_account_ui():
-    """社区版应当**没有**账户相关接线（这是与私有版的刻意差异，用测试钉住）。
+    """前端**不应**包含账户相关接线（本项目不需要登录）。
 
-    私有版有「登录才可会话」的引导层与 Authorization 头；社区版必须干净，
-    否则一旦有人误把私有版前端拷回来，会立刻在这条断言上失败。
+    用测试钉住这条约束：一旦有人误把带登录/鉴权的版本拷进来，
+    会立刻在这条断言上失败。
     """
     html = (REPO_ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     js = (REPO_ROOT / "frontend" / "src" / "main.js").read_text(encoding="utf-8")
@@ -53,9 +53,9 @@ def test_frontend_has_no_account_ui():
                         ("login-password", "前端仍含管理员登录")]:
         blob = html + js + pages
         assert needle not in blob, f"{why}：{needle}"
-    # 多对话能力必须保留（这是社区版的核心体验）
+    # 多对话能力必须保留（核心体验）
     assert "id=\"conv-list\"" in html and "createConversation" in js or "store.create" in js, "多对话接线丢失"
-    print("[PASS] 前端无账户接线（登录层/个人中心/鉴权头均已移除），多对话保留")
+    print("[PASS] 前端无账户接线（登录层/个人中心/鉴权头均不存在），多对话保留")
 
 def main():
     test_store_logic()

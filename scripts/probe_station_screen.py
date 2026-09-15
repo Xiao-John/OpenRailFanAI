@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """12306「车站大屏」接口探针 / 小屏渲染。
 
-对应文档：docs/12306-station-screen-api.md
+对应文档：docs/datasources.md
 
 用法：
     python3 scripts/probe_station_screen.py VNP                    # 今天，只看统计

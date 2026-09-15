@@ -227,7 +227,7 @@ curl 'https://kyfw.12306.cn/otn/czxx/queryByTrainNo?train_no=24000000G10L\
 #### 1.2-c 车站大屏（✅ 已接入，免登录；2026-09-14 探测）
 
 §1.2-b 里"按车站查当日到发车次"的缺口，已由 **12306 微信小程序的车站大屏接口**补齐
-（完整报告：[`docs/12306-station-screen-api.md`](12306-station-screen-api.md)）：
+（下方为实测要点）：
 
 ```bash
 # ⚠️ 必须 POST form-body：同一 URL 用 GET 会稳定返回 (M0003)"系统忙，请稍后重试！"
@@ -267,7 +267,7 @@ curl -s -X POST \
 > （≥2s 间隔、可识别 UA、本地缓存、标来源、不整表分发）。
 >
 > **配属能力（车组 → 动车所）已明确暂缓**：12306 无任何局/段/所字段，只有车迷配属库有；
-> 因"不为次要功能牺牲原则"本轮不接入，详见 `docs/source-expansion.md` §六。
+> 当前**不接入**：第三方社区配属库的许可与 robots 状态不适合直接作为上游依赖。
 
 `mobile.12306.cn/wxxcx/**` 是**精确白名单网关**：不存在的路径返回
 `403 Forbidden (openresty)` 纯 HTML，存活端点返回 `200 application/json`
@@ -312,4 +312,4 @@ curl -s -X POST \
 
 - 统一使用 `app/tools/_http.py:get_text()`，默认带浏览器级请求头。
 - 抓取失败一律优雅降级（返回 `ok=False` + `note`），不抛异常穿透到接口层。
-- 外部站点不可达时，由生成层如实说明数据缺口，不得编造。（见 `docs/plan.md` 设计原则）
+- 外部站点不可达时，由生成层如实说明数据缺口，不得编造。

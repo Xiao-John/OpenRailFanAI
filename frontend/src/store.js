@@ -2,7 +2,7 @@
 // 设计原则：
 //   1) 所有数据先落 localStorage，**服务端可无状态**（v1 会话不落库）；
 //   2) 写入做容量保护：对话数、单对话消息数、元信息体积都有上限，避免 localStorage 爆掉；
-//   3) 只存"可重建"的展示数据；不存任何密钥（社区版无需登录）。
+//   3) 只存"可重建"的展示数据；不存任何密钥（无需登录）。
 
 const LS_CONVS = "railfan_conversations_v1";
 const LS_CURRENT = "railfan_current_conv_v1";

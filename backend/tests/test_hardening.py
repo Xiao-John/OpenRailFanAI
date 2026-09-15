@@ -1,6 +1,6 @@
 """本轮 P2 加固的无网络回归测试（M11.1 审计修复回归）。
 
-对应 `docs/review/audit-tools.md` / `audit-tests-docs.md` 的 P2 项：
+对应 `审计报告（历史）` / `audit-tests-docs.md` 的 P2 项：
 1. `rail.line` 表头定位只取首次出现 → 现解析**所有**候选表并取最像径路的那张
 2. `rail.line` 末段无"总Xkm"时把区间里程当总里程 → 现标注为近似值
 3. `rail.line` 站名带行政区后缀（北京市/上海市）直接失败 → 现自动去后缀重试

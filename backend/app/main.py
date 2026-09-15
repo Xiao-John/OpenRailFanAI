@@ -4,7 +4,7 @@
 - /api/chat 三层流水线（意图→抽取→检索→生成）
 - 根路径 "/" 托管前端静态页面（frontend/），可直接打开对话界面。
 
-社区版：**无需登录、无账户与计费**（数据与模型调用全部按需进行）。
+无需登录：对话匿名可用（不引入账户与计费，数据与模型调用全部按需进行）。
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ app = FastAPI(
 )
 
 # 开发用：允许跨域（v1 最简前端可跨域调用）
-# TODO: 部署到公网时改为白名单（社区版默认允许跨域便于本地调试）
+# TODO: 部署到公网时改为白名单（默认允许跨域便于本地调试）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -51,7 +51,7 @@ def health() -> dict:
         "status": "ok",
         "llm_ready": settings.llm_ready,
         "model": settings.llm_model,
-        "auth": "disabled",   # 社区版无需登录、无账户体系
+        "auth": "disabled",   # 不需要登录
     }
 
 

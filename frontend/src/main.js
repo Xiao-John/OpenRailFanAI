@@ -11,7 +11,7 @@
 //   3) 暂停输出：生成中「发送」变「■ 停止」，AbortController 中断并保留已生成内容
 //   4) 编辑重发 / 重新生成：丢弃目标消息之后的内容后重跑
 //   5) 三端自适应：移动优先（抽屉侧栏），≥1024px 侧栏常驻
-//   6) 无需登录（社区版）：对话匿名可用，不存任何凭据
+//   6) 无需登录：对话匿名可用，不存任何凭据
 import { store } from "./store.js";
 import { renderDocPage, APP_VERSION } from "./pages.js";
 

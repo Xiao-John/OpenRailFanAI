@@ -10,7 +10,7 @@
   生成层 `format_history(limit=6)`（对话连贯优先，见 `generate.GEN_HISTORY_LIMIT`）。
 - 早期生成层还把原始历史塞进 messages 数组，与区块重复注入
   （实测单次生成 prompt 里约 1760 字符是重复历史）→ 已取消，见
-  `docs/review/audit-core.md` 与 `docs/review/00-improvement-plan.md`。
+  历史审计结论（已归档）。
 - 生成层深度比意图层更深是**刻意的不对称**：意图分类只需最近 1-2 轮消解指代，
   而生成回答需要更完整的上下文。
 """

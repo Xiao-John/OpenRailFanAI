@@ -1,6 +1,6 @@
 """块式/流式编排的故障语义一致性测试（**无网络**，M11.1 审计修复回归）。
 
-对应 `docs/review/audit-core.md` P1-5：同一故障下
+对应 `审计报告（历史）` P1-5：同一故障下
 - 块式 `run()` 给友好指引，流式 `run_stream()` 只给裸 error；
 - 生成失败时流式还会先 `error` 再 `done(answer_done=true, answer 空)`；
 - `done` 事件缺 `tool_trace`（与块式 `PipelineResult` 不对齐）。

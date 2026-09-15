@@ -5,7 +5,7 @@
 - knowledge     ：允许结合模型知识，但必须标注来源与不确定度
 - mixed         ：实时/知识分别处理
 
-M11.1 补强（对应 docs/review/audit-tests-docs.md P1-6）
+M11.1 补强（对应 审计报告（历史） P1-6）
     早期本套只断言 `answer_policy()` 返回的**字符串常量**，
     其中 `assert "模型知识" not in p or "不得" in p` 后半支恒真（realtime 策略必含"不得"），
     且**从未验证策略真的被注入 prompt** —— 若有人把 `generate.py` 里的策略注入删掉，

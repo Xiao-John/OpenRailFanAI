@@ -1,4 +1,4 @@
-# RailFanAI · 中国铁路车迷助手（社区版）
+# RailFanAI · 中国铁路车迷助手
 
 面向铁路迷（RailFan）的 RAG / Agent 助手。输入一句自然语言，比如：
 
@@ -124,15 +124,16 @@ PYTHONPATH=. .venv/bin/python tests/test_tools.py       # 16 个工具逐个调�
 其中大部分套件**完全无网络**（可在 CI/断网环境运行），少数依赖真实 LLM 或境内数据源；
 前端数据层单测由 `frontend/tests/store.test.mjs` 提供（需 node）。详见 [docs/run.md](docs/run.md) §6。
 
-## 文档导航
+## 文档
 
-- **文档总索引：[docs/README.md](docs/README.md)**（按「现状与规划 / 运行与运维 / 质量与验证」分类）
-- 现状权威：[docs/EXPL.md](docs/EXPL.md)｜里程碑：[docs/plan.md](docs/plan.md)｜运行联调：[docs/run.md](docs/run.md)
-- 数据源逆向记录：[docs/datasources.md](docs/datasources.md)｜数据源扩展与合规红线：[docs/source-expansion.md](docs/source-expansion.md)
-- 排障手册：[docs/troubleshooting.md](docs/troubleshooting.md)｜性能优化：[docs/perf-plan.md](docs/perf-plan.md)
-- 密钥安全：[docs/keysetsug.md](docs/keysetsug.md)｜协作说明：[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
-- 车迷测试集（96 条黑盒题库）：[docs/testset.md](docs/testset.md)
+| 文档 | 内容 |
+|---|---|
+| [`docs/EXPL.md`](docs/EXPL.md) | **实现**：架构、三层流水线、工具清单、数据完整性契约、测试与运行状态 |
+| [`docs/datasources.md`](docs/datasources.md) | **实现**：各数据源的接入方式、关键约束与踩坑记录 |
+| [`docs/run.md`](docs/run.md) | **部署与运行**：安装、启动、配置密钥、接口示例、测试与数据准备 |
+| [`docs/README.md`](docs/README.md) | 索引 |
 
+> 代码即文档：模块与关键函数都注释了"为什么这么做"；测试用例同时充当行为规格。
 ## 常用脚本
 
 ```bash
@@ -145,6 +146,6 @@ bash backend/tests/run_all.sh  # 全部测试套件（跑完再汇总）
 
 ## 数据源与合规
 
-本项目只调用**公开可访问**的接口，不绕过任何登录、验证码或付费机制，对他人站点只做低频抓取 +
+本项目只调用**公开可访问**的接口，不绕过任何登录、验证码或付费机制；对他人站点只做低频抓取 +
 本地缓存 + 标注来源，**不整表对外分发**。接入新数据源前请先读
-[docs/source-expansion.md](docs/source-expansion.md) §四「合规红线」。
+[`docs/datasources.md`](docs/datasources.md) 结尾的「抓取纪律」。

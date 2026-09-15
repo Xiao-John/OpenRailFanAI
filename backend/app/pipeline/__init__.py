@@ -6,5 +6,5 @@
 4. generate.py  —— 回答生成（整合检索结果 + 数据来源）
 
 编排入口建议在 orchestrator 或 api/chat 中串起三步，
-见 docs/plan.md。
+见 docs/EXPL.md。
 """

@@ -1,7 +1,7 @@
 # RailFanAI — 项目现状与系统总览
 
 > 本文件是项目的现状权威说明，所有数字与结论均基于对仓库的**实际执行与读取**。
-> 最后更新：M10 完成后。
+> 最后更新：随仓库代码同步（以代码与测试为准）。
 
 ---
 
@@ -76,7 +76,7 @@ backend/app/
   pipeline/
     intent.py           # 意图 + question_type 分类
     extract.py          # 槽位抽取（支持上下文继承）
-    retrieve.py         # 按意图路由工具（M10 起按 question_type 调整策略）
+    retrieve.py         # 按意图路由工具
     generate.py         # prompt 构造 + answer_policy（分类型作答策略）
     schemas.py          # 意图/槽位 JSON Schema
     orchestrator.py     # 编排：run() 块式 / run_stream() 流式
@@ -176,11 +176,11 @@ scripts/                # setup.sh（一键安装启动） / prewarm.sh（预热
 | 暂停输出 | 前端 `AbortController`；服务端每事件前检查 `request.is_disconnected()`，断开即停止并释放 LLM 流 |
 | 编辑重发 / 重新生成 | 丢弃目标消息之后的内容后重跑；history 正确截断 |
 | 主题切换 | 深/浅色跟随系统并记忆（`localStorage`） |
-| 分类型作答（M10） | 见下表 |
+| 分类型作答 | 见下表 |
 
 ---
 
-## 七、分类型作答策略（M10，重要）
+## 七、分类型作答策略
 
 生成层**不再对所有问题一律"闭卷"**，而是按 `question_type` 分流：
 
@@ -217,12 +217,12 @@ scripts/                # setup.sh（一键安装启动） / prewarm.sh（预热
 
 4. **`.env` 含真实 API Key**（已 gitignore，但仍存在于工作区）——
    **已决定：推迟到「部署 / 上线阶段」再改为环境变量注入并轮换**。
-   开发期有意保留以便联调；执行步骤见 `docs/keysetsug.md`，
-   并已登记在 `docs/plan.md` 的「上线前必做清单」第 1 条。
+   开发期有意保留以便联调；部署到公网前必须改为环境变量注入并轮换 Key
+   （见 `docs/run.md` 的「密钥导入」小节）。
 5. **CORS 全开放**：`main.py` 使用 `allow_origins=["*"]`（`allow_credentials=False`），仅适合开发；对外部署时应改为白名单。
 6. **无限流 / 无日志脱敏**：任何能访问端口的人都能调用 LLM（消耗 token）。
-   社区版不内置鉴权（`/health` 返回 `auth: "disabled"`），如需对外提供访问，应在反向代理层收敛入口并加限流。
-7. **待上线收口的项已集中登记**：见 `docs/plan.md` →「上线前必做清单（Pre-launch Checklist）」
+   本项目不内置鉴权（`/health` 返回 `auth: "disabled"`），如需对外提供访问，应在反向代理层收敛入口并加限流。
+7. **待上线收口的项**：见本文件「已知限制与风险」一节
    （含 Key 注入、CORS 收紧、入口限流、HTTPS）。
 
 ### 技术债
@@ -244,7 +244,7 @@ scripts/                # setup.sh（一键安装启动） / prewarm.sh（预热
 
 **核心链路**
 - `backend/app/pipeline/orchestrator.py` —— 编排（流式/块式）
-- `backend/app/pipeline/generate.py` —— **`answer_policy()` 分类型策略**（M10 重点）
+- `backend/app/pipeline/generate.py` —— **`answer_policy()` 分类型策略**
 - `backend/app/pipeline/retrieve.py` —— 按意图/类型路由
 - `backend/app/api/chat.py` —— SSE + **客户端断开即停止生成**
 - `backend/app/llm/client.py` —— LLM 封装、多轮 messages、用量记录
@@ -267,11 +267,5 @@ scripts/                # setup.sh（一键安装启动） / prewarm.sh（预热
 - `backend/tests/run_all.sh`（跑完全部套件再汇总；其中 `test_regressions`/`test_routing`/`test_orchestrator_semantics`/`test_cost_governance`/`test_hardening`/`test_config_docs`/`test_product_fixes`/`test_r1_fixes`/`test_r1_fixes2`/`test_station_quality`/`test_rail_line_stations`/`test_dict_mileage`/`test_perf_fastpath`/`test_frontend_store` 无网络）
 
 **配套文档**
-- `docs/plan.md` —— 里程碑 M0–M10 + 「上线前必做清单」
 - `docs/datasources.md` —— **各数据源逆向过程与踩坑记录**（rail.re API、12306 反爬、搜索引擎选型、径路解析）
 - `docs/run.md` —— 运行/联调/交互说明
-- `docs/keysetsug.md` —— Key 安全
-- `docs/source-expansion.md` —— 数据源扩展评估（待接入源、硬约束、合规红线）
-- `docs/troubleshooting.md` —— 排障手册
-- `docs/perf-plan.md` —— 响应延迟诊断与优化方案
-- `docs/CONTRIBUTING.md` —— 社区版协作说明（测试、代码风格、数据源接入合规要求）

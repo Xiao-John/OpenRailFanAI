@@ -364,7 +364,7 @@ async def query_stops_by_train_no(
 
 # ---------- 车站大屏（12306 官方 bigScreen 接口）----------
 #
-# 端点与逐字段探测见 docs/12306-station-screen-api.md。三个必须守住的点：
+# 端点与逐字段探测见 docs/datasources.md。三个必须守住的点：
 #   1) **必须 POST form-body**：同一 URL 用 GET 恒返回
 #      {"status":false,"errorMsg":"系统忙，请稍后重试！(M0003)"}，极易被误判成接口故障；
 #   2) 无需 Cookie / Referer / 签名（实测裸请求即可，UA 可有可无）；
@@ -373,7 +373,7 @@ async def query_stops_by_train_no(
 
 SCREEN_URL = "https://mobile.12306.cn/wxxcx/wechat/bigScreen/queryTrainByStation"
 # 实测可查范围约为今日 ±1 周（窗口边缘还可能出现部分数据），超出即返回空数组。
-# 见 docs/12306-station-screen-api.md §5.1
+# 见 docs/datasources.md §5.1
 SCREEN_WINDOW_DAYS = 7
 
 # (电报码, 日期) → (取数时刻, 原始行列表)

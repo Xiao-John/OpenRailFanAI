@@ -219,7 +219,7 @@ async def test_live_get_vs_post():
     assert post_resp.json().get("status") is True, post_resp.text[:200]
     get_payload = get_resp.json()
     assert get_payload.get("status") is False, (
-        "GET 竟然成功了：12306 可能改了鉴权/方法，请更新 docs/12306-station-screen-api.md"
+        "GET 竟然成功了：12306 可能改了鉴权/方法，请更新 docs/datasources.md"
     )
     print(f"[PASS] 联调：POST 成功 / GET 如预期失败（{get_payload.get('errorMsg')}）")
 

@@ -1,6 +1,6 @@
 """成本治理与输入约束的**无网络**测试（M11.1 审计修复回归）。
 
-对应 `docs/review/audit-core.md` / `audit-tests-docs.md` 的三项 P2：
+对应 `审计报告（历史）` / `audit-tests-docs.md` 的三项 P2：
 1. 历史在生成 prompt 与 messages 中**重复注入**（实测约 1760 字符/次）→ 现只保留 prompt 区块
 2. 检索层工具**串行**调用（4 工具最坏 ~48s）→ 现并发且保持计划顺序
 3. 用户消息**无长度上限**（20 万字符照跑）→ 现空消息/超长消息一律 422
@@ -197,7 +197,7 @@ def test_message_validation():
     from app.main import app
 
     client = TestClient(app)
-    # 社区版无需登录：直接校验输入约束（在调用任何外部服务之前拦下）
+    # 无需登录：直接校验输入约束（在调用任何外部服务之前拦下）
     r = client.post("/api/chat", json={"message": "长" * (limit + 1)})
     assert r.status_code == 422, f"超长消息应返回 422，实际 {r.status_code}"
     r2 = client.post("/api/chat", json={"message": ""})
