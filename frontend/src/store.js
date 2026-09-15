@@ -32,6 +32,32 @@ function safeParse(raw, fallback) {
   }
 }
 
+/**
+ * 把旧的「单个选择 + key 表」结构迁移成「条目列表」。
+ *
+ * 为什么要写迁移而不是直接丢弃：老用户本机已经存了供应商选择与（可能记住的）Key，
+ * 升级后不该让他们重填一遍 —— 掉配置比多几十行代码更伤。
+ */
+function _migrateLlm(raw) {
+  if (!raw || typeof raw !== "object") return { entries: [], activeId: "", rememberKey: false };
+  if (Array.isArray(raw.entries)) return raw;                 // 已是新结构
+  const entries = [];
+  const keys = raw.keys || {};
+  const id = raw.provider === "custom" ? "custom" : (raw.provider || "default");
+  if (raw.provider || raw.base_url) {
+    entries.push({
+      id,
+      label: id === "custom" ? "自定义" : id,
+      base_url: raw.base_url || "",
+      model: raw.model || "",
+      api: raw.api || "",
+      key: keys[id] || keys[raw.provider] || "",
+      custom: id === "custom",
+    });
+  }
+  return { entries, activeId: entries.length ? id : "", rememberKey: !!raw.rememberKey };
+}
+
 /** 压缩要持久化的 meta（思考/日志/来源都可能很长）。 */
 function slimMeta(meta) {
   if (!meta || typeof meta !== "object") return {};
@@ -239,18 +265,32 @@ export const store = {
   },
 
   // ---------- LLM 供应商（BYOK）----------
-  // 结构：{ provider, model, api, base_url, rememberKey, keys:{[providerId]: "sk-..."} }
-  // - provider/model/api/base_url 不是秘密，始终持久化；
-  // - keys 只在用户勾选"记住 Key"时落盘，否则仅留在内存（本对象）里。
+  // 结构（v2，条目列表模型）：
+  //   {
+  //     entries: [ { id, label, base_url, model, api, key, custom } ],
+  //     activeId: "deepseek",        // 当前使用哪一条
+  //     rememberKey: false           // 是否把 Key 落盘
+  //   }
+  // - 除 key 外的字段不是秘密，始终持久化；
+  // - key 只在用户勾选"记住 Key"时落盘，否则仅留在内存（本对象）里。
+  //
+  // 为什么从"单个选择"改成"条目列表"：旧结构只能表达"当前用哪家 + 一张 key 表"，
+  // 于是界面上"选择供应商"和"填写自定义地址"必然被拆成两套互不相干的表单，
+  // 用户得先自我归类。列条模型让两者变成同一种东西，界面才能是一张列表 + 一个表单。
   llm() {
-    if (!this._llm) this._llm = safeParse(localStorage.getItem(LS_LLM), {}) || {};
+    if (!this._llm) {
+      const raw = safeParse(localStorage.getItem(LS_LLM), null);
+      this._llm = _migrateLlm(raw);
+    }
     return this._llm;
   },
-  setLlm(patch) {
-    const next = { ...this.llm(), ...patch };
-    this._llm = next;
+  _persistLlm() {
+    const next = this.llm();
     const persisted = { ...next };
-    if (!next.rememberKey) delete persisted.keys;   // 不记住 → 绝不落盘
+    if (!next.rememberKey) {
+      // 不记住 → 绝不落盘：整表的 key 字段都剔掉
+      persisted.entries = (next.entries || []).map((e) => ({ ...e, key: "" }));
+    }
     try {
       localStorage.setItem(LS_LLM, JSON.stringify(persisted));
     } catch {
@@ -258,18 +298,52 @@ export const store = {
     }
     return next;
   },
-  llmKey(providerId) {
-    const keys = this.llm().keys || {};
-    return keys[providerId] || "";
+  setLlmRemember(rememberKey) {
+    this.llm().rememberKey = !!rememberKey;
+    return this._persistLlm();
   },
-  setLlmKey(providerId, key) {
-    const keys = { ...(this.llm().keys || {}) };
-    if (key) keys[providerId] = key;
-    else delete keys[providerId];
-    return this.setLlm({ keys });
+  llmEntries() {
+    return this.llm().entries || [];
+  },
+  llmEntry(id) {
+    return this.llmEntries().find((e) => e.id === id) || null;
+  },
+  activeLlmEntry() {
+    const s = this.llm();
+    return this.llmEntry(s.activeId) || this.llmEntries()[0] || null;
+  },
+  /** 新增或更新一条供应商条目（按 id 覆盖）。 */
+  upsertLlmEntry(entry) {
+    const s = this.llm();
+    const entries = s.entries || [];
+    const i = entries.findIndex((e) => e.id === entry.id);
+    if (i >= 0) entries[i] = { ...entries[i], ...entry };
+    else entries.push(entry);
+    if (!s.activeId) s.activeId = entry.id;      // 第一条自动成为当前使用
+    return this._persistLlm();
+  },
+  removeLlmEntry(id) {
+    const s = this.llm();
+    s.entries = (s.entries || []).filter((e) => e.id !== id);
+    if (s.activeId === id) s.activeId = s.entries[0] ? s.entries[0].id : "";
+    return this._persistLlm();
+  },
+  setActiveLlm(id) {
+    this.llm().activeId = id;
+    return this._persistLlm();
+  },
+  /** 保持旧 API 可用（少数调用点仍按 id 取 Key）。 */
+  llmKey(id) {
+    const e = this.llmEntry(id);
+    return (e && e.key) || "";
+  },
+  setLlmKey(id, key) {
+    const e = this.llmEntry(id);
+    if (e) this.upsertLlmEntry({ id, key });
+    return this.llm();
   },
   clearLlm() {
-    this._llm = {};
+    this._llm = { entries: [], activeId: "", rememberKey: false };
     localStorage.removeItem(LS_LLM);
   },
 

@@ -36,17 +36,33 @@ def sh(*args: str) -> str:
     return subprocess.run(args, capture_output=True, text=True).stdout.strip()
 
 
-def discover_socket() -> str:
-    """找到 WebView 的 devtools unix socket 名（不同进程/实现命名不完全一致）。"""
-    for pattern in (r"webview_devtools_remote_\d+", r"chrome_devtools_remote"):
-        out = sh(str(ADB), "shell", "cat", "/proc/net/unix")
-        for m in re.finditer(pattern, out):
-            return m.group(0)
-    # 兜底：按 pid 拼
-    pid = sh(str(ADB), "shell", "pidof", APP_ID)
+def discover_socket(app_id: str | None = None) -> str:
+    """找到**当前进程**的 WebView devtools socket 名。
+
+    必须按 PID 精确匹配，不能只扫 /proc/net/unix 取第一个匹配 —— 被强杀或重启过的
+    进程会留下僵尸 socket，devtools 里那个"旧页面"仍然可连。本项目就踩过：
+    界面明明已更新，CDP 却一直显示旧版 UI（因为连到了上一代进程残留的 WebView，
+    其 URL 里的后端端口都不是当前的）。
+    """
+    target = app_id or APP_ID
+    pid = sh(str(ADB), "shell", "pidof", target)
     if pid:
-        return f"webview_devtools_remote_{pid.split()[0]}"
-    raise SystemExit("未找到 WebView 调试 socket —— 应用是否已启动？是否为 debug 构建？")
+        sock = f"webview_devtools_remote_{pid.split()[0]}"
+        unix = sh(str(ADB), "shell", "cat", "/proc/net/unix")
+        if sock in unix:
+            return sock
+    # 退路：目标进程没有 WebView 时，才去扫（并按 PID 从大到小取最新的一个）
+    unix = sh(str(ADB), "shell", "cat", "/proc/net/unix")
+    socks = sorted(
+        {m.group(0) for m in re.finditer(r"webview_devtools_remote_(\d+)", unix)},
+        key=lambda s: int(s.rsplit("_", 1)[1]),
+        reverse=True,
+    )
+    if socks:
+        return socks[0]
+    raise SystemExit(
+        f"未找到 WebView 调试 socket（包 {target} 是否已启动？是否为 debug 构建？）"
+    )
 
 
 def fetch_targets() -> list[dict]:

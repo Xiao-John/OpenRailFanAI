@@ -80,25 +80,45 @@ ok(fresh.store.totalTokens() === t, "累计 token 持久化读取一致");
 // ---------- LLM 供应商（BYOK）----------
 // 关键约束：**未勾选"记住 Key"时，Key 绝不落盘**（隐私红线，改了必须在这里失败）
 const LS_LLM = "railfan_llm_v1";
-fresh.store.setLlm({ provider: "deepseek", model: "deepseek-chat", rememberKey: false });
-fresh.store.setLlmKey("deepseek", "sk-should-not-persist");
+fresh.store.setLlmRemember(false);
+fresh.store.upsertLlmEntry({ id: "deepseek", label: "DeepSeek",
+  base_url: "https://api.deepseek.com", model: "deepseek-flash", key: "sk-should-not-persist" });
 ok(fresh.store.llmKey("deepseek") === "sk-should-not-persist", "同一会话内可读到 Key（内存）");
 ok(!String(mem.get(LS_LLM) || "").includes("sk-should-not-persist"),
    "未勾选「记住 Key」时 Key 不落盘");
-ok(String(mem.get(LS_LLM) || "").includes("deepseek"), "供应商选择本身照常持久化");
+ok(String(mem.get(LS_LLM) || "").includes("deepseek"), "供应商条目本身照常持久化");
+ok(fresh.store.llm().activeId === "deepseek", "第一条添加的条目自动成为当前使用");
+
+// 多条目：新增 / 切换 / 删除
+fresh.store.upsertLlmEntry({ id: "custom-1", label: "公司网关",
+  base_url: "https://gw.corp.com/v1", model: "qwen-plus", key: "sk-corp", custom: true });
+ok(fresh.store.llmEntries().length === 2, "可同时保存多家供应商：" + fresh.store.llmEntries().length);
+fresh.store.setActiveLlm("custom-1");
+ok(fresh.store.activeLlmEntry().id === "custom-1", "可切换当前使用的供应商");
+fresh.store.removeLlmEntry("custom-1");
+ok(fresh.store.llmEntries().length === 1 && fresh.store.llm().activeId === "deepseek",
+   "删除当前条目后自动回退到剩余条目");
 
 // 勾选后允许落盘，并可跨会话恢复
-fresh.store.setLlm({ rememberKey: true });
-fresh.store.setLlmKey("deepseek", "sk-remembered");
+fresh.store.setLlmRemember(true);
+fresh.store.upsertLlmEntry({ id: "deepseek", key: "sk-remembered" });
 ok(String(mem.get(LS_LLM)).includes("sk-remembered"), "勾选「记住 Key」后才落盘");
 const fresh2 = await import(STORE_URL + "?fresh=2");
-ok(fresh2.store.llm().provider === "deepseek", "供应商选择可跨会话恢复");
+ok(fresh2.store.activeLlmEntry().id === "deepseek", "当前供应商可跨会话恢复");
 ok(fresh2.store.llmKey("deepseek") === "sk-remembered", "记住的 Key 可跨会话恢复");
 ok(fresh2.store.llm().rememberKey === true, "记住标记被保留");
 
+// 旧结构迁移：不能因为改结构就把用户已填的配置丢掉
+mem.set(LS_LLM, JSON.stringify({ provider: "siliconflow", model: "old-model",
+  base_url: "https://api.siliconflow.cn/v1", rememberKey: true, keys: { siliconflow: "sk-old" } }));
+const fresh3 = await import(STORE_URL + "?fresh=3");
+ok(fresh3.store.llmEntries().length === 1, "旧结构可迁移为条目列表");
+ok(fresh3.store.llmKey("siliconflow") === "sk-old", "迁移后 Key 保留");
+ok(fresh3.store.activeLlmEntry().model === "old-model", "迁移后模型保留");
+
 // 清空
-fresh2.store.clearLlm();
-ok(!mem.has(LS_LLM) && fresh2.store.llm().provider === undefined, "clearLlm 清空选择与 Key");
+fresh3.store.clearLlm();
+ok(!mem.has(LS_LLM) && fresh3.store.llmEntries().length === 0, "clearLlm 清空全部条目与 Key");
 
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);

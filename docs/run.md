@@ -44,7 +44,7 @@ cd backend && python3 -m venv .venv
 |---|---|
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | OpenAI 兼容端点与模型；配 `LLM_MOCK=false` 走真实模型 |
 | `LLM_STRUCTURED_MODEL` / `LLM_MOCK` | 意图·抽取用更强模型（留空沿用 `LLM_MODEL`）/ `true` 走确定性本地 mock（无 Key 演示与 CI） |
-| 多供应商 | `LLM_PROVIDER` 选内置供应商（`deepseek`/`openai`/`siliconflow`/`dashscope`/`zhipu`/`moonshot`/`openrouter`/`gemini`/`ollama`/`lmstudio`/`vllm`）；`LLM_PROVIDERS`（JSON）或 `LLM_PROVIDERS_FILE`（文件）添加/覆盖自定义供应商（字段级合并，可只写 `{"deepseek":{"model":"deepseek-reasoner"}}`）；`LLM_API_KEY` 作全局兜底 Key、`LLM_MODEL` 只填空不顶替 |
+| 多供应商 | 界面「⚙️ 模型」里点「添加提供方」即可选常用预设（OpenAI / DeepSeek / 硅基流动 / 阿里云百炼 / 智谱 GLM 优先展示，另含 moonshot/openrouter/gemini/ollama/lmstudio/vllm），填 Key 后**自动探测模型**并以下拉列出；也可「添加自定义提供方」。服务端侧 `LLM_PROVIDER` 选内置供应商；`LLM_PROVIDERS`（JSON）或 `LLM_PROVIDERS_FILE`（文件）添加/覆盖自定义供应商（字段级合并，可只写 `{"deepseek":{"model":"deepseek-reasoner"}}`）；`LLM_API_KEY` 作全局兜底 Key、`LLM_MODEL` 只填空不顶替 |
 | API 方言 | `LLM_API_DIALECT=auto`（默认）：先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存；也可显式指定 `chat_completions`/`responses`。不支持的可选参数（`temperature`/`response_format`/`enable_thinking`）会被自动丢弃重试 |
 | 供应商网络项 | `LLM_TIMEOUT_S=60.0`（推理模型首 token 慢，勿调太小）、`LLM_EXTRA_HEADERS`/`LLM_EXTRA_BODY`（JSON，自定义网关用）、`LLM_ALLOW_PRIVATE_BASE_URL=false`（`true` 才允许指向内网/本机；生产开启等于开放 SSRF） |
 | `T12306_BASE` | 自备 12306 反代；**留空则 `t12306.search_tickets` 停用**（路由不主动调用） |

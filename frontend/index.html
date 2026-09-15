@@ -253,6 +253,38 @@
                  padding:13px 4px; border-bottom:1px solid var(--line); cursor:pointer;
                  font-size:14px; }
     .list-link:last-child { border-bottom:none; }
+
+    /* ============ 供应商列表（设置页）============
+       一行一个供应商：名称 + 标签 + 状态点 + 操作。
+       预设与自定义是**同一种行**，只是自定义多一个标签与删除按钮。 */
+    .prov-row { display:flex; align-items:center; gap:10px; padding:14px 16px;
+                border:1px solid var(--line); border-radius:14px; margin-bottom:10px;
+                background:var(--panel-2); }
+    .prov-row.active { border-color:var(--accent); }
+    .prov-main { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+    .prov-name { font-size:15px; font-weight:600; white-space:nowrap; overflow:hidden;
+                 text-overflow:ellipsis; }
+    .prov-tag { font-size:11px; color:var(--mut); border:1px solid var(--line);
+                border-radius:6px; padding:1px 6px; white-space:nowrap; }
+    .prov-tag.using { color:var(--accent); border-color:var(--accent); }
+    .prov-dot { width:9px; height:9px; border-radius:50%; background:var(--line); flex:none; }
+    .prov-dot.ok { background:#22c55e; }
+    .prov-actions { display:flex; gap:6px; flex:none; }
+    .prov-actions .btn { min-width:auto; padding:6px 12px; font-size:13px; }
+    .prov-add-row { display:flex; gap:10px; margin-top:4px; flex-wrap:wrap; }
+    .prov-add-row .btn { flex:1; min-width:150px; padding:14px; font-size:14px; }
+    .btn.ghost { background:transparent; border:1px dashed var(--line); color:var(--fg); }
+    .btn.ghost:hover { border-color:var(--accent); color:var(--accent); border-style:solid; }
+
+    .preset-list { display:flex; flex-direction:column; gap:8px; margin:8px 0 14px; }
+    .preset-row { display:flex; align-items:center; gap:10px; padding:12px 14px;
+                  border:1px solid var(--line); border-radius:12px; }
+    .preset-row .btn { min-width:auto; padding:6px 12px; font-size:13px; flex:none; }
+    .preset-note { color:var(--mut); font-size:12px; flex:1; min-width:0;
+                   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .preset-row .prov-name { flex:none; }
+    .form-row select { flex:1; }
+    .card .sub + .prov-row { margin-top:12px; }
     .list-link .arrow { color:var(--mut); }
     .page h1 { font-size:18px; margin:4px 0 12px; }
     .page h2 { font-size:14px; margin:18px 0 6px; }

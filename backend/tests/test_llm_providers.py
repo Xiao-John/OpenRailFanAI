@@ -363,21 +363,24 @@ def test_selected_builtin_uses_global_fallback_key():
     直接 400（模型不存在），用户完全无法理解为什么。
     要改内置供应商的模型，用 LLM_PROVIDERS 覆盖该条目（见下）。
     """
-    s = _settings(llm_provider="deepseek", llm_api_key="sk-only", llm_model="deepseek-reasoner")
+    s = _settings(llm_provider="deepseek", llm_api_key="sk-only", llm_model="global-override-model")
     p = pv.resolve_provider(settings=s)
     assert p.id == "deepseek"
     assert p.base_url == "https://api.deepseek.com/v1"   # 地址来自内置目录
     assert p.api_key == "sk-only"                        # Key 走全局兜底（供应商自身无 Key）
-    assert p.model == "deepseek-chat"                    # 模型用内置默认值，不被全局值顶掉
+    # 模型用**内置目录里的默认值**，不被全局 LLM_MODEL 顶掉。
+    # 这里从目录读取而不是硬编码模型名：官方模型名会迭代（deepseek-chat 已下线，
+    # 现为 deepseek-flash），硬编码会让"数据更新"误报成"逻辑回归"。
+    assert p.model == pv.BUILTIN_PROVIDERS["deepseek"]["model"], p.model
     assert p.ready and s.llm_ready
 
     # 想让内置供应商换模型 → 用 LLM_PROVIDERS 覆盖该条目（这是唯一的显式途径）
     s2 = _settings(
-        llm_provider="deepseek", llm_api_key="sk-only", llm_model="deepseek-reasoner",
-        llm_providers=json.dumps({"deepseek": {"model": "deepseek-reasoner"}}),
+        llm_provider="deepseek", llm_api_key="sk-only", llm_model="global-override-model",
+        llm_providers=json.dumps({"deepseek": {"model": "explicit-override-model"}}),
     )
     p2 = pv.resolve_provider(settings=s2)
-    assert p2.model == "deepseek-reasoner", p2.model
+    assert p2.model == "explicit-override-model", p2.model
     assert p2.api_key == "sk-only"
     assert p2.base_url == "https://api.deepseek.com/v1", "覆盖模型不应丢掉内置地址"
     print("[PASS] 选内置供应商 + 全局兜底 Key 可跑通；LLM_MODEL 只填空、改模型走 LLM_PROVIDERS")
@@ -422,13 +425,13 @@ def test_keyless_local_provider():
 
 def test_request_level_override():
     """请求级覆盖（BYOK）：优先级最高，且不污染服务端配置。"""
-    s = _settings(llm_provider="deepseek", llm_api_key="sk-server", llm_model="deepseek-chat")
+    s = _settings(llm_provider="deepseek", llm_api_key="sk-server", llm_model="some-global-model")
     p = pv.resolve_provider("deepseek", {"api_key": "sk-user", "model": "my-model",
                                          "base_url": "https://proxy.example.com"}, settings=s)
     assert p.api_key == "sk-user" and p.model == "my-model"
     assert p.base_url == "https://proxy.example.com/v1" and p.source == "request"
 
-    s2 = _settings(llm_provider="deepseek", llm_api_key="sk-server", llm_model="deepseek-chat")
+    s2 = _settings(llm_provider="deepseek", llm_api_key="sk-server", llm_model="some-global-model")
     assert pv.resolve_provider(settings=s2).id == "deepseek"
 
     try:

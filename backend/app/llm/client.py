@@ -273,8 +273,12 @@ def _err_diagnostic(e: Exception, *, provider: Provider | None = None, dialect: 
 
 
 # ---------------------------------------------------------------- 客户端
-def get_client(provider: Provider | None = None) -> AsyncOpenAI:
+def get_client(provider: Provider | None = None, *, require_model: bool = True) -> AsyncOpenAI:
     """构造 AsyncOpenAI 实例（按供应商配置）。
+
+    require_model=False 用于"拉模型清单"这类场景：那时用户**还没选模型**
+    （正是要靠这次调用去列出可选模型），若仍要求 ready 就会陷入鸡生蛋
+    —— 实测过：探测硅基流动直接报"未指定模型名"。
 
     注意 `timeout`：推理模型首 token 可能很慢，默认 60s 见 LLM_TIMEOUT_S。
     """
@@ -289,14 +293,15 @@ def get_client(provider: Provider | None = None) -> AsyncOpenAI:
     except ValueError as e:
         raise LLMUnavailable(str(e)) from e
 
-    if not p.ready:
-        if p.needs_key and not p.api_key:
-            raise LLMUnavailable(
-                f"供应商「{p.label}」未配置 API Key：请在设置页填写，或改用 LLM_API_KEY / "
-                "LLM_PROVIDERS 配置（OpenAI 兼容接口）。"
-            )
+    if p.needs_key and not p.api_key:
         raise LLMUnavailable(
-            f"供应商「{p.label}」未指定模型名：请填写 model（如 deepseek-chat / glm-4-plus / qwen-plus）。"
+            f"供应商「{p.label}」未配置 API Key：请在设置页填写，或改用 LLM_API_KEY / "
+            "LLM_PROVIDERS 配置（OpenAI 兼容接口）。"
+        )
+    if require_model and not p.model:
+        raise LLMUnavailable(
+            f"供应商「{p.label}」未指定模型名：请填写或选择 model"
+            "（如 deepseek-flash / glm-5.3 / qwen-plus）。"
         )
     kwargs: dict[str, Any] = {
         "api_key": p.sdk_api_key,
@@ -844,6 +849,65 @@ async def chat_structured(
     if props and isinstance(obj, dict):
         obj = {k: obj.get(k) for k in props}
     return obj
+
+
+async def list_models(provider: Provider | None = None) -> dict:
+    """只拉取供应商的**可用模型清单**（不发起对话请求，因此不消耗 token）。
+
+    为什么单独做（而不是复用 probe_provider）：设置页填完 Key 就要立刻给出模型下拉，
+    此时应当**便宜且快**；probe 会真发一次对话请求，用它来填下拉框既慢又费钱。
+
+    返回：{ok, models: [id...], truncated, error?}
+    不少网关不实现 GET /models（或未开放），此时 ok=False 并给出可读原因 ——
+    前端据此退回手工输入，而不是给一个空下拉框让人不知所措。
+    """
+    p = provider or current_provider()
+    try:
+        # 关键：此时可能还没有模型名（就是要靠这次调用列出来），故 require_model=False
+        client = get_client(p, require_model=False)
+    except LLMUnavailable as e:
+        return {"ok": False, "models": [], "error": str(e)}
+
+    try:
+        resp = await client.models.list()
+    except Exception as e:  # noqa: BLE001 —— 探测失败是预期路径，转成结构化结果
+        return {
+            "ok": False,
+            "models": [],
+            "error": _err_diagnostic(e, provider=p, dialect="models"),
+            "note": "该供应商可能未实现 GET /models；可直接手工填写模型名",
+        }
+
+    ids = sorted({getattr(m, "id", None) for m in (getattr(resp, "data", None) or []) if getattr(m, "id", None)})
+    chat_ids = [i for i in ids if _looks_like_chat_model(i)]
+    _log.info("供应商 %s 返回 %d 个模型（其中疑似对话模型 %d 个）", p.id, len(ids), len(chat_ids))
+    # 同时给出全量与"疑似对话"两份：网关的模型命名没有统一约定，靠 id 猜不可能百分百准，
+    # 所以前端默认展示 chat_models，同时保留"显示全部"，避免把用户真正想用的模型藏起来。
+    return {
+        "ok": True,
+        "models": ids[:500],
+        "chat_models": chat_ids[:500],
+        "truncated": len(ids) > 500,
+    }
+
+
+# 明确不是对话模型的典型命名（embedding / 重排 / 图像 / 语音 / 视频 / OCR / 审核）
+_NON_CHAT_HINTS = (
+    "embedding", "embed", "rerank", "bge-", "bge_", "m3e", "gte-",
+    "ocr", "asr", "tts", "whisper", "speech", "voice", "audio", "cosyvoice", "sensevoice",
+    "image", "kolors", "stable-diffusion", "sd-", "dall-e", "wan2", "i2v", "t2v", "video",
+    "moderation", "guard", "sam", "clip", "paddleocr",
+)
+
+
+def _looks_like_chat_model(model_id: str) -> bool:
+    """按命名启发式判断"像不像对话模型"。
+
+    只用于**排序与默认展示**，不做硬过滤 —— 命名无统一标准，猜错时用户还能
+    "显示全部"选到；反过来把用户的模型藏起来才是更糟的失败。
+    """
+    low = (model_id or "").lower()
+    return not any(h in low for h in _NON_CHAT_HINTS)
 
 
 def _parse_json_object(content: str) -> dict:

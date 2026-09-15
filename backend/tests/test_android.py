@@ -435,6 +435,26 @@ def test_llm_diagnostics_include_cause_chain():
     print("[PASS] LLM 失败日志含因果链与堆栈（能定位 SSL/DNS/超时等真实原因）")
 
 
+def test_frontend_api_calls_have_api_prefix():
+    """前端调用后端必须带 `/api` 前缀 —— 否则静默 404。
+
+    真机事故：设置页写的是 `api("/providers")`，而 `api()` 只做 `API_BASE + path`，
+    于是请求打到 `/providers`（404）。界面只显示"服务端不可达"，看代码也看不出问题，
+    只有在 CDP 的 Network 域里才看到真实 URL 少了 `/api`。
+    现在 `api()` 会自动补前缀，且调用处也必须写全 —— 两层都钉住。
+    """
+    pages = (REPO_ROOT / "frontend/src/pages.js").read_text(encoding="utf-8")
+    assert 'path.startsWith("/api/") ? path : "/api" + path' in pages, (
+        "api() 未做 /api 前缀兜底：漏写前缀会静默 404"
+    )
+    bad = [
+        ln.strip() for ln in pages.splitlines()
+        if 'api("' in ln and '/api/' not in ln and not ln.strip().startswith("//")
+    ]
+    assert not bad, f"pages.js 存在未带 /api 前缀的调用：{bad}"
+    print("[PASS] 前端 API 调用带 /api 前缀（且 api() 有兜底）")
+
+
 def test_server_selfcheck_covers_entry_script():
     """启动自检必须包含入口脚本 —— 它是"白屏"类故障的唯一自动防线。"""
     srv = (ANDROID_DIR / "app/src/main/python/server.py").read_text(encoding="utf-8")
@@ -478,6 +498,7 @@ def main():
     test_python_callbacks_use_attribute_access()
     test_android_sets_tls_ca_bundle()
     test_llm_diagnostics_include_cause_chain()
+    test_frontend_api_calls_have_api_prefix()
     test_server_selfcheck_covers_entry_script()
     test_frontend_reports_boot_errors()
     print("\nAndroid 一体化约束测试全部通过 ✔")

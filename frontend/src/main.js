@@ -49,40 +49,38 @@ const state = {
 // ---------- LLM 供应商（BYOK）----------
 /** 组装随请求下发的供应商覆盖；未做任何选择时返回空对象（用服务端配置）。 */
 function llmSpec() {
-  const cfg = store.llm();
-  const id = cfg.provider || "";
+  const e = store.activeLlmEntry();
+  if (!e) return {};                       // 一条都没配 → 用服务端配置
   const spec = {};
-  if (id === "custom") {
-    if (cfg.base_url) spec.base_url = cfg.base_url;
-  } else if (id) {
-    spec.provider = id;
+  if (e.custom || !e.id || e.id.startsWith("custom-")) {
+    if (e.base_url) spec.base_url = e.base_url;   // 自定义：按地址下发
+  } else {
+    spec.provider = e.id;                        // 预设：按 id 下发
+    if (e.base_url) spec.base_url = e.base_url;   // 允许覆盖地址（中转站场景）
   }
-  if (cfg.model) spec.model = cfg.model;
-  if (cfg.api) spec.api = cfg.api;
-  const key = store.llmKey(id || ROOT_KEY_ID);
-  if (key) spec.api_key = key;
-  // 选了「自定义」却没填地址 → 退回服务端默认，避免发一个必然失败的请求
-  if (spec.base_url === undefined && id === "custom" && !spec.provider) delete spec.base_url;
+  if (e.model) spec.model = e.model;
+  if (e.api) spec.api = e.api;
+  if (e.key) spec.api_key = e.key;
   return spec;
 }
 
 /** 顶栏徽标：显示当前实际生效的供应商，避免"以为在用 A 其实在跑 B"。 */
 async function refreshProviderBadge() {
   if (!llmBtn) return;
-  const cfg = store.llm();
-  let text = "模型";
-  let title = "模型供应商设置";
-  if (cfg.provider === "custom" && cfg.base_url) {
-    text = cfg.model || "自定义";
-    title = `自定义供应商：${cfg.base_url}${cfg.model ? " · " + cfg.model : ""}`;
-  } else if (cfg.provider) {
-    const p = state.providers.find((x) => x.id === cfg.provider);
-    text = cfg.model || (p ? p.label : cfg.provider);
-    title = `供应商：${p ? p.label : cfg.provider}${cfg.model ? " · " + cfg.model : ""}`;
+  const e = store.activeLlmEntry();
+  let text = "未配置";
+  let title = "尚未配置模型 —— 点击选择供应商并填入 API Key";
+  if (e) {
+    text = e.model || e.label || e.id;
+    title = `当前使用：${e.label || e.id}${e.model ? " · " + e.model : ""}`
+      + `${e.base_url ? "\n" + e.base_url : ""}`;
+    if (!e.key && !(e.id === "ollama" || e.id === "lmstudio" || e.id === "vllm")) {
+      text = "缺 Key";
+      title += "\n（尚未填写 API Key）";
+    }
   } else {
     const p = state.providers.find((x) => x.id === state.serverActive);
-    text = p ? p.label : "服务端默认";
-    title = `使用服务端配置${p ? "：" + p.label : ""}`;
+    if (p) { text = p.label; title = "使用服务端配置：" + p.label; }
   }
   const txtEl = llmBtn.querySelector(".txt");
   if (txtEl) txtEl.textContent = " " + text;

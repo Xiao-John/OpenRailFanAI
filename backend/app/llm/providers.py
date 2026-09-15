@@ -59,15 +59,17 @@ _ENDPOINT_SUFFIXES = ("/chat/completions", "/responses", "/completions")
 BUILTIN_PROVIDERS: dict[str, dict[str, Any]] = {
     "deepseek": {
         "label": "DeepSeek 官方",
-        "base_url": "https://api.deepseek.com/v1",
-        "model": "deepseek-chat",
-        "note": "官方直连；reasoning 模型请改用 deepseek-reasoner",
+        # 注意：官方 base_url **不带 /v1**（见 api-docs.deepseek.com 首次调用 API）
+        "base_url": "https://api.deepseek.com",
+        "model": "deepseek-flash",
+        "note": "官方直连。模型名现已改为 deepseek-flash / deepseek-v4-pro；"
+                "旧的 deepseek-chat、deepseek-reasoner 已下线",
     },
     "openai": {
         "label": "OpenAI",
         "base_url": "https://api.openai.com/v1",
         "model": "gpt-4o-mini",
-        "note": "官方直连（国内网络通常需要代理）",
+        "note": "ChatGPT 同源。官方直连（国内网络通常需要代理）",
     },
     "siliconflow": {
         "label": "硅基流动 SiliconFlow",
@@ -84,8 +86,8 @@ BUILTIN_PROVIDERS: dict[str, dict[str, Any]] = {
     "zhipu": {
         "label": "智谱 GLM",
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
-        "model": "glm-4-plus",
-        "note": "注意地址是 /api/paas/v4，不是 /v1",
+        "model": "glm-5.3",
+        "note": "注意地址是 /api/paas/v4，不是 /v1；当前模型 glm-5.3 / glm-5.2 / glm-5.3-flash",
     },
     "moonshot": {
         "label": "月之暗面 Kimi",
@@ -129,6 +131,13 @@ BUILTIN_PROVIDERS: dict[str, dict[str, Any]] = {
 
 
 # ---------------------------------------------------------------- 归一化
+# 「添加提供方」里首屏推荐的几家：常见、开箱可用。
+# 其余预设（openrouter / gemini / moonshot / 本地推理…）不占首屏 —— 设置页给的是选择，不是考据。
+FEATURED_PROVIDERS: tuple[str, ...] = (
+    "openai", "deepseek", "siliconflow", "dashscope", "zhipu",
+)
+
+
 def clean_api_key(raw: Any) -> str:
     """清洗用户粘贴的 Key：去空白、去引号、去误带的 `Bearer ` 前缀。
 
@@ -273,6 +282,7 @@ class Provider:
             "ready": self.ready,
             "source": self.source,
             "note": self.note,
+            "featured": self.id in FEATURED_PROVIDERS,
         }
 
 
@@ -551,9 +561,12 @@ def resolve_provider(
 
 
 def list_public(settings=None) -> list[dict[str, Any]]:
-    """全部供应商的前端视图（已脱敏），按 id 排序。"""
+    """全部供应商的前端视图（已脱敏）。常用预置排前面，其余按 id。"""
     providers = load_providers(settings)
-    return [providers[pid].public() for pid in sorted(providers)]
+    return [
+        providers[pid].public()
+        for pid in sorted(providers, key=lambda x: (x not in FEATURED_PROVIDERS, x))
+    ]
 
 
 def guard_request_base_url(provider: Provider, settings=None) -> None:

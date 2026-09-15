@@ -75,6 +75,35 @@ async def list_providers() -> dict:
     }
 
 
+@router.post("/providers/models")
+async def list_provider_models(req: ProviderTestRequest) -> dict:
+    """拉取某供应商的可用模型清单（用于设置页的模型下拉框）。
+
+    用 POST 而不是 GET：Key 可能由前端临时提供（BYOK），放进 query string 会进
+    访问日志/浏览器历史。请求体与 /providers/test 同形，前端两处可复用同一份参数。
+    """
+    overrides = {
+        k: v
+        for k, v in {
+            "base_url": req.base_url,
+            "api_key": req.api_key,
+            "model": req.model,
+            "api": req.api,
+        }.items()
+        if v
+    }
+    try:
+        provider = providers_mod.resolve_provider(req.provider, overrides)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    _guard_base_url(provider)
+
+    _log.info("拉取模型清单：id=%s base_url=%s has_key=%s",
+              provider.id, provider.base_url, bool(provider.api_key))
+    return await llm_client.list_models(provider)
+
+
 @router.post("/providers/test")
 async def test_provider(req: ProviderTestRequest) -> dict:
     """测试一个供应商能否真正跑通（含方言自动探测与模型清单）。"""
