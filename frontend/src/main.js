@@ -97,11 +97,46 @@ async function loadProviders() {
     state.providers = body.providers || [];
     state.serverActive = body.active || "";
     state.llmReady = !!body.llm_ready;
+    state.llmMock = !!body.mock;
   } catch {
     /* 服务端不可达时保持空列表，顶栏退回"服务端默认" */
   }
   await refreshProviderBadge();
+  renderLlmNotice();
   updateCtxInfo(null);   // 参数为空时自行取当前对话消息
+}
+
+/**
+ * 未配置模型时给出**可操作的引导**（而不是等用户问完再报错）。
+ *
+ * 三种情形分开处理，因为用户该做的事完全不同：
+ *   - Mock 模式：能用，但回答是确定性的本地 mock，需说明清楚，避免误以为是真模型；
+ *   - 未配置任何 Key：引导去设置页填自己的 Key（社区版不内置 Key）；
+ *   - 已配置：不打扰。
+ */
+function renderLlmNotice() {
+  const box = document.getElementById("llm-notice");
+  const text = document.getElementById("llm-notice-text");
+  const go = document.getElementById("llm-notice-go");
+  if (!box || !text) return;
+
+  if (state.llmMock) {
+    text.textContent = "当前为 Mock 演示模式（LLM_MOCK=true）：回答由本地确定性规则生成，不是真实模型。";
+    go.textContent = "配置真实模型";
+    box.classList.remove("hidden");
+  } else if (state.llmReady === false) {
+    text.textContent = "尚未配置模型 API：社区版不内置 Key，请填你自己的 OpenAI 兼容接口"
+      + "（支持 chat.completions 与 responses 两种方言，也可选本地 Ollama 等免 Key 服务）。";
+    go.textContent = "去配置";
+    box.classList.remove("hidden");
+  } else {
+    box.classList.add("hidden");
+  }
+
+  if (!go._wired) {
+    go._wired = true;
+    go.addEventListener("click", () => navigate("#/settings"));
+  }
 }
 
 // ---------- 小工具 ----------

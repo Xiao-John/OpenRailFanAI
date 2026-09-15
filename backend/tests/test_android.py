@@ -252,6 +252,72 @@ def test_env_example_covers_frontend_dir():
     print("[PASS] .env.example 已包含 FRONTEND_DIR")
 
 
+def test_apk_assets_satisfy_index_html_references():
+    """构建产物里的前端资源必须能满足 index.html 的全部本地引用。
+
+    这条针对一个真实事故：最早的解包实现把目录结构**拍平**了
+    （`webapp/src/main.js` 被写成 `webapp/main.js`），于是 index.html 里
+    `./src/main.js` 全部 404 —— 页面只剩静态骨架，用户看到的是"白屏"。
+    静态资源 404 不会触发 WebView 的 onReceivedError，所以从应用侧完全看不出来。
+
+    APK 不存在时跳过（本地没构建过 Android 时不该判失败）。
+    """
+    import zipfile
+
+    apks = sorted((REPO_ROOT / "android/app/build/outputs/apk").rglob("*.apk"))
+    if not apks:
+        print("[SKIP] 未找到已构建的 APK，跳过资源引用检查（构建后会自动纳入）")
+        return
+
+    apk = apks[-1]
+    with zipfile.ZipFile(apk) as z:
+        names = set(z.namelist())
+        index_names = [n for n in names if n.endswith("assets/webapp/index.html")]
+        assert index_names, f"{apk.name} 里没有 assets/webapp/index.html"
+        html = z.read(index_names[0]).decode("utf-8", "replace")
+
+    # index.html 里引用的本地资源（相对路径）
+    refs = re.findall(r'(?:src|href)="(\./[^"]+)"', html)
+    assert refs, "index.html 里没有解析到任何本地资源引用（检查方式可能已失效）"
+    missing = []
+    for ref in refs:
+        rel = ref[2:]                                  # 去掉 ./
+        want = f"assets/webapp/{rel}"
+        if want not in names:
+            missing.append(f"{ref}（APK 内应有 {want}）")
+    assert not missing, (
+        "APK 内的前端资源与 index.html 的引用不一致：\n  " + "\n  ".join(missing)
+        + "\n→ 检查 MainActivity 的 assets 解包是否保持了目录结构（曾因拍平导致 ./src/*.js 全部 404）"
+    )
+    print(f"[PASS] APK({apk.name}) 内前端资源满足 index.html 的 {len(refs)} 个本地引用")
+
+
+def test_server_selfcheck_covers_entry_script():
+    """启动自检必须包含入口脚本 —— 它是"白屏"类故障的唯一自动防线。"""
+    srv = (ANDROID_DIR / "app/src/main/python/server.py").read_text(encoding="utf-8")
+    assert '"/src/main.js"' in srv, (
+        "Android 启动自检未检查 /src/main.js：静态资源 404 不会触发 WebView 报错，"
+        "只能靠这个自检发现"
+    )
+    assert "_self_check" in srv and "onStartupFailed" in srv, "自检结论未回传给界面"
+    print("[PASS] 启动自检覆盖首页与入口脚本，失败时回传可读结论")
+
+
+def test_frontend_reports_boot_errors():
+    """前端必须把"模块加载失败/抛错"显示在页面上（真机拿不到控制台）。"""
+    html = (REPO_ROOT / "frontend/index.html").read_text(encoding="utf-8")
+    assert 'id="boot-error"' in html, "index.html 缺少错误横幅容器"
+    assert "unhandledrejection" in html and "addEventListener(\"error\"" in html, (
+        "缺少全局错误捕获：模块脚本 404 或抛错时页面会静默变成白屏"
+    )
+    # 引导条（未配置模型时）
+    assert 'id="llm-notice"' in html, "index.html 缺少未配置模型的引导条"
+    main_js = (REPO_ROOT / "frontend/src/main.js").read_text(encoding="utf-8")
+    assert "renderLlmNotice" in main_js, "main.js 未实现引导逻辑"
+    assert "llm_ready" in main_js, "引导逻辑未依据服务端的 llm_ready"
+    print("[PASS] 前端错误可见化 + 未配置模型的引导条已接线")
+
+
 def main():
     test_android_requirements_are_pure_python()
     test_android_requirements_are_pinned()
@@ -263,6 +329,9 @@ def main():
     test_android_project_wiring()
     test_frontend_dir_setting_is_honoured()
     test_env_example_covers_frontend_dir()
+    test_apk_assets_satisfy_index_html_references()
+    test_server_selfcheck_covers_entry_script()
+    test_frontend_reports_boot_errors()
     print("\nAndroid 一体化约束测试全部通过 ✔")
 
 

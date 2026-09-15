@@ -29,6 +29,22 @@
     }
     button, input, textarea { font-family:inherit; }
     .hidden { display:none !important; }
+    /* 启动/运行期错误横幅：模块脚本加载失败或抛错时唯一可见的线索
+       （真机排障拿不到控制台，必须显示在页面上） */
+    #boot-error {
+      display:none; position:fixed; top:0; left:0; right:0; z-index:99;
+      max-height:45vh; overflow:auto; margin:0; padding:12px 14px;
+      background:#7f1d1d; color:#fff; font-size:12px; line-height:1.6;
+      white-space:pre-wrap; word-break:break-all;
+    }
+    /* 未配置模型时的引导条 */
+    .notice {
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      margin:12px 12px 0; padding:12px 14px; border-radius:12px;
+      background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.5);
+      color:var(--fg); font-size:13px; line-height:1.6;
+    }
+    .notice .btn { flex:none; }
 
     /* ============ 布局：移动优先（≤1023px 抽屉式侧栏） ============ */
     .app { display:flex; height:100dvh; height:100vh; }
@@ -295,6 +311,12 @@
 
       <!-- 对话视图 -->
       <section class="view active" id="view-chat">
+        <!-- 未配置模型时的引导条（由 main.js 按 /api/providers 的结果决定是否显示） -->
+        <div class="notice hidden" id="llm-notice">
+          <span id="llm-notice-text"></span>
+          <span class="spacer"></span>
+          <button class="btn primary" id="llm-notice-go">去配置</button>
+        </div>
         <div id="chat">
           <div class="empty">
             输入一句铁路相关问题，我会查 12306 / rail.re 实时数据后作答。<br />
@@ -325,6 +347,33 @@
   </div>
 
   <div id="toast" class="toast"></div>
+
+  <!-- 错误横幅：在任何脚本之前注册捕获，确保"模块加载失败/运行期抛错"能被看见 -->
+  <pre id="boot-error"></pre>
+  <script>
+    (function () {
+      function show(msg) {
+        var el = document.getElementById("boot-error");
+        if (!el) return;
+        el.style.display = "block";
+        el.textContent += (el.textContent ? "\n\n" : "") + msg
+          + "\n（请把以上内容反馈给开发者）";
+      }
+      window.addEventListener("error", function (e) {
+        var t = e.target;
+        if (t && (t.tagName === "SCRIPT" || t.tagName === "LINK" || t.tagName === "IMG")) {
+          show("资源加载失败：" + (t.src || t.href));
+        } else {
+          show("脚本错误：" + (e.message || e)
+            + (e.filename ? "\n  " + e.filename + ":" + e.lineno : ""));
+        }
+      }, true);
+      window.addEventListener("unhandledrejection", function (e) {
+        var r = e.reason;
+        show("未处理的 Promise 拒绝：" + ((r && r.message) ? r.message : r));
+      });
+    })();
+  </script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

@@ -18,7 +18,8 @@ APK
    1) 把 assets/webapp 与 assets/dict 解包到应用私有目录（带版本标记，升级后强制重解）
    2) 后台线程启动 Python：server.serve(activity, webapp_dir, data_dir)
    3) Python 侧在 127.0.0.1 的**空闲端口**上以 uvicorn 启动后端 app.main:app
-   4) 回调 onServerReady(port) → WebView 加载 http://127.0.0.1:port/
+   4) Python 侧**自检**：回环 GET `/` 与 `/src/main.js`，确认前端真的被托管
+   5) 回调 onServerReady(port, 自检结论) → WebView 加载 http://127.0.0.1:port/
 ```
 
 **为什么走本地 HTTP 而不是 `file://` 或 `WebViewAssetLoader`**：前端要用 `fetch` + SSE 调
@@ -99,6 +100,28 @@ bash scripts/android/build.sh assembleRelease
 - 用 Chaquopy 的 `exclude` 裁掉用不到的标准库模块；
 - 若不需要 HTTPS 校验则去掉 OpenSSL（**不推荐**：12306 与 LLM 均需 TLS）；
 - 按 ABI 出多包（App Bundle）而不是单包。
+
+## 排障设计（白屏必须能自证原因）
+
+真机排障拿不到 logcat，所以**任何失败都必须显示在屏幕上**，而不是留一片白：
+
+| 层 | 手段 |
+|---|---|
+| Java | 启动过程做成**可见日志**（应用目录 / 解包文件数 / index.html 与 src/main.js 是否存在 / Python 启动 / 后端端口），失败时保留面板并显示原因与「重试」按钮 |
+| WebView | `onReceivedError`（主框架加载失败）与 `onReceivedHttpError`（**静态资源 404 走这条**）都显示出来 |
+| 前端 | `index.html` 内联脚本在任何模块之前注册 `error` / `unhandledrejection` 捕获，横幅显示"资源加载失败：<URL>"或脚本错误行号 |
+| Python | 起服务后自检 `/` 与 `/src/main.js`；不通过则把结论 + 最近日志回传给界面 |
+
+> 其中的 `/src/main.js` 检查是有来历的：静态资源 404 **不会**触发 WebView 的
+> `onReceivedError`，只会让页面悄悄少掉全部脚本（看起来就是白屏）。首版在 assets
+> 解包时把目录结构拍平（`webapp/src/main.js` → `webapp/main.js`），正是这个失败模式。
+> `backend/tests/test_android.py` 现在会直接比对 APK 内资源与 index.html 的引用，
+> 在构建产物层面挡住同类问题。
+
+## 未配置模型时的引导
+
+社区版不内置任何 API Key。前端启动后按 `/api/providers` 的 `llm_ready` / `mock` 决定是否显示引导条：
+未配置 → 「尚未配置模型 API…去配置」直接跳设置页；Mock 模式 → 明确说明回答来自本地确定性规则而非真实模型。
 
 ## 已知限制
 
