@@ -32,6 +32,9 @@ cd backend && python3 -m venv .venv && .venv/bin/python -m pip install -r requir
 |---|---|
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | OpenAI 兼容端点与模型；配 `LLM_MOCK=false` 走真实模型 |
 | `LLM_STRUCTURED_MODEL` / `LLM_MOCK` | 意图·抽取用更强模型（留空沿用 `LLM_MODEL`）/ `true` 走确定性本地 mock（无 Key 演示与 CI） |
+| 多供应商 | `LLM_PROVIDER` 选内置供应商（`deepseek`/`openai`/`siliconflow`/`dashscope`/`zhipu`/`moonshot`/`openrouter`/`gemini`/`ollama`/`lmstudio`/`vllm`）；`LLM_PROVIDERS`（JSON）或 `LLM_PROVIDERS_FILE`（文件）添加/覆盖自定义供应商（字段级合并，可只写 `{"deepseek":{"model":"deepseek-reasoner"}}`）；`LLM_API_KEY` 作全局兜底 Key、`LLM_MODEL` 只填空不顶替 |
+| API 方言 | `LLM_API_DIALECT=auto`（默认）：先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存；也可显式指定 `chat_completions`/`responses`。不支持的可选参数（`temperature`/`response_format`/`enable_thinking`）会被自动丢弃重试 |
+| 供应商网络项 | `LLM_TIMEOUT_S=60.0`（推理模型首 token 慢，勿调太小）、`LLM_EXTRA_HEADERS`/`LLM_EXTRA_BODY`（JSON，自定义网关用）、`LLM_ALLOW_PRIVATE_BASE_URL=false`（`true` 才允许指向内网/本机；生产开启等于开放 SSRF） |
 | `T12306_BASE` | 自备 12306 反代；**留空则 `t12306.search_tickets` 停用**（路由不主动调用） |
 | `RAILRE_API_BASE` / `RAILRE_BASE` / `JPRAILFAN_BASE` / `CNRAIL_BASE` | rail.re 交路 API / rail.re 主站 / 黄河铁路网 / cnrail 地图 |
 | `FREIGHT_95306_BASE` / `KMRAIL_BASE` / `SYTLJ_BASE` | 95306 / 昆铁货运 / 沈阳局余票（长期不可用，失败如实说明原因） |
@@ -40,6 +43,40 @@ cd backend && python3 -m venv .venv && .venv/bin/python -m pip install -r requir
 | 治理阈值 | `MAX_MESSAGE_CHARS=2000`、`TOOL_CONCURRENCY=3`、`FACT_TEXT_MAX_CHARS=4000`（代码字段 `fact_text_max_chars`）、`FACT_TABLE_MAX_ROWS=40`、`STATION_LIST_LIMIT=12`、`STATION_SCREEN_LIMIT=15`、`RAIL_LINE_CACHE_TTL_S=3600`（大屏一次回全天 200–700 条，必须裁剪后再进 prompt）、`HTTP_TIMEOUT=12.0`、`HTTP_MAX_BYTES=2000000` |
 | 性能与本地字典 | `FASTPATH_ENABLED=true`（确定性快路径，出问题置 false 回退纯 LLM）、`LLM_STRUCTURED_NO_THINK=true`、`DICT_DB_PATH=data/dict.db`、`DICT_GTFS_MAX_AGE_DAYS=5`、`DICT_SITE_MIN_INTERVAL_S=2.0`（个人站点间隔下限，勿调小） |
 | 其他 | `TRAIN_CACHE_TTL_DAYS=30`、`TICKET_PRESALE_DAYS=15`、`HUB_PROBE_PAIRS=北京:上海,北京:广州,北京:哈尔滨,上海:广州` |
+
+### 自备 Key 与自定义供应商
+
+三种方式任选，越靠后优先级越高（请求级 > `LLM_PROVIDER` > `.env` 默认三件套）：
+
+```bash
+# ① 老办法（仍完全兼容）：只用一个供应商
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_API_KEY=sk-xxx
+LLM_MODEL=deepseek-chat
+
+# ② 选内置供应商：地址与默认模型来自内置目录，只需补自己的 Key
+LLM_PROVIDER=zhipu
+LLM_API_KEY=sk-xxx                 # 全局兜底 Key，只会给「被选中的那家」
+LLM_MODEL=glm-4-plus               # 可选：只在该供应商没有默认模型时生效
+
+# ③ 加自己的网关（公司内网/中转站/本地推理都行）
+LLM_PROVIDER=mygw
+LLM_PROVIDERS={"mygw":{"label":"公司网关","base_url":"llm.corp.com","api_key":"sk-xxx","model":"qwen-plus"}}
+# 条目多或 Key 很长时改用文件：LLM_PROVIDERS_FILE=/etc/railfan/providers.json
+# 只想改内置供应商的某个字段，可只写该字段（字段级合并）：
+# LLM_PROVIDERS={"deepseek":{"model":"deepseek-reasoner"}}
+
+# ④ 本地推理（无需 Key；非本机地址要显式放开内网限制）
+LLM_PROVIDER=ollama
+LLM_MODEL=qwen2.5:7b
+LLM_ALLOW_PRIVATE_BASE_URL=true
+```
+
+- **地址写法很宽松**：裸域名自动补 `/v1`；误粘完整 URL（`.../v1/chat/completions`）会自动剥掉后缀；带 `/api/paas/v4`、`/v1beta/openai` 这类自定义前缀的原样保留。
+- **两种 API 都支持**：只提供 `/responses` 的网关无需配置，`auto` 会在 `/chat/completions` 返回 404/405 时自动改试并记住结论。要固定可设 `LLM_API_DIALECT`。
+- **不确定能不能用**：启动后打开界面「⚙️ 模型 → 测试连接」，会返回可用性、实际使用的方言、延迟与可选模型清单。
+- **安全边界**：`APP_ENV=production` 时，**请求体带来的** `base_url`（界面自定义供应商、`/api/providers/test`）只允许公网地址，内网/环回/云元数据地址一律拒绝，除非显式设 `LLM_ALLOW_PRIVATE_BASE_URL=true`；`.env` / 配置文件里的地址属管理员可信配置，不受此限。开发环境不限制（便于连本机 Ollama）。
+- **不想配 `.env`**：界面「⚙️ 模型」里选供应商并填自己的 Key 即可（BYOK）。Key 默认只留在浏览器内存，勾选「记住 Key」才写入 localStorage，服务端不落库、不写日志。
 
 > ⚠️ **密钥**：`.env` 含真实 Key（已在 `.gitignore`），仅本地保存、不进库、不随包分发；**部署公网前必须改为环境变量注入并轮换 Key**。当前 `main.py` 为开发默认：CORS `allow_origins=["*"]`（`allow_credentials=False`）、无鉴权（`/health` 返回 `auth: "disabled"`）、无限流；对外提供访问应在反向代理层收敛入口并加限流、改白名单。
 

@@ -13,7 +13,7 @@
 //   5) 三端自适应：移动优先（抽屉侧栏），≥1024px 侧栏常驻
 //   6) 无需登录：对话匿名可用，不存任何凭据
 import { store } from "./store.js";
-import { renderDocPage, APP_VERSION } from "./pages.js";
+import { renderDocPage, renderSettingsPage, APP_VERSION, ROOT_KEY_ID } from "./pages.js";
 
 // API 地址：默认与页面同源（空串 → 相对路径）；可由宿主注入 window.__API_BASE__
 const API_BASE = window.__API_BASE__ || "";
@@ -35,13 +35,74 @@ const viewChat = document.getElementById("view-chat");
 const viewPage = document.getElementById("view-page");
 const pageBody = document.getElementById("page-body");
 const verBadge = document.getElementById("ver-badge");
+const llmBtn = document.getElementById("llm-btn");
 
 // ---------- 运行态 ----------
 const state = {
   generating: false,
   controller: null,
   convId: null,       // 当前对话 id（与 store.currentId 同步）
+  providers: [],      // 服务端返回的供应商列表（用于顶栏显示名字）
+  llmReady: false,
 };
+
+// ---------- LLM 供应商（BYOK）----------
+/** 组装随请求下发的供应商覆盖；未做任何选择时返回空对象（用服务端配置）。 */
+function llmSpec() {
+  const cfg = store.llm();
+  const id = cfg.provider || "";
+  const spec = {};
+  if (id === "custom") {
+    if (cfg.base_url) spec.base_url = cfg.base_url;
+  } else if (id) {
+    spec.provider = id;
+  }
+  if (cfg.model) spec.model = cfg.model;
+  if (cfg.api) spec.api = cfg.api;
+  const key = store.llmKey(id || ROOT_KEY_ID);
+  if (key) spec.api_key = key;
+  // 选了「自定义」却没填地址 → 退回服务端默认，避免发一个必然失败的请求
+  if (spec.base_url === undefined && id === "custom" && !spec.provider) delete spec.base_url;
+  return spec;
+}
+
+/** 顶栏徽标：显示当前实际生效的供应商，避免"以为在用 A 其实在跑 B"。 */
+async function refreshProviderBadge() {
+  if (!llmBtn) return;
+  const cfg = store.llm();
+  let text = "模型";
+  let title = "模型供应商设置";
+  if (cfg.provider === "custom" && cfg.base_url) {
+    text = cfg.model || "自定义";
+    title = `自定义供应商：${cfg.base_url}${cfg.model ? " · " + cfg.model : ""}`;
+  } else if (cfg.provider) {
+    const p = state.providers.find((x) => x.id === cfg.provider);
+    text = cfg.model || (p ? p.label : cfg.provider);
+    title = `供应商：${p ? p.label : cfg.provider}${cfg.model ? " · " + cfg.model : ""}`;
+  } else {
+    const p = state.providers.find((x) => x.id === state.serverActive);
+    text = p ? p.label : "服务端默认";
+    title = `使用服务端配置${p ? "：" + p.label : ""}`;
+  }
+  const txtEl = llmBtn.querySelector(".txt");
+  if (txtEl) txtEl.textContent = " " + text;
+  llmBtn.title = title + "（点击修改）";
+}
+
+async function loadProviders() {
+  try {
+    const resp = await fetch(API_BASE + "/api/providers");
+    if (!resp.ok) return;
+    const body = await resp.json();
+    state.providers = body.providers || [];
+    state.serverActive = body.active || "";
+    state.llmReady = !!body.llm_ready;
+  } catch {
+    /* 服务端不可达时保持空列表，顶栏退回"服务端默认" */
+  }
+  await refreshProviderBadge();
+  updateCtxInfo(null);   // 参数为空时自行取当前对话消息
+}
 
 // ---------- 小工具 ----------
 function esc(s) {
@@ -262,6 +323,17 @@ function handleRoute() {
       navigate,
     }));
     pageBody.parentElement.scrollTop = 0;
+    return;
+  }
+  if (/^#\/settings/.test(h)) {
+    showView("page");
+    pageBody.innerHTML = "";
+    pageBody.appendChild(renderSettingsPage({
+      onBack: () => navigate("#/c/" + state.convId),
+      navigate,
+    }));
+    pageBody.parentElement.scrollTop = 0;
+    void refreshProviderBadge();
     return;
   }
   if (mConv && store.get(mConv[1])) {
@@ -491,6 +563,8 @@ async function runAssistant(convId, userIndex) {
       body: JSON.stringify({
         message: userText, history,
         session_id: convId,
+        // 供应商覆盖（BYOK）：未选择时为空对象，服务端用自身配置
+        ...llmSpec(),
       }),
       signal: controller.signal,
     });
@@ -713,6 +787,7 @@ menuBtn.addEventListener("click", () => {
 scrimEl.addEventListener("click", closeSidebar);
 document.getElementById("newchat").addEventListener("click", newConv);
 document.getElementById("go-about").addEventListener("click", () => { closeSidebar(); navigate("#/doc/about"); });
+if (llmBtn) llmBtn.addEventListener("click", () => { navigate("#/settings"); });
 if (convSearchEl) convSearchEl.addEventListener("input", renderConvList);
 
 // 桌面快捷键：Ctrl/Cmd+K 新对话，ESC 停止或收起侧栏
@@ -750,3 +825,5 @@ renderChat();
 handleRoute();
 autoGrow();
 if (window.innerWidth >= 1024) inputEl.focus();
+// 供应商列表与顶栏徽标（异步，不阻塞首屏；失败时静默退回"服务端默认"）
+void loadProviders();

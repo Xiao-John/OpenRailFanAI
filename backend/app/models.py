@@ -31,6 +31,46 @@ class ChatRequest(BaseModel):
         description="此前已完成的多轮对话（不含本次 message），用于上下文理解",
     )
 
+    # ---- 供应商选择（BYOK：用户自备 Key；同一个后端可服务多套 Key）----
+    # 这些字段允许前端按请求指定 LLM 供应商，覆盖服务端配置。
+    provider: Optional[str] = Field(
+        None, description="供应商 id（内置如 deepseek/siliconflow/ollama，或 LLM_PROVIDERS 里自定义的 id）"
+    )
+    model: Optional[str] = Field(None, description="覆盖该供应商的模型名")
+    api: Optional[Literal["auto", "chat_completions", "responses"]] = Field(
+        None, description="API 方言：auto 为自动探测（chat.completions 优先，404/405 退 responses）"
+    )
+    base_url: Optional[str] = Field(None, description="自定义供应商的 base_url（填了即视为临时自定义供应商）")
+    # repr=False：**任何**日志/异常里打印 ChatRequest 都不应带出 Key
+    api_key: Optional[str] = Field(None, repr=False, description="用户自带的 API Key（仅随本次请求使用，不落库不写日志）")
+
+    @field_validator("provider", "model", "base_url", "api_key")
+    @classmethod
+    def _check_optional_text(cls, v: Optional[str]) -> Optional[str]:
+        """可选字段统一去空白；并限制长度，避免超长串进入下游/日志。"""
+        if v is None:
+            return None
+        text = str(v).strip()
+        if not text:
+            return None
+        if len(text) > 2000:
+            raise ValueError("字段过长（上限 2000 字）")
+        return text
+
+    def llm_spec(self) -> dict:
+        """给编排层的供应商覆盖描述（键名与 `client.set_active_provider` 对齐）。"""
+        return {
+            k: v
+            for k, v in {
+                "provider": self.provider,
+                "model": self.model,
+                "api": self.api,
+                "base_url": self.base_url,
+                "api_key": self.api_key,
+            }.items()
+            if v
+        }
+
     @field_validator("message")
     @classmethod
     def _check_message(cls, v: str) -> str:

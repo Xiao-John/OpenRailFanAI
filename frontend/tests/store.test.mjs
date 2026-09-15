@@ -77,5 +77,28 @@ const t = fresh.store.bumpTotal(1234);
 ok(t >= 1234, "累计 token 累加生效：" + t);
 ok(fresh.store.totalTokens() === t, "累计 token 持久化读取一致");
 
+// ---------- LLM 供应商（BYOK）----------
+// 关键约束：**未勾选"记住 Key"时，Key 绝不落盘**（隐私红线，改了必须在这里失败）
+const LS_LLM = "railfan_llm_v1";
+fresh.store.setLlm({ provider: "deepseek", model: "deepseek-chat", rememberKey: false });
+fresh.store.setLlmKey("deepseek", "sk-should-not-persist");
+ok(fresh.store.llmKey("deepseek") === "sk-should-not-persist", "同一会话内可读到 Key（内存）");
+ok(!String(mem.get(LS_LLM) || "").includes("sk-should-not-persist"),
+   "未勾选「记住 Key」时 Key 不落盘");
+ok(String(mem.get(LS_LLM) || "").includes("deepseek"), "供应商选择本身照常持久化");
+
+// 勾选后允许落盘，并可跨会话恢复
+fresh.store.setLlm({ rememberKey: true });
+fresh.store.setLlmKey("deepseek", "sk-remembered");
+ok(String(mem.get(LS_LLM)).includes("sk-remembered"), "勾选「记住 Key」后才落盘");
+const fresh2 = await import(STORE_URL + "?fresh=2");
+ok(fresh2.store.llm().provider === "deepseek", "供应商选择可跨会话恢复");
+ok(fresh2.store.llmKey("deepseek") === "sk-remembered", "记住的 Key 可跨会话恢复");
+ok(fresh2.store.llm().rememberKey === true, "记住标记被保留");
+
+// 清空
+fresh2.store.clearLlm();
+ok(!mem.has(LS_LLM) && fresh2.store.llm().provider === undefined, "clearLlm 清空选择与 Key");
+
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);

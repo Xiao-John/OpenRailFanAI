@@ -1,13 +1,17 @@
-// RailFanAI · 本机数据层（对话 / 登录态 / 偏好）
+// RailFanAI · 本机数据层（对话 / 供应商选择 / 偏好）
 // 设计原则：
 //   1) 所有数据先落 localStorage，**服务端可无状态**（v1 会话不落库）；
 //   2) 写入做容量保护：对话数、单对话消息数、元信息体积都有上限，避免 localStorage 爆掉；
-//   3) 只存"可重建"的展示数据；不存任何密钥（无需登录）。
+//   3) 不存任何"账号凭据"（社区版没有账号体系）。
+//      例外：用户自备的 LLM Key（BYOK）可**按用户显式勾选**存在本机 —— 它是
+//      用户自己的 Key，只发往用户自己配置的后端，不经过任何第三方；
+//      未勾选时只保留在内存里（刷新即失效），见 setLlm/llmKey。
 
 const LS_CONVS = "railfan_conversations_v1";
 const LS_CURRENT = "railfan_current_conv_v1";
 const LS_TOTAL = "railfan_total_tokens";
 const LS_THEME = "railfan_theme";
+const LS_LLM = "railfan_llm_v1";
 
 const MAX_CONVS = 100;          // 最多保留的对话数（超出丢最旧的、非当前）
 const MAX_MSGS = 300;           // 单对话最多消息数
@@ -232,6 +236,41 @@ export const store = {
     document.documentElement.setAttribute("data-theme", t);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", t === "light" ? "#f6f7fb" : "#0f1115");
+  },
+
+  // ---------- LLM 供应商（BYOK）----------
+  // 结构：{ provider, model, api, base_url, rememberKey, keys:{[providerId]: "sk-..."} }
+  // - provider/model/api/base_url 不是秘密，始终持久化；
+  // - keys 只在用户勾选"记住 Key"时落盘，否则仅留在内存（本对象）里。
+  llm() {
+    if (!this._llm) this._llm = safeParse(localStorage.getItem(LS_LLM), {}) || {};
+    return this._llm;
+  },
+  setLlm(patch) {
+    const next = { ...this.llm(), ...patch };
+    this._llm = next;
+    const persisted = { ...next };
+    if (!next.rememberKey) delete persisted.keys;   // 不记住 → 绝不落盘
+    try {
+      localStorage.setItem(LS_LLM, JSON.stringify(persisted));
+    } catch {
+      /* 容量满等情况：退化为仅内存，不阻断使用 */
+    }
+    return next;
+  },
+  llmKey(providerId) {
+    const keys = this.llm().keys || {};
+    return keys[providerId] || "";
+  },
+  setLlmKey(providerId, key) {
+    const keys = { ...(this.llm().keys || {}) };
+    if (key) keys[providerId] = key;
+    else delete keys[providerId];
+    return this.setLlm({ keys });
+  },
+  clearLlm() {
+    this._llm = {};
+    localStorage.removeItem(LS_LLM);
   },
 
 };

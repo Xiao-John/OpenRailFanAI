@@ -13,7 +13,7 @@
 | 项 | 值 |
 |---|---|
 | 后端 | **Python 3.12**（要求 ≥ 3.10）、FastAPI、pydantic v2、pydantic-settings |
-| LLM / 数据源库 | OpenAI 兼容（`AsyncOpenAI`）：`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`；`LLM_MOCK=true` 走确定性本地 mock；依赖 `mcp-server-12306`（12306 实时）、`httpx[http2]`、`brotli`（浏览器级请求头所需）、`pypinyin`（站名同音纠错） |
+| LLM / 数据源库 | OpenAI 兼容（`AsyncOpenAI`），**多供应商 + 双 API 方言**：默认供应商沿用 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`，另可用 `LLM_PROVIDER` 选 11 家内置目录之一，或用 `LLM_PROVIDERS` / `LLM_PROVIDERS_FILE` 添加自定义供应商；`api=auto` 时先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存结论（两种方言的响应结构与 usage 字段名不同，已在 `app/llm/client.py` 抹平）；用户可在界面「设置」里用自己的 Key（BYOK），随请求下发、服务端不落库。`LLM_MOCK=true` 走确定性本地 mock；依赖 `mcp-server-12306`（12306 实时）、`httpx[http2]`、`brotli`（浏览器级请求头所需）、`pypinyin`（站名同音纠错） |
 | 前端 | 原生 HTML + JS（无构建工具），由 FastAPI 静态托管，SSE 流式；**移动优先三端自适应**，支持多对话并存 |
 | 网络前提 | **中国境内出口**（12306 与 rail.re 均仅境内可达） |
 

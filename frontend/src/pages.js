@@ -16,6 +16,10 @@ export const DOCS = {
 
 export const APP_VERSION = "v0.6 · Community";
 
+// 未选择具体供应商时，用户的 BYOK Key 记在这个键下
+// （语义：只覆盖 Key，供应商地址/模型仍用服务端默认配置）
+export const ROOT_KEY_ID = "__default__";
+
 function el(tag, cls, text) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -216,5 +220,213 @@ function renderHelp(root, deps) {
     limits.appendChild(el("li", null, t));
   }
   root.appendChild(limits);
+  return root;
+}
+
+// ============ 模型供应商设置（BYOK）============
+
+/** 一行"标签 + 控件"的表单行。 */
+function formRow(labelText, control) {
+  const row = el("div", "form-row");
+  row.appendChild(el("label", null, labelText));
+  row.appendChild(control);
+  return row;
+}
+
+function inputEl(type, placeholder, value) {
+  const i = el("input");
+  i.type = type;
+  i.placeholder = placeholder || "";
+  i.value = value || "";
+  i.autocomplete = "off";
+  i.spellcheck = false;
+  return i;
+}
+
+function selectEl(options, value) {
+  const s = el("select");
+  for (const [v, label] of options) {
+    const o = el("option", null, label);
+    o.value = v;
+    s.appendChild(o);
+  }
+  s.value = value;
+  return s;
+}
+
+/**
+ * 供应商设置页。
+ *
+ * 关键设计：**尽量不在前端硬编码供应商**——列表与能力来自后端 `/api/providers`，
+ * 前端只负责选择与填写用户自己的 Key。自定义供应商通过请求级覆盖下发
+ * （base_url/api_key/model），服务端无需持久化任何用户凭据。
+ */
+export function renderSettingsPage(deps) {
+  const { onBack } = deps;
+  const root = el("div");
+  root.appendChild(pageHeader("模型供应商设置", onBack));
+
+  const cfg = store.llm();
+  const providerId = cfg.provider || "";
+  const keyId = providerId || ROOT_KEY_ID;
+  let providers = [];
+
+  // ---- 卡片 1：选择供应商 ----
+  const c1 = card("选择供应商");
+  c1.appendChild(el("p", "sub",
+    "社区版不内置任何 API Key，请使用你自己的 OpenAI 兼容接口。" +
+    "支持 Chat Completions 与 Responses 两种 API；不确定是哪种就保持「自动探测」。"));
+
+  const status = el("div", "sub", "正在读取供应商列表…");
+  c1.appendChild(status);
+
+  const provSel = selectEl([["", "（服务端默认配置）"], ["custom", "自定义（用下面的接口地址）"]], providerId);
+  const modelInp = inputEl("text", "留空则用供应商默认模型", cfg.model);
+  const apiSel = selectEl([
+    ["", "自动探测（推荐）"],
+    ["chat_completions", "Chat Completions（/chat/completions）"],
+    ["responses", "Responses（/responses）"],
+  ], cfg.api || "");
+  const keyInp = inputEl("password", "sk-…（仅保存在本机）", store.llmKey(keyId));
+
+  const remember = el("input");
+  remember.type = "checkbox";
+  remember.checked = !!cfg.rememberKey;
+  const rememberRow = el("div", "form-row");
+  rememberRow.appendChild(remember);
+  const rememberLabel = el("label", null, "记住 Key（存本机浏览器；不勾选则刷新后需重填）");
+  rememberLabel.style.minWidth = "0";
+  rememberRow.appendChild(rememberLabel);
+
+  const baseInp = inputEl("text", "https://api.example.com/v1", cfg.base_url);
+  const baseRow = formRow("接口地址", baseInp);
+  const customHint = el("div", "sub",
+    "填了就按「自定义供应商」处理（可只填地址，配合下面的模型与 Key 使用）。" +
+    "地址可写裸域名（自动补 /v1），也可直接粘完整 URL（自动剥掉 /chat/completions 等后缀）。");
+
+  const result = el("div", "sub");
+
+  c1.appendChild(formRow("供应商", provSel));
+  c1.appendChild(formRow("模型", modelInp));
+  c1.appendChild(formRow("API", apiSel));
+  c1.appendChild(formRow("API Key", keyInp));
+  c1.appendChild(rememberRow);
+
+  const btnRow = el("div", "form-row");
+  const testBtn = el("button", "btn", "测试连接");
+  const saveBtn = el("button", "btn primary", "保存");
+  btnRow.appendChild(testBtn);
+  btnRow.appendChild(saveBtn);
+  c1.appendChild(btnRow);
+  c1.appendChild(result);
+  root.appendChild(c1);
+
+  // ---- 卡片 2：自定义供应商 ----
+  const c2 = card("自定义供应商");
+  c2.appendChild(el("p", "sub",
+    "临时用某家网关时，直接填地址即可，无需改服务端配置。"));
+  c2.appendChild(baseRow);
+  c2.appendChild(customHint);
+  root.appendChild(c2);
+
+  // ---- 卡片 3：服务端配置（只读说明）----
+  const c3 = card("服务端配置（只读）");
+  c3.appendChild(el("p", "sub",
+    "以上选择只作用于当前浏览器。要让**所有人**默认使用某供应商，" +
+    "请在服务端 .env 里设置 LLM_PROVIDER / LLM_PROVIDERS（详见 .env.example）。"));
+  const srvBox = el("div");
+  c3.appendChild(srvBox);
+  root.appendChild(c3);
+
+  // ---- 读取供应商列表 ----
+  api("/providers").then((res) => {
+    if (!res.ok || !res.body) {
+      status.textContent = "读取失败：" + errText(res, "服务端不可达") + "（仍可直接填写自定义地址）";
+      return;
+    }
+    providers = res.body.providers || [];
+    for (const p of providers) {
+      const label = `${p.label}${p.ready ? "" : "（未配置 Key）"}${p.id === res.body.active ? " · 服务端默认" : ""}`;
+      const o = el("option", null, label);
+      o.value = p.id;
+      // 插到"（服务端默认配置）"之后、"自定义"之前，保持"自定义"始终在末尾
+      provSel.insertBefore(o, provSel.lastElementChild);
+    }
+    provSel.value = providerId;
+
+    const cur = providers.find((p) => p.id === res.body.active);
+    srvBox.innerHTML = "";
+    srvBox.appendChild(kv("服务端默认", cur ? `${cur.label}（${cur.id}）` : res.body.active || "未设置"));
+    srvBox.appendChild(kv("服务端 LLM", res.body.llm_ready ? "已配置" : "未配置"));
+    srvBox.appendChild(kv("Mock 模式", res.body.mock ? "开启（不走真实模型）" : "关闭"));
+    srvBox.appendChild(kv("允许内网地址", res.body.allow_private_base_url ? "是" : "否"));
+    if (res.body.config_error) srvBox.appendChild(kv("配置错误", res.body.config_error));
+  });
+
+  // 切换供应商时，把模型/Key 换成该供应商对应的值，避免串味
+  provSel.addEventListener("change", () => {
+    const id = provSel.value;
+    const p = providers.find((x) => x.id === id);
+    modelInp.value = p ? p.model || "" : (id === "custom" ? modelInp.value : "");
+    keyInp.value = store.llmKey(id || ROOT_KEY_ID);
+    if (p && p.api && p.api !== "auto") apiSel.value = p.api;
+  });
+
+  function currentSpec() {
+    const id = provSel.value;
+    const spec = {};
+    if (id === "custom" || (!id && baseInp.value.trim())) {
+      spec.base_url = baseInp.value.trim();
+    } else if (id) {
+      spec.provider = id;
+    }
+    if (modelInp.value.trim()) spec.model = modelInp.value.trim();
+    if (apiSel.value) spec.api = apiSel.value;
+    const k = keyInp.value.trim();
+    if (k) spec.api_key = k;
+    return spec;
+  }
+
+  function persist() {
+    const id = provSel.value;
+    store.setLlm({
+      provider: id === "custom" ? "custom" : id,
+      model: modelInp.value.trim(),
+      api: apiSel.value,
+      base_url: baseInp.value.trim(),
+      rememberKey: remember.checked,
+    });
+    store.setLlmKey(id || ROOT_KEY_ID, keyInp.value.trim());
+  }
+
+  saveBtn.addEventListener("click", () => {
+    persist();
+    result.textContent = "已保存。返回对话即可生效。";
+  });
+
+  testBtn.addEventListener("click", async () => {
+    testBtn.disabled = true;
+    result.textContent = "正在测试…";
+    try {
+      const res = await api("/providers/test", { method: "POST", body: JSON.stringify(currentSpec()) });
+      const b = res.body || {};
+      if (b.ok) {
+        const extras = [];
+        if (b.model) extras.push(`模型 ${b.model}`);
+        if (b.latency_ms != null) extras.push(`${b.latency_ms} ms`);
+        result.textContent =
+          `✅ 可用：方言 ${b.dialect}${extras.length ? " · " + extras.join(" · ") : ""}` +
+          (b.models && b.models.length ? `\n可选模型（前 10 个）：${b.models.slice(0, 10).join(", ")}` : "");
+        result.style.whiteSpace = "pre-wrap";
+      } else {
+        result.textContent = "❌ " + (b.error || errText(res, "测试失败"));
+      }
+    } catch (e) {
+      result.textContent = "❌ 请求失败：" + (e && e.message ? e.message : e);
+    } finally {
+      testBtn.disabled = false;
+    }
+  });
+
   return root;
 }

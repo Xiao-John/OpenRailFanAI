@@ -219,11 +219,19 @@
     .kv .k { color:var(--mut); }
     .kv .v { text-align:right; word-break:break-all; }
     .form-row { display:flex; gap:8px; margin-bottom:8px; }
-    .form-row input { flex:1; background:var(--panel-2); border:1px solid var(--line);
+    .form-row input, .form-row select { flex:1; background:var(--panel-2); border:1px solid var(--line);
                       color:var(--fg); border-radius:10px; padding:11px 12px; font-size:15px;
                       outline:none; min-width:0; }
-    .form-row input:focus { border-color:var(--accent); }
+    .form-row input:focus, .form-row select:focus { border-color:var(--accent); }
     .form-row .btn { min-width:96px; }
+    .form-row label { color:var(--mut); font-size:12px; align-self:center; min-width:64px; }
+    /* 顶栏的供应商入口：比 .btn 更紧凑，窄屏时只留图标不挤掉标题 */
+    .llm-btn { background:transparent; border:1px solid var(--line); color:var(--mut);
+               border-radius:999px; padding:5px 10px; font-size:12px; cursor:pointer;
+               white-space:nowrap; }
+    .llm-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .llm-btn.ready { color:var(--accent); border-color:var(--accent); }
+    @media (max-width:480px) { .llm-btn .txt { display:none; } }
     .list-link { display:flex; align-items:center; justify-content:space-between;
                  padding:13px 4px; border-bottom:1px solid var(--line); cursor:pointer;
                  font-size:14px; }
@@ -282,6 +290,7 @@
         <span class="badge" id="ver-badge">v0.5 · M11</span>
         <span class="conv-title" id="conv-title"></span>
         <span class="spacer"></span>
+        <button class="llm-btn" id="llm-btn" title="模型供应商设置">⚙️<span class="txt"> 模型</span></button>
       </header>
 
       <!-- 对话视图 -->

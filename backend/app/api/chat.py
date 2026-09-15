@@ -50,7 +50,7 @@ def _safe_label(value: Optional[str], *, max_len: int = 32) -> str:
 async def chat(req: ChatRequest) -> PipelineResult:
     """块式接口：一次返回完整结果（测试/兼容用）。"""
     _log.info("chat(block) session=%s", _safe_label(req.session_id))
-    return await orchestrator.run(req.message, history=_to_history(req))
+    return await orchestrator.run(req.message, history=_to_history(req), llm=req.llm_spec())
 
 
 def _sse_encode(event: dict) -> str:
@@ -68,7 +68,7 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     history = _to_history(req)
 
     async def gen():
-        agen = orchestrator.run_stream(req.message, history=history)
+        agen = orchestrator.run_stream(req.message, history=history, llm=req.llm_spec())
         completed = False
         try:
             async for event in agen:

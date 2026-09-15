@@ -46,6 +46,8 @@ SUITES=(
   test_dict_mileage
   # 决策层性能优化（确定性快路径 / 合并调用 / 投机预取）
   test_perf_fastpath
+  # LLM 多供应商 / 双 API 方言（chat.completions 与 responses，含自动探测与参数降级；全部无网络）
+  test_llm_providers
   # 前端数据层（多对话逻辑，需 node）
   test_frontend_store
 )

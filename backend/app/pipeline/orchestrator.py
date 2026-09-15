@@ -35,12 +35,20 @@ def _friendly_llm_message(detail: str) -> str:
     return (
         "抱歉，当前无法完成分析与回答：LLM 尚未配置或不可用。\n\n"
         f"详情：{detail}\n\n"
-        "请在根目录 `.env` 填写 LLM_BASE_URL 与 LLM_API_KEY（OpenAI 兼容接口）后重试；"
+        "可任选一种方式配置（均为 OpenAI 兼容接口）："
+        "① 在界面「设置」里选内置供应商并填写自己的 Key；"
+        "② 在根目录 `.env` 填 LLM_BASE_URL 与 LLM_API_KEY（旧方式，仍兼容）；"
+        "③ 用 LLM_PROVIDER 选内置供应商（如 deepseek / openai / ollama），"
+        "或用 LLM_PROVIDERS / LLM_PROVIDERS_FILE 添加自定义供应商。"
         "无 Key 时也可设 LLM_MOCK=true 走本地确定性 mock 演示整链。"
     )
 
 
-async def run_stream(message: str, history: list[dict] | None = None) -> AsyncIterator[dict]:
+async def run_stream(
+    message: str,
+    history: list[dict] | None = None,
+    llm: dict | None = None,
+) -> AsyncIterator[dict]:
     """流式编排：逐事件产出 dict。
 
     事件类型：
@@ -51,8 +59,13 @@ async def run_stream(message: str, history: list[dict] | None = None) -> AsyncIt
       - {"type":"error","message":...} 异常降级
 
     history 为多轮上下文（不含本次 message），用于意图/抽取/生成三层。
+    llm 为本请求的供应商覆盖（BYOK：provider/model/api_key/base_url/api），
+    在生成器**内部**就位，保证意图/抽取/生成三层都用同一个供应商。
     客户端中断（用户点“停止”）时，生成器被关闭，LLM 流会随之释放。
     """
+    # 供应商与计费都是请求级 ContextVar：必须在生成器内部设置，
+    # 否则可能落在 SSE 响应任务之外，子任务读不到（表现为"选了供应商却不生效"）。
+    llm_client.set_active_provider(llm)
     llm_client.reset_run_metrics()
     t_all = time.perf_counter()
     gathered_thinking: list[str] = []
@@ -187,7 +200,13 @@ async def run_stream(message: str, history: list[dict] | None = None) -> AsyncIt
         }
 
 
-async def run(message: str, history: list[dict] | None = None) -> PipelineResult:
+async def run(
+    message: str,
+    history: list[dict] | None = None,
+    llm: dict | None = None,
+) -> PipelineResult:
+    # 供应商与计费都是请求级 ContextVar，与 run_stream 保持一致的就位位置
+    llm_client.set_active_provider(llm)
     llm_client.reset_run_metrics()
     logs: list[str] = []
     t_all = time.perf_counter()

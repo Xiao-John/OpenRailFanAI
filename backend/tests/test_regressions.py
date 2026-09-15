@@ -149,7 +149,9 @@ def test_structured_non_object_json_raises_llm_unavailable():
     schema = {"type": "object", "properties": {"intent": {"type": "string"}}}
     try:
         for payload in ("[1, 2, 3]", '"just a string"', "42", "null"):
-            llm_client.get_client = lambda c=payload: _Client(c)  # type: ignore[assignment]
+            # 注意：get_client 现在签名为 get_client(provider)（多供应商改造），
+            # 桩必须吞掉该参数 —— 否则 Provider 会被当成"响应内容"传进来。
+            llm_client.get_client = lambda *a, **k: _Client(payload)  # type: ignore[assignment]
             try:
                 asyncio.run(llm_client.chat_structured("x", schema))
             except LLMUnavailable as e:
@@ -181,7 +183,8 @@ def test_stream_closes_upstream_on_interrupt():
         async def create(self, **_kw):
             return stream
 
-    llm_client.get_client = lambda: _Client()  # type: ignore[assignment]
+    # 同上：吞掉 get_client(provider) 的入参
+    llm_client.get_client = lambda *a, **k: _Client()  # type: ignore[assignment]
     try:
         async def _consume_then_stop():
             gen = llm_client.stream_completion("hi")

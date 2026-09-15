@@ -23,11 +23,31 @@ class Settings(BaseSettings):
     )
 
     # ---- LLM（OpenAI 兼容接口）----
+    # 下面三项是"默认供应商"（向后兼容沿用旧字段名）：未选具体供应商时生效。
     llm_base_url: str = "https://api.deepseek.com/v1"
     llm_api_key: str = ""
     llm_model: str = "deepseek-chat"
     # 结构化调用（意图/抽取）可用更强模型，留空则沿用 llm_model
     llm_structured_model: str = ""
+
+    # ---- LLM 多供应商（用户自备 Key；详见 app/llm/providers.py）----
+    # 选中的内置/自定义供应商 id（如 deepseek / siliconflow / ollama）；留空=用上面的默认供应商
+    llm_provider: str = ""
+    # 追加自定义供应商：JSON 对象 {"id": {...}} 或数组 [{"id": ...}, ...]
+    # 适合少量短配置；条目多或含长 Key 建议用 LLM_PROVIDERS_FILE
+    llm_providers: str = ""
+    # 供应商 JSON 文件路径（内容格式同 LLM_PROVIDERS；文件不存在只告警不报错）
+    llm_providers_file: str = ""
+    # API 方言：auto（先试 chat_completions，404/405 自动退 responses）/ chat_completions / responses
+    llm_api_dialect: str = "auto"
+    # 随请求下发的额外请求头 / 额外 body（JSON 对象）——给需要自定义头的网关用
+    llm_extra_headers: str = ""
+    llm_extra_body: str = ""
+    # 单次 LLM 请求超时（秒）：推理模型首 token 可能很慢，别设太小
+    llm_timeout_s: float = 60.0
+    # 是否允许把 LLM 请求发往内网/环回地址（自定义供应商 + 本地 Ollama 需要；
+    # 生产多租户部署下开启等于开放 SSRF，故默认关闭且仅对显式配置的供应商放行）
+    llm_allow_private_base_url: bool = False
 
     # LLM_MOCK=true 时：不走真实模型，用确定性本地 mock 跑通整链（无 Key 演示/CI 用）
     llm_mock: bool = False
@@ -116,29 +136,37 @@ class Settings(BaseSettings):
 
     @property
     def llm_ready(self) -> bool:
-        """是否真的配置了可用的 LLM Key。
+        """是否真的配置了可用的 LLM。
+
+        判定顺序（社区版"用户自备 Key"引入多供应商后）：
+        1. 当前生效的供应商**自带非占位 Key** → 就绪；
+        2. 供应商免 Key（本地 Ollama / LM Studio / 内网网关）且模型名已定 → 就绪；
+        3. 兜底看 `LLM_API_KEY` 是否为非占位值。
 
         占位值（如 `.env.example` 的 `your-api-key-here`）**不算已配置**：
         否则 `LLM_MOCK=false` 时会拿着占位串去调真实接口，拿到 401 并把
         "鉴权失败"这种误导性结论抛给用户（实测）。`scripts/setup.sh` 也据此自动切 LLM_MOCK。
         """
+        try:
+            from app.llm.providers import resolve_provider
+
+            p = resolve_provider(settings=self)
+            if p.model:
+                if p.api_key and p.api_key.lower() not in _PLACEHOLDER_API_KEYS:
+                    return True
+                if not p.needs_key:
+                    return True
+        except Exception:  # noqa: BLE001 —— 供应商配置写错不应让 /health 500
+            pass
+
         key = (self.llm_api_key or "").strip()
         if not key or key.lower() in _PLACEHOLDER_API_KEYS:
             return False
         return True
 
-    # ---- M11.1 认证相关派生属性 ----
     @property
     def is_production(self) -> bool:
         return self.app_env.strip().lower() in ("prod", "production")
-
-    @property
-    def access_token_ttl_s(self) -> int:
-        return max(1, self.access_token_ttl_min) * 60
-
-    @property
-    def refresh_token_ttl_s(self) -> int:
-        return max(1, self.refresh_token_ttl_days) * 24 * 3600
 
 
 @lru_cache
