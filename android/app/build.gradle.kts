@@ -58,8 +58,9 @@ android {
         // WebView 需要能被 Play 更新以获得现代 JS/ES module 支持；24 起覆盖绝大多数在用机型
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // 每次出包递增：用户报障时需要能区分版本
+        versionCode = 2
+        versionName = "0.1.1"
 
         // 只打 arm64：原生库（CPython 运行时）体积直接减半。
         // 需要覆盖 32 位老机时在此追加 "armeabi-v7a"。

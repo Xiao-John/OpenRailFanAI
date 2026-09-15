@@ -296,10 +296,18 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * 解包版本标记。
+     *
+     * 必须包含 `lastUpdateTime`：只用 versionCode/versionName 的话，同一个版本号
+     * **覆盖安装**（修 bug 后最常见的动作）会被判定为"已是最新"而跳过解包，
+     * 上一版的资源会原样留着 —— 表现为"装了新包但问题没变化"，极难排查。
+     * 加入安装时间可保证每次安装/更新都重新解包。
+     */
     private String buildVersionTag() {
         try {
             PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
-            return pi.getLongVersionCode() + ":" + pi.versionName;
+            return pi.getLongVersionCode() + ":" + pi.versionName + ":" + pi.lastUpdateTime;
         } catch (Exception e) {
             return "unknown";
         }
