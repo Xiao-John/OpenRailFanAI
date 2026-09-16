@@ -10,6 +10,8 @@ CDP 让"在真实设备上执行 JS"变成一条命令，和桌面浏览器 DevT
     python3 scripts/android/cdp.py <js表达式>
     python3 scripts/android/cdp.py --eval-file /tmp/probe.js
     python3 scripts/android/cdp.py --targets          # 列出可调试页面
+    python3 scripts/android/cdp.py --tap-sel "#menu-btn"   # 真的点一下（见 tap()）
+    python3 scripts/android/cdp.py --screenshot /tmp/x.png # 由渲染器截图
 
 示例：
     python3 scripts/android/cdp.py "document.querySelectorAll('script').length"
@@ -126,11 +128,46 @@ async def screenshot(ws_url: str, out_path: str) -> str:
                 return f"已保存 {out_path}"
 
 
+async def tap(ws_url: str, x: float, y: float, timeout_s: float = 30.0) -> str:
+    """在页面坐标 (x, y) 派发一次真实点击，走**渲染器的输入管线**。
+
+    为什么不用 `adb shell input tap`：在本项目的 arm64 API 35 模拟器上，adb 注入的
+    触摸事件**根本没进 WebView** —— 连点最底部输入框都无法聚焦（实测 activeElement
+    始终是 BODY），而同一时刻 DOM 的 elementFromPoint 完全正常。曾据此误判出"顶部
+    105px 死区"这种不存在的结论（实际是点击落在安全区留白上 + 事件压根没送达）。
+
+    为什么用鼠标事件而不是 touch：实测 WebView 的 `Input.dispatchTouchEvent` 是
+    **静默失效**的 —— 不回包、不报错、页面毫无反应；`Input.dispatchMouseEvent`
+    正常回 `{}` 并真正触发 click（点 ☰ 后侧栏 transform 由 translateX(-326.4px)
+    变为 none）。鼠标事件同样经过命中测试，足以验证"这个按钮能不能点到"。
+    """
+    import websockets
+
+    async def send(ws, msg_id: int, method: str, params: dict) -> dict:
+        await ws.send(json.dumps({"id": msg_id, "method": method, "params": params}))
+        while True:
+            msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout_s))
+            if msg.get("id") == msg_id:
+                return msg
+
+    async with websockets.connect(ws_url, max_size=32 * 1024 * 1024, proxy=None) as ws:
+        for msg_id, kind in ((1, "mousePressed"), (2, "mouseReleased")):
+            resp = await send(ws, msg_id, "Input.dispatchMouseEvent",
+                              {"type": kind, "x": x, "y": y, "button": "left", "clickCount": 1})
+            if "error" in resp:
+                return f"点击失败：{json.dumps(resp['error'], ensure_ascii=False)}"
+            await asyncio.sleep(0.05)
+    return f"已点击 ({x:.1f}, {y:.1f})"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("expr", nargs="?", help="要执行的 JS 表达式")
     ap.add_argument("--eval-file", help="从文件读取 JS")
     ap.add_argument("--targets", action="store_true", help="列出可调试页面")
+    ap.add_argument("--tap", metavar="X,Y", help="在页面坐标处派发真实点击（见 tap() 注释）")
+    ap.add_argument("--tap-sel", metavar="CSS选择器",
+                    help="先解析元素中心再点击；比手算坐标可靠（布局一变坐标就错）")
     ap.add_argument("--timeout", type=float, default=30.0,
                     help="等待求值结果的上限（秒）；含长 await 的脚本要调大")
     ap.add_argument("--screenshot", metavar="OUT.png",
@@ -158,6 +195,28 @@ def main() -> int:
 
     if args.screenshot:
         print(asyncio.run(screenshot(page["webSocketDebuggerUrl"], args.screenshot)))
+        return 0
+
+    if args.tap or args.tap_sel:
+        if args.tap_sel:
+            center = json.loads(asyncio.run(evaluate(
+                page["webSocketDebuggerUrl"],
+                "(()=>{const e=document.querySelector(%s); if(!e) return null;"
+                " const r=e.getBoundingClientRect();"
+                " return [(r.left+r.right)/2,(r.top+r.bottom)/2];})()"
+                % json.dumps(args.tap_sel),
+                args.timeout)))
+            if not center:
+                print(f"找不到元素：{args.tap_sel}", file=sys.stderr)
+                return 1
+            x, y = center
+        else:
+            try:
+                x, y = (float(v) for v in args.tap.split(","))
+            except ValueError:
+                print("--tap 需要形如 120,340 的坐标", file=sys.stderr)
+                return 1
+        print(asyncio.run(tap(page["webSocketDebuggerUrl"], x, y, args.timeout)))
         return 0
 
     expr = Path(args.eval_file).read_text(encoding="utf-8") if args.eval_file else args.expr
