@@ -530,6 +530,15 @@ def test_apk_contains_build_stamp():
     assert "-dirty" in gradle, (
         "工作区有未提交改动时没有标出来：标记会说成是某次干净提交的产物，实际上不是"
     )
+    # 标记依赖 VERSION 与当前提交，必须声明成任务的输入 —— 否则 Gradle 判定 UP-TO-DATE
+    # 而不重写 build.json。实测踩过：VERSION 从 0.1.2 改成 0.1.3、工作区干净、重新构建，
+    # 标记里仍是 "0.1.2 / 0683b89-dirty"：一个专门消除版本疑惑的机制自己先撒了谎。
+    assert 'inputs.file(repoRoot.resolve("VERSION"))' in gradle, (
+        "没把 VERSION 声明为构建标记任务的输入：只改版本号重新构建时标记不会更新"
+    )
+    assert 'inputs.property("gitHead"' in gradle, (
+        "没把当前提交声明为输入：换提交后重新构建，标记里的提交号可能是旧的"
+    )
     pages = (REPO_ROOT / "frontend/src/pages.js").read_text(encoding="utf-8")
     assert 'kv("构建"' in pages, "「关于」卡片没有显示构建标记"
     assert 'fetch("build.json"' in pages, "没有去读 build.json"

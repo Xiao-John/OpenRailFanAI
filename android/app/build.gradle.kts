@@ -138,6 +138,12 @@ val stageWebApp by tasks.registering(Copy::class) {
         exclude("tests/**")            // 前端测试脚本不必随包分发
     }
     into(layout.buildDirectory.dir("staged-assets/webapp"))
+    // 构建标记依赖 VERSION 与当前提交，**必须声明成输入**：否则 Gradle 判定本任务
+    // UP-TO-DATE（它的输入只有 frontend/ 的内容），build.json 不会被重写，标记就会说谎。
+    // 实测踩过：把 VERSION 从 0.1.2 改成 0.1.3、工作区干净、重新构建，标记里仍然是
+    // "0.1.2 / 0683b89-dirty" —— 一个专门用来消除"我装的是哪一版"疑惑的机制，自己先撒了谎。
+    inputs.file(repoRoot.resolve("VERSION"))
+    inputs.property("gitHead", gitShortHead())
     // 写入构建标记，让"我装的到底是哪一次的包"能直接在界面（设置 → 关于）上看到。
     // 起因：每次修完只能反复叮嘱"需要重新下载"，而静态资源的 URL 跨安装**完全不变**
     // （端口是刻意固定的，为了保住本机状态），光看界面分不出新旧，
