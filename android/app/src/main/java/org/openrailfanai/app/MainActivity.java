@@ -2,13 +2,21 @@ package org.openrailfanai.app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.res.AssetManager;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceError;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -26,11 +34,22 @@ import com.chaquo.python.PyObject;
 import com.chaquo.python.Python;
 import com.chaquo.python.android.AndroidPlatform;
 
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 
 /**
  * 唯一的 Activity：把设备内的 Python 后端跑起来，再用**系统自带**的 WebView 加载它。
@@ -106,11 +125,24 @@ public class MainActivity extends Activity {
         }
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);        // 前端用 localStorage 存对话与供应商设置
+        s.setDomStorageEnabled(true);        // 桥不可用时的退路：前端会退回 localStorage
         s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(true);
         s.setAllowFileAccess(false);         // 页面只来自本机 HTTP，不需要文件访问
         s.setAllowContentAccess(false);
+
+        // 接原生桥：前端通过 window.RailNative 调用（契约见 frontend/src/native.js）。
+        //
+        // 为什么非要有它：WebView 的 localStorage 按**源**隔离，而源里含端口
+        // （http://127.0.0.1:<port>）。后端端口一旦变化，整个应用在浏览器眼里就成了
+        // 另一个站点 —— 对话、供应商配置、记住的 Key 全部读不到，用户看到的是"数据没了"。
+        // 桥把状态写进应用私有目录，与端口无关；顺带提供剪贴板（粘贴 Key 用）、分享，
+        // 以及把 Key 交给 Android Keystore 加密，而不是明文躺在 localStorage 里。
+        //
+        // 安全前提：外链一律交给系统浏览器（见 openExternally 与 shouldOverrideUrlLoading），
+        // WebView 永远停在 127.0.0.1 上，因此**不存在第三方页面能调到本桥的路径**。
+        // 将来若允许 WebView 内打开第三方页面，必须先重新评估这个前提。
+        web.addJavascriptInterface(new RailBridge(), "RailNative");
 
         // target="_blank" 的链接不会走 shouldOverrideUrlLoading，必须由 onCreateWindow 接住，
         // 否则同样是"点了没反应"（前端那个 GitHub 链接就带 _blank）。
@@ -268,6 +300,246 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ---------------------------------------------------------------- 原生桥（window.RailNative）
+    /**
+     * 暴露给前端页面的原生能力。契约见 {@code frontend/src/native.js}。
+     *
+     * 为什么自己写而不是引 Capacitor：本项目只需要"稳定存一份状态"加上几个系统调用，
+     * 百来行就能覆盖；而引一整套运行时还要在构建链里插 `npx cap sync`，且**解决不了**
+     * 这里真正要解决的问题（源随端口变化）。零依赖，代价可控。
+     *
+     * 线程：@JavascriptInterface 的方法跑在 WebView 的 JavaBridge 线程上，不是 UI 线程。
+     * 读写文件在这里正合适；要碰 UI 的（分享面板）走 startActivity，任意线程可用。
+     * 注意 **JS 侧是同步等返回值的** —— 写盘会阻塞页面，所以前端 store.js 做了写入合并。
+     */
+    public final class RailBridge {
+
+        @JavascriptInterface
+        public String platform() {
+            return "android";
+        }
+
+        // ---------- 状态持久化（store.js 的 db 原生后端）----------
+
+        @JavascriptInterface
+        public String readState() {
+            File f = stateFile();
+            if (!f.isFile()) return "";
+            try (FileInputStream in = new FileInputStream(f)) {
+                return new String(readAll(in), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                Log.w(TAG, "读取本机状态失败", e);
+                return "";
+            }
+        }
+
+        @JavascriptInterface
+        public void writeState(String json) {
+            if (json == null) return;
+            File f = stateFile();
+            File tmp = new File(f.getParentFile(), f.getName() + ".tmp");
+            try (FileOutputStream out = new FileOutputStream(tmp)) {
+                out.write(json.getBytes(StandardCharsets.UTF_8));
+                out.getFD().sync();
+            } catch (Exception e) {
+                Log.w(TAG, "写入本机状态失败", e);
+                return;
+            }
+            // 先写临时文件、刷盘、再改名：应用在写到一半被系统杀掉时不会留下半个 JSON
+            // ——那会让下次启动读到损坏状态，用户看到的是"数据全没了"。
+            if (!tmp.renameTo(f)) {
+                //noinspection ResultOfMethodCallIgnored
+                f.delete();
+                if (!tmp.renameTo(f)) Log.w(TAG, "状态文件改名失败：" + f);
+            }
+        }
+
+        // ---------- BYOK Key 的静态加密（Android Keystore）----------
+
+        @JavascriptInterface
+        public boolean secureAvailable() {
+            try {
+                keystoreKey();
+                return true;
+            } catch (Exception e) {
+                Log.w(TAG, "系统密钥库不可用，Key 将退回明文存储", e);
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public String secureGet(String id) {
+            try {
+                String b64 = readSecrets().optString(id, "");
+                if (b64.isEmpty()) return "";
+                byte[] blob = Base64.decode(b64, Base64.NO_WRAP);
+                if (blob.length <= GCM_IV_LEN) return "";
+                Cipher c = Cipher.getInstance(GCM_TRANSFORM);
+                c.init(Cipher.DECRYPT_MODE, keystoreKey(),
+                        new GCMParameterSpec(GCM_TAG_BITS, blob, 0, GCM_IV_LEN));
+                byte[] pt = c.doFinal(blob, GCM_IV_LEN, blob.length - GCM_IV_LEN);
+                return new String(pt, StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                // 密钥库被重置（刷机/清除应用数据）后旧密文解不开，这时只能如实返回空，
+                // 让用户重填 —— 比抛异常把整个设置页带崩好。
+                Log.w(TAG, "读取密钥失败（可能密钥库已重置）", e);
+                return "";
+            }
+        }
+
+        @JavascriptInterface
+        public void securePut(String id, String value) {
+            try {
+                JSONObject all = readSecrets();
+                if (value == null || value.isEmpty()) {
+                    all.remove(id);
+                    writeSecrets(all);
+                    return;
+                }
+                Cipher c = Cipher.getInstance(GCM_TRANSFORM);
+                c.init(Cipher.ENCRYPT_MODE, keystoreKey());
+                byte[] iv = c.getIV();
+                byte[] ct = c.doFinal(value.getBytes(StandardCharsets.UTF_8));
+                byte[] blob = new byte[iv.length + ct.length];
+                System.arraycopy(iv, 0, blob, 0, iv.length);
+                System.arraycopy(ct, 0, blob, iv.length, ct.length);
+                all.put(id, Base64.encodeToString(blob, Base64.NO_WRAP));
+                writeSecrets(all);
+            } catch (Exception e) {
+                Log.w(TAG, "保存密钥失败", e);
+            }
+        }
+
+        @JavascriptInterface
+        public void secureRemove(String id) {
+            try {
+                JSONObject all = readSecrets();
+                all.remove(id);
+                writeSecrets(all);
+            } catch (Exception e) {
+                Log.w(TAG, "删除密钥失败", e);
+            }
+        }
+
+        // ---------- 系统能力 ----------
+
+        /** 读剪贴板。Android 10+ 只允许**有焦点**的应用读，读不到时如实返回空串。 */
+        @JavascriptInterface
+        public String readClipboard() {
+            try {
+                ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cm == null || !cm.hasPrimaryClip()) return "";
+                ClipData clip = cm.getPrimaryClip();
+                if (clip == null || clip.getItemCount() == 0) return "";
+                CharSequence t = clip.getItemAt(0).coerceToText(MainActivity.this);
+                return t == null ? "" : t.toString();
+            } catch (Exception e) {
+                Log.w(TAG, "读取剪贴板失败", e);
+                return "";
+            }
+        }
+
+        @JavascriptInterface
+        public void copyText(String text) {
+            try {
+                ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cm != null) {
+                    cm.setPrimaryClip(ClipData.newPlainText("RailFanAI",
+                            text == null ? "" : text));
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "写入剪贴板失败", e);
+            }
+        }
+
+        /** 调起系统分享面板。返回是否成功唤起，供前端决定要不要提示失败。 */
+        @JavascriptInterface
+        public boolean shareText(String text) {
+            try {
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType("text/plain");
+                send.putExtra(Intent.EXTRA_TEXT, text == null ? "" : text);
+                Intent chooser = Intent.createChooser(send, "分享");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(chooser);
+                return true;
+            } catch (Exception e) {
+                Log.w(TAG, "调起分享失败", e);
+                return false;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- 密钥库与文件工具
+
+    private static final String KS_ALIAS = "railfan-byok-v1";
+    private static final String SECRETS_FILE = "secrets.json";
+    private static final String GCM_TRANSFORM = "AES/GCM/NoPadding";
+    private static final int GCM_IV_LEN = 12;      // GCM 推荐 96 bit
+    private static final int GCM_TAG_BITS = 128;
+
+    private File stateFile() {
+        return new File(getFilesDir(), "state.json");
+    }
+
+    private File secretsFile() {
+        return new File(getFilesDir(), SECRETS_FILE);
+    }
+
+    /** 取（必要时生成）用于加密 BYOK Key 的 AES 密钥；密钥本身永不离开系统密钥库。 */
+    private SecretKey keystoreKey() throws Exception {
+        KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+        ks.load(null);
+        KeyStore.Entry entry = ks.getEntry(KS_ALIAS, null);
+        if (entry instanceof KeyStore.SecretKeyEntry) {
+            return ((KeyStore.SecretKeyEntry) entry).getSecretKey();
+        }
+        KeyGenerator kg = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+        kg.init(new KeyGenParameterSpec.Builder(KS_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setKeySize(256)
+                .build());
+        return kg.generateKey();
+    }
+
+    private JSONObject readSecrets() {
+        File f = secretsFile();
+        if (!f.isFile()) return new JSONObject();
+        try (FileInputStream in = new FileInputStream(f)) {
+            return new JSONObject(new String(readAll(in), StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            Log.w(TAG, "读取密钥文件失败，按空处理", e);
+            return new JSONObject();
+        }
+    }
+
+    private void writeSecrets(JSONObject all) {
+        File f = secretsFile();
+        File tmp = new File(f.getParentFile(), f.getName() + ".tmp");
+        try (FileOutputStream out = new FileOutputStream(tmp)) {
+            out.write(all.toString().getBytes(StandardCharsets.UTF_8));
+            out.getFD().sync();
+        } catch (Exception e) {
+            Log.w(TAG, "写入密钥文件失败", e);
+            return;
+        }
+        if (!tmp.renameTo(f)) {
+            //noinspection ResultOfMethodCallIgnored
+            f.delete();
+            if (!tmp.renameTo(f)) Log.w(TAG, "密钥文件改名失败：" + f);
+        }
+    }
+
+    private static byte[] readAll(InputStream in) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) > 0) bos.write(buf, 0, n);
+        return bos.toByteArray();
+    }
+
     // ---------------------------------------------------------------- 资产解包
     /** 解包 assets 子目录到目标目录，返回本次写入的文件数（已是最新版本时返回 -1）。 */
     private int extractAssets(String assetSubDir, File targetDir) throws IOException {
@@ -422,6 +694,9 @@ public class MainActivity extends Activity {
             + "  chatChildren:chat?chat.childElementCount:-1,"
             + "  bootError:(err&&err.style.display!=='none')?err.textContent.slice(0,300):null,"
             + "  noticeShown:!!(notice&&notice.className.indexOf('hidden')<0),"
+            // 桥没接上时前端会**静默**退回 localStorage（对话仍在，只是又变得依赖端口）。
+            // 这种"降级"从界面上完全看不出来，所以把它显式写进自检日志。
+            + "  bridge:(window.RailNative?window.RailNative.platform():'缺失'),"
             + "  bodyText:txt});"
             + "}catch(e){return JSON.stringify({jsError:String(e)});}})()";
         view.evaluateJavascript(js, value -> boot("页面自检：" + value));

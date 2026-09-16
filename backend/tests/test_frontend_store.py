@@ -16,6 +16,19 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 HARNESS = REPO_ROOT / "frontend" / "tests" / "store.test.mjs"
+HARNESS_NATIVE = REPO_ROOT / "frontend" / "tests" / "store.native.test.mjs"
+
+
+def _run_node_harness(node: str, harness: Path, what: str) -> None:
+    assert harness.exists(), f"缺少测试脚本：{harness}"
+    proc = subprocess.run(
+        [node, str(harness)], capture_output=True, text=True, timeout=120, cwd=str(REPO_ROOT)
+    )
+    out = (proc.stdout or "") + (proc.stderr or "")
+    for line in out.splitlines():
+        if line.startswith("[PASS]") or line.startswith("[FAIL]") or line.startswith("结果"):
+            print(line)
+    assert proc.returncode == 0, f"{what}失败：\n{out}"
 
 
 def test_store_logic():
@@ -23,16 +36,26 @@ def test_store_logic():
     if not node:
         print("[SKIP] 未安装 node，跳过前端数据层测试（建议安装 node 以纳入 CI）")
         return
-    assert HARNESS.exists(), f"缺少测试脚本：{HARNESS}"
-    proc = subprocess.run(
-        [node, str(HARNESS)], capture_output=True, text=True, timeout=120, cwd=str(REPO_ROOT)
-    )
-    out = (proc.stdout or "") + (proc.stderr or "")
-    for line in out.splitlines():
-        if line.startswith("[PASS]") or line.startswith("[FAIL]") or line.startswith("结果"):
-            print(line)
-    assert proc.returncode == 0, f"store.js 逻辑测试失败：\n{out}"
+    _run_node_harness(node, HARNESS, "store.js 逻辑测试")
     print("[PASS] 前端数据层（多对话/重命名/删除/搜索/持久化/容量保护）逻辑正确")
+
+
+def test_store_survives_origin_change():
+    """接了原生桥时，状态必须与 WebView 的「源」无关 —— 换源后数据仍在。
+
+    这条钉的是一个真实的数据丢失形状：localStorage 按 scheme://host:port 隔离，
+    而 Android 版的后端端口会变（上次那个被别的 App 占了就换）。端口一变，
+    对话/供应商配置/记住的 Key 会全部读不到，用户看到的是"数据没了"。
+    所以必须走原生侧的应用私有文件，并且 Key 要走系统密钥库而不是明文。
+
+    测试用"清空 localStorage + 丢弃模块缓存重新 import"来模拟那次换源。
+    """
+    node = shutil.which("node")
+    if not node:
+        print("[SKIP] 未安装 node，跳过原生桥数据层测试")
+        return
+    _run_node_harness(node, HARNESS_NATIVE, "原生桥数据层测试")
+    print("[PASS] 换源后对话/主题/配置仍在，且 API Key 只以密文存在于密钥库")
 
 
 def test_frontend_has_no_account_ui():
@@ -59,6 +82,7 @@ def test_frontend_has_no_account_ui():
 
 def main():
     test_store_logic()
+    test_store_survives_origin_change()
     test_frontend_has_no_account_ui()
     print("\n前端数据层测试全部通过 ✔")
 

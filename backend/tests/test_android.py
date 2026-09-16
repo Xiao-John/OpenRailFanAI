@@ -572,6 +572,81 @@ def test_android_points_dict_db_path_at_extracted_copy():
     print("[PASS] DICT_DB_PATH 指向解包出来的 <data_dir>/dict.db，且启动时如实报告可用性")
 
 
+def _main_java() -> str:
+    return (ANDROID_DIR / "app/src/main/java/org/openrailfanai/app/MainActivity.java"
+            ).read_text(encoding="utf-8")
+
+
+def test_native_bridge_contract_matches_java():
+    """前端用到的每个桥方法，Java 侧都必须实现，且都带 @JavascriptInterface。
+
+    为什么需要这条：`addJavascriptInterface` 是**按方法名反射**暴露的 ——
+    名字写错既不编译报错、也不抛异常，前端拿到的只是 undefined，表现为
+    "这个功能点了没反应"。这类错只有装到真机上才看得出来，代价很高，
+    所以在这里用静态检查钉住两边的契约。
+
+    另外顺带钉住这个桥赖以安全的前提：外链一律交给系统浏览器，
+    WebView 永远不会停在第三方页面上（否则陌生页面就能调到本桥）。
+    """
+    js = (REPO_ROOT / "frontend/src/native.js").read_text(encoding="utf-8")
+    java = _main_java()
+
+    used = sorted(set(re.findall(r'(?:call|has)\("(\w+)"', js)))
+    assert used, "没从 native.js 解析出任何桥方法名（检查方式可能已失效）"
+    missing = [n for n in used
+               if not re.search(r"@JavascriptInterface\s+public\s+[\w<>\[\]]+\s+" + n + r"\s*\(", java)]
+    assert not missing, (
+        "前端调用了 Java 侧不存在（或没加 @JavascriptInterface）的桥方法："
+        + "、".join(missing)
+        + "\n→ 反射不到时不会报错，只会「点了没反应」，前端拿到的是 undefined"
+    )
+    assert 'addJavascriptInterface(new RailBridge(), "RailNative")' in java, (
+        "WebView 没有注册原生桥：前端 window.RailNative 会是 undefined"
+    )
+    # 安全前提：外链必须离开 WebView，否则第三方页面也能调到这个桥
+    assert "openExternally(request.getUrl().toString())" in java, (
+        "外链没有交给系统浏览器 —— 一旦 WebView 内能打开第三方页面，"
+        "注入的 RailNative 就能被陌生页面调用"
+    )
+    print(f"[PASS] 原生桥契约一致（{len(used)} 个方法），且外链离开 WebView 的安全前提仍在")
+
+
+def test_byok_keys_use_android_keystore():
+    """BYOK 的 Key 在 Android 上必须走系统密钥库，而不是明文落盘。
+
+    WebView 的 localStorage / 应用私有文件对**本机其他应用**都是不可读的，
+    但对"拿到设备或备份的人"不是。Key 是用户的真金白银，值得用 Keystore 加密：
+    加密密钥本身永远不出密钥库，密文被拷走也解不开。
+    """
+    java = _main_java()
+    assert '"AndroidKeyStore"' in java, "没有使用 Android Keystore"
+    assert "AES/GCM/NoPadding" in java, "应使用 AES-GCM（带认证的加密，能发现密文被篡改）"
+    assert "setUserAuthenticationRequired(true)" not in java, (
+        "Key 不应要求每次解锁都验指纹/密码：发送消息时需要静默取用"
+    )
+    # 密钥库被重置（刷机/清数据）后旧密文解不开，必须如实返回空而不是崩掉设置页
+    assert "密钥库已重置" in java, "缺少密钥库重置后的降级处理"
+    # 明文文档里不应再出现 Key：store.js 侧已断言，这里确认落盘文件是分开的两个
+    assert '"state.json"' in java and '"secrets.json"' in java, (
+        "状态与密钥应分文件存放（密钥单独一个文件，便于整体删除与加密）"
+    )
+    print("[PASS] BYOK Key 走 Android Keystore（AES-GCM），且密钥库重置时有降级处理")
+
+
+def test_native_state_write_is_atomic():
+    """状态落盘必须是"写临时文件 + 改名"，不能直接覆写。
+
+    应用被系统在写到一半时回收（移动端很常见），直接覆写会留下半个 JSON：
+    下次启动解析失败，用户看到的是"我的对话全没了"。先写 .tmp、刷盘、再原子改名，
+    最坏情况也只是丢掉最后一次改动。
+    """
+    java = _main_java()
+    assert "renameTo(" in java, "状态落盘没有用 renameTo 做原子替换"
+    assert 'f.getName() + ".tmp"' in java, "没有先写临时文件"
+    assert "out.getFD().sync()" in java, "临时文件没有 fsync：改名成功但数据可能还在页缓存里"
+    print("[PASS] 状态落盘为原子写（tmp + fsync + rename），进程被杀不会留下半个 JSON")
+
+
 def main():
     test_android_requirements_are_pure_python()
     test_android_requirements_are_pinned()
@@ -588,6 +663,9 @@ def main():
     test_apk_assets_satisfy_index_html_references()
     test_dict_extraction_does_not_wipe_shared_data_dir()
     test_android_points_dict_db_path_at_extracted_copy()
+    test_native_bridge_contract_matches_java()
+    test_byok_keys_use_android_keystore()
+    test_native_state_write_is_atomic()
     test_python_callbacks_use_attribute_access()
     test_android_sets_tls_ca_bundle()
     test_llm_diagnostics_include_cause_chain()

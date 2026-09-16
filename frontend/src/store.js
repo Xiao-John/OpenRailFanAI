@@ -1,11 +1,14 @@
 // RailFanAI · 本机数据层（对话 / 供应商选择 / 偏好）
 // 设计原则：
-//   1) 所有数据先落 localStorage，**服务端可无状态**（v1 会话不落库）；
-//   2) 写入做容量保护：对话数、单对话消息数、元信息体积都有上限，避免 localStorage 爆掉；
+//   1) 所有数据先落**本机**（见下方 db：浏览器里是 localStorage，Android 应用里是
+//      原生侧的应用私有文件），**服务端无状态**（v1 会话不落库）；
+//   2) 写入做容量保护：对话数、单对话消息数、元信息体积都有上限，避免存储爆掉；
 //   3) 不存任何"账号凭据"（社区版没有账号体系）。
 //      例外：用户自备的 LLM Key（BYOK）可**按用户显式勾选**存在本机 —— 它是
 //      用户自己的 Key，只发往用户自己配置的后端，不经过任何第三方；
 //      未勾选时只保留在内存里（刷新即失效），见 setLlm/llmKey。
+
+import { native } from "./native.js";
 
 const LS_CONVS = "railfan_conversations_v1";
 const LS_CURRENT = "railfan_current_conv_v1";
@@ -18,6 +21,118 @@ const MAX_MSGS = 300;           // 单对话最多消息数
 const MAX_THINK = 4000;         // 单条思考内容上限（字符）
 const MAX_LOGS = 60;            // 单条流程日志行数上限
 const MAX_SOURCES = 20;         // 单条来源数上限
+
+// ================= 本机持久化通道 =================
+//
+// 为什么要在 localStorage 之上再加一层：
+//
+// localStorage 是**按「源」隔离**的，而源 = scheme://host:port。Android 一体化版
+// 的后端跑在 127.0.0.1 的随机端口上，端口一旦变化（上次那个被别的 App 占了就换），
+// 整个应用在浏览器眼里就成了"另一个站点" —— 对话、供应商配置、记住的 Key 全部读不到，
+// 用户看到的是"我的数据没了"。这不是理论：真机上 http://127.0.0.1:58213 存的东西
+// 在 http://127.0.0.1:43657 下就是读不到。
+//
+// 所以接了原生桥时（Android 应用），状态写进应用私有目录里的一个文件，与端口无关；
+// 桥不存在时（桌面浏览器、node 单测）行为与从前完全一致，仍是 localStorage。
+//
+// 为什么不干脆把状态挪到后端 API：那会把整套数据层染成异步（store.js 现在全同步，
+// 有几十个调用点）。而 @JavascriptInterface 的返回值是同步的，所以"走原生文件"
+// 既解决了问题，又一行都不用改调用方。
+
+const LS_FALLBACK = typeof localStorage !== "undefined" ? localStorage : null;
+
+/** 原生文件后端：整份状态一个 JSON 文档，读一次、写整份。 */
+function nativeBackend() {
+  let doc = {};
+  try {
+    const raw = native.readState();
+    doc = raw ? (JSON.parse(raw) || {}) : {};
+  } catch (e) {
+    // 文件损坏时宁可丢一次，也不要让应用启动就崩
+    console.warn("[store] 原生状态解析失败，从空状态开始", e);
+    doc = {};
+  }
+
+  // 首次启用原生存储时，把当前源里已有的数据搬过来。
+  // 这是**最后的机会**：旧版本的数据躺在某个固定端口的 localStorage 里，
+  // 升级后想找回它就得靠运气，所以只要原生侧还是空的就搬一次。
+  if (!Object.keys(doc).length && LS_FALLBACK) {
+    for (const k of [LS_CONVS, LS_CURRENT, LS_TOTAL, LS_THEME, LS_LLM]) {
+      const v = LS_FALLBACK.getItem(k);
+      if (v != null) doc[k] = v;
+    }
+  }
+
+  let timer = null;
+  let dirty = false;
+  const flush = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (!dirty) return;
+    dirty = false;
+    try {
+      native.writeState(JSON.stringify(doc));
+    } catch (e) {
+      console.warn("[store] 状态写盘失败", e);
+    }
+  };
+  const touch = () => {
+    dirty = true;
+    // 桥是同步调用、会阻塞 JS 线程，而一次问答会触发十几次 save()。
+    // 所以做合并：250ms 内的多次写入只落一次盘；页面隐藏/卸载时立即补写（见文件末尾）。
+    if (!timer) timer = setTimeout(flush, 250);
+  };
+
+  return {
+    kind: "native",
+    getItem: (k) => (k in doc ? doc[k] : null),
+    setItem: (k, v) => {
+      doc[k] = String(v);
+      touch();
+    },
+    removeItem: (k) => {
+      delete doc[k];
+      touch();
+    },
+    flushNow: flush,
+    /** 供测试用：不经过合并直接落盘。 */
+    raw: () => doc,
+  };
+}
+
+function createBackend() {
+  if (native.available) {
+    try {
+      return nativeBackend();
+    } catch (e) {
+      console.warn("[store] 原生存储不可用，退回 localStorage", e);
+    }
+  }
+  return {
+    kind: "localStorage",
+    getItem: (k) => (LS_FALLBACK ? LS_FALLBACK.getItem(k) : null),
+    setItem: (k, v) => {
+      if (LS_FALLBACK) LS_FALLBACK.setItem(k, v);
+    },
+    removeItem: (k) => {
+      if (LS_FALLBACK) LS_FALLBACK.removeItem(k);
+    },
+    flushNow() {},
+  };
+}
+
+const db = createBackend();
+
+// 切到后台/关页面时把合并中的写入补上 —— 否则最后 250ms 内的消息会丢。
+// visibilitychange 是关键的那条：Android 应用被系统回收前一定会先转后台。
+if (typeof document !== "undefined") {
+  window.addEventListener("pagehide", () => db.flushNow());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") db.flushNow();
+  });
+}
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -89,7 +204,7 @@ export const store = {
 
   // ---------- 载入 / 保存 ----------
   load() {
-    const raw = safeParse(localStorage.getItem(LS_CONVS), []);
+    const raw = safeParse(db.getItem(LS_CONVS), []);
     this.conversations = Array.isArray(raw) ? raw.filter((c) => c && c.id) : [];
     this.conversations.forEach((c) => {
       c.messages = slimMessages(c.messages);
@@ -97,7 +212,7 @@ export const store = {
       if (!c.updatedAt) c.updatedAt = c.createdAt;
       if (!c.title) c.title = "新对话";
     });
-    this.currentId = localStorage.getItem(LS_CURRENT) || null;
+    this.currentId = db.getItem(LS_CURRENT) || null;
     if (!this.conversations.length) {
       this.create();                       // 首次进入给一个空对话
     } else if (!this.conversations.some((c) => c.id === this.currentId)) {
@@ -115,14 +230,14 @@ export const store = {
       this.conversations = this.conversations.filter((c) => keep.has(c.id));
     }
     try {
-      localStorage.setItem(LS_CONVS, JSON.stringify(this.conversations));
-      if (this.currentId) localStorage.setItem(LS_CURRENT, this.currentId);
+      db.setItem(LS_CONVS, JSON.stringify(this.conversations));
+      if (this.currentId) db.setItem(LS_CURRENT, this.currentId);
     } catch (e) {
       // 配额超限：丢掉最旧的 20% 再试一次，仍失败则提示（不阻断对话）
       const sorted = this.sort();
       this.conversations = sorted.slice(0, Math.max(1, Math.floor(sorted.length * 0.8)));
       try {
-        localStorage.setItem(LS_CONVS, JSON.stringify(this.conversations));
+        db.setItem(LS_CONVS, JSON.stringify(this.conversations));
         return "trimmed";
       } catch {
         return "failed";
@@ -245,20 +360,20 @@ export const store = {
 
   // ---------- 累计 token ----------
   totalTokens() {
-    return Number(localStorage.getItem(LS_TOTAL) || 0);
+    return Number(db.getItem(LS_TOTAL) || 0);
   },
   bumpTotal(n) {
     const v = this.totalTokens() + (Number(n) || 0);
-    localStorage.setItem(LS_TOTAL, String(v));
+    db.setItem(LS_TOTAL, String(v));
     return v;
   },
 
   // ---------- 主题 ----------
   theme() {
-    return localStorage.getItem(LS_THEME) || "dark";
+    return db.getItem(LS_THEME) || "dark";
   },
   setTheme(t) {
-    localStorage.setItem(LS_THEME, t);
+    db.setItem(LS_THEME, t);
     document.documentElement.setAttribute("data-theme", t);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", t === "light" ? "#f6f7fb" : "#0f1115");
@@ -279,20 +394,37 @@ export const store = {
   // 用户得先自我归类。列条模型让两者变成同一种东西，界面才能是一张列表 + 一个表单。
   llm() {
     if (!this._llm) {
-      const raw = safeParse(localStorage.getItem(LS_LLM), null);
+      const raw = safeParse(db.getItem(LS_LLM), null);
       this._llm = _migrateLlm(raw);
+      // Key 若存在系统密钥库里，明文文档中就是空的 —— 这里再逐个取回来填进内存模型。
+      // 顺序很重要：先按明文恢复条目（id/base_url/model），再补 Key。
+      if (this._llm.rememberKey && native.secure.available) {
+        for (const e of this._llm.entries) e.key = native.secure.get(e.id) || "";
+      }
     }
     return this._llm;
   },
   _persistLlm() {
     const next = this.llm();
+    const entries = next.entries || [];
+    const secure = native.secure.available;
+
+    if (next.rememberKey && secure) {
+      // 「记住 Key」+ 有系统密钥库：Key 一律走 Keystore 加密存，明文文档里一个都不留。
+      for (const e of entries) native.secure.put(e.id, e.key || "");
+    } else if (!next.rememberKey && secure) {
+      // 取消勾选后要**真的删掉**密钥库里的副本 —— 否则用户以为删了、其实还在，
+      // 下次一勾"记住"就"自己回来了"，那是最容易被当成 bug 的行为。
+      for (const e of entries) native.secure.remove(e.id);
+    }
+
     const persisted = { ...next };
-    if (!next.rememberKey) {
-      // 不记住 → 绝不落盘：整表的 key 字段都剔掉
-      persisted.entries = (next.entries || []).map((e) => ({ ...e, key: "" }));
+    if (!next.rememberKey || secure) {
+      // 不记住 → 绝不落盘；走密钥库 → 明文里也不该有 Key。
+      persisted.entries = entries.map((e) => ({ ...e, key: "" }));
     }
     try {
-      localStorage.setItem(LS_LLM, JSON.stringify(persisted));
+      db.setItem(LS_LLM, JSON.stringify(persisted));
     } catch {
       /* 容量满等情况：退化为仅内存，不阻断使用 */
     }
@@ -326,6 +458,7 @@ export const store = {
     const s = this.llm();
     s.entries = (s.entries || []).filter((e) => e.id !== id);
     if (s.activeId === id) s.activeId = s.entries[0] ? s.entries[0].id : "";
+    native.secure.remove(id);          // 条目删了，密钥库里的 Key 不能留
     return this._persistLlm();
   },
   setActiveLlm(id) {
@@ -343,10 +476,18 @@ export const store = {
     return this.llm();
   },
   clearLlm() {
+    // 密钥库里的副本也要清 —— 否则"清空"只清了引用，Key 还躺在系统里。
+    if (native.secure.available) {
+      for (const e of (this._llm && this._llm.entries) || []) native.secure.remove(e.id);
+    }
     this._llm = { entries: [], activeId: "", rememberKey: false };
-    localStorage.removeItem(LS_LLM);
+    db.removeItem(LS_LLM);
   },
 
 };
 
 export { uid };
+
+// 供测试与诊断使用：当前生效的持久化后端（"native" = Android 应用私有文件，
+// "localStorage" = 浏览器）。把它暴露出来，"数据到底存在哪"就不用靠猜。
+export const persistence = db;
