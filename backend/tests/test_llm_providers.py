@@ -59,13 +59,15 @@ class _Msg:
 
 
 class _Choice:
-    def __init__(self, msg):
+    def __init__(self, msg, finish_reason: str = "stop"):
         self.message = msg
+        self.finish_reason = finish_reason
 
 
 class _ChatResp:
-    def __init__(self, content: str, reasoning: str | None = None, usage=None):
-        self.choices = [_Choice(_Msg(content, reasoning))]
+    def __init__(self, content: str, reasoning: str | None = None, usage=None,
+                 finish_reason: str = "stop"):
+        self.choices = [_Choice(_Msg(content, reasoning), finish_reason)]
         self.usage = usage
 
 
@@ -89,6 +91,15 @@ class _StreamEvent:
         self.type = type_
         self.delta = delta
         self.response = response
+
+
+class _StreamEvent2:
+    """带 finish_reason 的 chat 流式 chunk（用于验证截断识别）。"""
+
+    def __init__(self, content: str | None = None, finish_reason: str | None = None):
+        delta = type("D", (), {"content": content, "reasoning_content": None})()
+        self.choices = [type("C", (), {"delta": delta, "finish_reason": finish_reason})()]
+        self.usage = None
 
 
 class _FakeStream:
@@ -762,6 +773,93 @@ def test_request_base_url_ssrf_guard():
     print("[PASS] SSRF 守卫：请求级 base_url 生产拦截/开发放行/管理员配置放行，且 /api/chat 同守卫")
 
 
+def test_truncation_flag_follows_finish_reason():
+    """`finish_reason=length` 必须被记为"截断"。
+
+    这是"长回答写到一半断掉、原因不明"的根因：模型明确说了因长度上限停止
+    （finish_reason=length），而应用此前**完全不读这个字段**。
+    """
+    s = _settings(llm_provider="fake", llm_providers=json.dumps(
+        {"fake": {"base_url": "https://x.example.com/v1", "api_key": "k", "model": "m",
+                  "api": "chat_completions"}}))
+    _use(s)
+
+    # 注意：截断标记与计费一样是 ContextVar，asyncio.run() 跑在**复制的上下文**里，
+    # 因此必须在协程**内部**读（真实请求里是同一个 task，故线上行为正确）。
+    async def once(finish: str):
+        await llm.chat_with_reasoning("hi", model="m")
+        return llm.was_truncated()
+
+    llm.reset_run_metrics()
+    with _Ctx(**{"app.llm.client.get_client": lambda p=None: _FakeClient(
+            chat=lambda **kw: _ChatResp("半句话", finish_reason="length"))}):
+        flagged = asyncio.run(once("length"))
+    assert flagged is True, "finish_reason=length 未标记为截断"
+
+    with _Ctx(**{"app.llm.client.get_client": lambda p=None: _FakeClient(
+            chat=lambda **kw: _ChatResp("完整回答", finish_reason="stop"))}):
+        flagged2 = asyncio.run(once("stop"))
+    assert flagged2 is False, "正常结束不应标记截断"
+    print("[PASS] 截断标记跟随 finish_reason（length→True / stop→False，reset 复位）")
+
+
+def test_truncation_flag_in_stream():
+    """流式路径同样要识别末个 chunk 的 finish_reason=length。"""
+    _reset_dialect_cache()
+    s = _settings(llm_provider="fake", llm_providers=json.dumps(
+        {"fake": {"base_url": "https://x.example.com/v1", "api_key": "k", "model": "m",
+                  "api": "chat_completions"}}))
+    stream = _FakeStream([
+        _StreamEvent2("第一段"),
+        _StreamEvent2("第二段", finish_reason="length"),
+    ])
+    _use(s)
+    llm.reset_run_metrics()
+
+    async def collect():
+        out = []
+        async for kind, text in llm.stream_completion("hi", model="m"):
+            out.append((kind, text))
+        return out, llm.was_truncated()      # 同上：上下文内读
+
+    with _Ctx(**{"app.llm.client.get_client": lambda p=None: _FakeClient(chat_stream=stream)}):
+        items, flagged = asyncio.run(collect())
+    assert items == [("text", "第一段"), ("text", "第二段")], items
+    assert flagged is True, "流式路径未识别 finish_reason=length"
+    print("[PASS] 流式路径识别 finish_reason=length")
+
+
+def test_output_budget_respects_context_window():
+    """输出上限要按上下文窗口收窄，且请求级覆盖优先。
+
+    为什么重要：用户自备的模型窗口差别极大（8k/32k/128k）。若输出上限固定给，
+    小窗口模型会直接被上游 400 拒绝（context_length_exceeded）。
+    """
+    big = [{"role": "user", "content": "字" * 1500}]        # ≈1000 token
+
+    # 窗口远大于输入 → 用请求的上限
+    _use(_settings(llm_max_tokens=4096, llm_context_tokens=32000, llm_chars_per_token=1.5))
+    assert llm.effective_max_tokens([{"role": "user", "content": "短问题"}]) == 4096
+
+    # 窗口很小 → 收窄到窗口内（窗口 - 输入 - 512 余量）
+    _use(_settings(llm_max_tokens=4096, llm_context_tokens=2000, llm_chars_per_token=1.5))
+    got = llm.effective_max_tokens(big)
+    assert got < 4096, f"未按窗口收窄：{got}"
+    # 用同一估算函数算期望，测的是"窗口 - 输入 - 余量"这个算式本身
+    used = llm.estimate_tokens(big[0]["content"])
+    assert got == 2000 - used - 512, f"{got} != 2000-{used}-512"
+
+    # 请求级覆盖（用户在界面上按自己的模型设置）优先于服务端配置
+    llm.set_active_provider({"max_tokens": 777, "context_tokens": 999999})
+    assert llm.effective_max_tokens([{"role": "user", "content": "短问题"}]) == 777, "请求级 max_tokens 未生效"
+    llm.set_active_provider(None)
+
+    # 0 = 不做窗口约束
+    _use(_settings(llm_max_tokens=1234, llm_context_tokens=0))
+    assert llm.effective_max_tokens(big) == 1234
+    print("[PASS] 输出预算按窗口收窄，请求级覆盖优先，0=不约束")
+
+
 def main():
     test_base_url_normalization()
     test_api_key_cleaning()
@@ -785,6 +883,9 @@ def main():
     test_probe_provider_reports_dialect_and_models()
     test_mock_mode_needs_no_provider()
     test_unknown_provider_raises_friendly_error()
+    test_truncation_flag_follows_finish_reason()
+    test_truncation_flag_in_stream()
+    test_output_budget_respects_context_window()
     test_request_base_url_ssrf_guard()
     print("\nLLM 多供应商 / 双方言回归测试全部通过 ✔")
 
