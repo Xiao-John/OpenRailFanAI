@@ -1,3 +1,4 @@
+import java.time.OffsetDateTime
 import java.util.Properties
 
 plugins {
@@ -125,7 +126,35 @@ val stageWebApp by tasks.registering(Copy::class) {
         exclude("tests/**")            // 前端测试脚本不必随包分发
     }
     into(layout.buildDirectory.dir("staged-assets/webapp"))
+    // 写入构建标记，让"我装的到底是哪一次的包"能直接在界面（设置 → 关于）上看到。
+    // 起因：每次修完只能反复叮嘱"需要重新下载"，而静态资源的 URL 跨安装**完全不变**
+    // （端口是刻意固定的，为了保住本机状态），光看界面分不出新旧，
+    // 用户无从判断重装到底生效了没有。
+    doLast {
+        val dst = layout.buildDirectory.dir("staged-assets/webapp").get().asFile
+        File(dst, "build.json").writeText(
+            """{"commit":"${gitShortHead()}","builtAt":"${buildTimeIso()}"}"""
+        )
+    }
 }
+
+fun gitShortHead(): String = try {
+    fun run(vararg args: String): String {
+        val proc = ProcessBuilder(*args).directory(repoRoot).redirectErrorStream(true).start()
+        return proc.inputStream.bufferedReader().readText().trim()
+    }
+    val head = run("git", "rev-parse", "--short", "HEAD").ifEmpty { "unknown" }
+    // 工作区有未提交改动时标出来：否则"5ffd432"会让人以为这个包就是那次提交的产物，
+    // 而实际上它可能带着尚未提交的改动（本次修复正好就是脏树构建）。
+    val dirty = run("git", "status", "--porcelain").isNotEmpty()
+    if (dirty) "$head-dirty" else head
+} catch (e: Exception) {
+    "unknown"                              // 没装 git 也不该让构建失败
+}
+
+// 注意：这里不能写 `java.time.…` —— 脚本里 `java` 是 Gradle 的 JavaPluginExtension，
+// 会把包名遮住（报 Unresolved reference: time）。所以用上面的 import。
+fun buildTimeIso(): String = OffsetDateTime.now().withNano(0).toString()
 
 val stageDict by tasks.registering {
     description = "可选：把 backend/data/dict.db 打进 assets（-PincludeDict=true）"

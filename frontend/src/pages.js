@@ -148,6 +148,23 @@ export function aboutCard(navigate) {
   c.appendChild(kv("许可", "MIT（第三方数据的版权归各数据源所有）"));
   c.appendChild(kv("技术栈", "FastAPI（SSE 流式）+ 原生 HTML/JS（无构建工具）"));
 
+  // 构建标记：Android 包在打包时写入 build.json；桌面/开发态没有这个文件，整行不显示。
+  // 为什么要把它显示给用户：静态资源 URL 跨安装**完全不变**，出问题后只能靠"重新下载"，
+  // 而界面本身分不出新旧 —— 有这一行就能直接确认重装到底生效了没有。
+  const buildRow = kv("构建", "读取中…");
+  c.appendChild(buildRow);
+  // 用 remove() 而不是 parent.removeChild()：用户在 fetch 返回前就离开设置页时，
+  // 这行早已被摘掉，removeChild 会抛异常 —— 而它会冒泡成 unhandledrejection，
+  // 直接把启动错误横幅点亮（本项目有过同类前科）。
+  fetch("build.json", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((b) => {
+      if (!b || !b.commit) { buildRow.remove(); return; }
+      const v = buildRow.querySelector(".v");
+      if (v) v.textContent = b.commit + (b.builtAt ? " · " + b.builtAt : "");
+    })
+    .catch(() => buildRow.remove());
+
   // 仓库地址与反馈地址是**两个**链接：仓库给"想看源码/自建"的人，
   // issue 给"要报问题"的人，用同一个地址会让人以为只能提 issue。
   c.appendChild(externalLink("在 GitHub 上打开仓库", REPO_URL));

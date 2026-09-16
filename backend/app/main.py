@@ -74,9 +74,28 @@ _frontend_dir = (
     else Path(__file__).resolve().parents[2] / "frontend"
 )
 if _frontend_dir.is_dir():
+
+    class _NoCacheStatic(StaticFiles):
+        """给静态资源加 `no-cache`。
+
+        为什么必须加：这套前端是**无构建步骤**的（每次安装/更新都是直接替换文件），
+        而 URL 跨安装**完全不变**（Android 上端口是刻意固定的，为的是保住本机状态）。
+        没有 `Cache-Control` 时浏览器/WebView 会按启发式规则自行缓存，
+        于是"我明明重装了、界面却没变"——实测重装后看不到刚修好的界面就是这类问题。
+        `no-cache` 是"每次都要回源校验"（不是禁用缓存），本地回环上代价可以忽略。
+
+        顺带：APK 版本的 "关于" 卡片会显示构建标记（打包时写入的 build.json），
+        用来直接确认"装的到底是哪一次的包"。
+        """
+
+        def file_response(self, *args, **kwargs):      # type: ignore[no-untyped-def]
+            resp = super().file_response(*args, **kwargs)
+            resp.headers["Cache-Control"] = "no-cache"
+            return resp
+
     app.mount(
         "/",
-        StaticFiles(directory=str(_frontend_dir), html=True),
+        _NoCacheStatic(directory=str(_frontend_dir), html=True),
         name="frontend",
     )
 else:

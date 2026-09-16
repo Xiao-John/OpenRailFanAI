@@ -62,6 +62,26 @@ def _chat_until(
     )
 
 
+def test_static_assets_are_not_heuristically_cached():
+    """前端静态资源必须带 `Cache-Control: no-cache`。
+
+    为什么值得一条测试：这套前端**没有构建步骤**（更新就是直接替换文件），
+    而 Android 上静态资源的 URL 跨安装**完全不变**（端口刻意固定，为的是保住本机状态）。
+    没有 Cache-Control 时浏览器/WebView 会按启发式规则自行缓存，
+    表现为"明明重装了、界面却没变"——实测重装后看不到刚修好的界面就属于这一类。
+    `no-cache` 是"每次回源校验"（不是禁用缓存），本地回环代价可忽略。
+    """
+    for path in ("/", "/src/main.js", "/src/pages.js"):
+        r = client.get(path)
+        assert r.status_code == 200, f"{path} → {r.status_code}"
+        cc = r.headers.get("cache-control") or ""
+        assert "no-cache" in cc or "no-store" in cc, (
+            f"{path} 没有禁止启发式缓存（cache-control={cc!r}）："
+            "重装后可能继续用旧的 JS，用户看到的界面不会更新"
+        )
+    print("[PASS] 静态资源带 no-cache，重装后不会拿到旧的 JS")
+
+
 def test_health():
     r = client.get("/health")
     assert r.status_code == 200, r.text
@@ -211,6 +231,7 @@ def test_question_type_realtime():
 
 
 def main():
+    test_static_assets_are_not_heuristically_cached()
     test_health()
     test_sessions_info()
     test_chat_block_emu_routing()

@@ -517,6 +517,42 @@ def test_frontend_reports_boot_errors():
     print("[PASS] 前端错误可见化 + 未配置模型的引导条已接线")
 
 
+def test_apk_contains_build_stamp():
+    """APK 里要带上"这是哪一次构建"的标记，并显示在设置 → 关于。
+
+    为什么需要：Android 上静态资源的 URL 跨安装不变，出问题后只能靠"重新下载"，
+    而用户无从判断重装到底生效了没有 —— 反复出现"我装了但界面没变"的扯皮。
+    有了这一行就能直接对照："你那儿显示的是 X，我说的是 Y"。
+    """
+    gradle = (ANDROID_DIR / "app/build.gradle.kts").read_text(encoding="utf-8")
+    assert '"build.json"' in gradle, "打包时没有写入 build.json（构建标记）"
+    assert "gitShortHead" in gradle, "构建标记里没有提交号，无法定位到具体代码"
+    assert "-dirty" in gradle, (
+        "工作区有未提交改动时没有标出来：标记会说成是某次干净提交的产物，实际上不是"
+    )
+    pages = (REPO_ROOT / "frontend/src/pages.js").read_text(encoding="utf-8")
+    assert 'kv("构建"' in pages, "「关于」卡片没有显示构建标记"
+    assert 'fetch("build.json"' in pages, "没有去读 build.json"
+
+    import zipfile
+
+    apks = sorted((ANDROID_DIR / "app/build/outputs/apk").rglob("*.apk"))
+    if not apks:
+        print("[SKIP] 未找到已构建的 APK，跳过构建标记的产物检查")
+        return
+    # 逐个检查**所有**已构建的 APK：debug 与 release 都要有，不能只让其中一个带上
+    # （只取 sorted()[-1] 会挑到 release 或 debug，取决于路径排序，容易漏掉另一个。
+    #  实测第一次跑就抓到了"release 包是加标记之前构建的"这种情况。）
+    stamps = []
+    for apk in apks:
+        with zipfile.ZipFile(apk) as z:
+            names = [n for n in z.namelist() if n.endswith("assets/webapp/build.json")]
+            assert names, f"{apk.name} 里没有 assets/webapp/build.json（请重新构建该产物）"
+            stamps.append(f"{apk.name}: " + z.read(names[0]).decode("utf-8").strip())
+    assert all("commit" in s and "builtAt" in s for s in stamps), f"构建标记内容不完整：{stamps}"
+    print("[PASS] 每个已构建的 APK 都带构建标记：" + "；".join(stamps))
+
+
 def test_dict_extraction_does_not_wipe_shared_data_dir():
     """解包字典时不得清空目标目录 —— 它的目标是 filesDir，与 webapp/ 共用。
 
@@ -728,6 +764,7 @@ def main():
     test_byok_keys_use_android_keystore()
     test_native_state_write_is_atomic()
     test_theme_declares_no_actionbar()
+    test_apk_contains_build_stamp()
     test_app_canvas_is_inset_from_system_bars()
     test_python_callbacks_use_attribute_access()
     test_android_sets_tls_ca_bundle()
