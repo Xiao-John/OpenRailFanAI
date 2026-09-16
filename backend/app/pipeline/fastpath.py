@@ -47,11 +47,22 @@ class FastPlan:
 # ---- 意图关键词（每个意图都必须"关键词 + 关键槽位"双命中才接管）----
 
 _ROUTING_RE = re.compile(r"(担当|哪组|哪个车组|哪台车|由谁跑|交路|车底)")
-_STOPS_RE = re.compile(r"(经停|停靠|经过哪些站|途经|站序|历时|全程多久|要多久|几个小时)")
+# `经过哪些(?:车)?站`：必须容忍"车"夹在中间 —— 漏写它的话「G1经过哪些车站」匹配不上
+# （原来的字面量是 `经过哪些站`），会白白多一次 LLM 决策。
+_STOPS_RE = re.compile(r"(经停|停靠|经过哪些(?:车)?站|途经|站序|历时|全程多久|要多久|几个小时)")
 _SCREEN_RE = re.compile(r"(大屏|出发屏|到达屏|车站车次|检票口|正晚点|晚点)")
 _TICKET_RE = re.compile(r"(余票|还有票|有票吗|有没有票|买票|抢票|票价|多少钱|一等座|二等座|卧铺|候补)")
 _LINE_RE = re.compile(r"(多少公里|多少千米|几公里|里程|距离|多远|径路|走哪条|线路)")
 _STATION_RE = re.compile(r"(电报码|车站编号|TMIS|接算站|营业限制|车站|站名|在哪个城市|属于哪个局)")
+# 问"一条线路经过/沿线有哪些车站" —— 这是**以线路为口径**的问题，属于 rail_line，
+# 不能因为句子里有"车站"二字就判成 station（station 是问**某一座车站**本身的信息）。
+# 与 _STATION_RE 的区别就在于此：_STATION_RE 必须再配上具体站名才会命中（见规则 6）。
+_LINE_STATIONS_RE = re.compile(
+    r"(所有车站|全部车站|全线车站|沿线车站|沿途车站"
+    r"|经过哪些(?:车)?站|途经哪些(?:车)?站|经过的(?:车)?站|停靠哪些(?:车)?站"
+    r"|有哪些(?:车)?站|多少个(?:车)?站|多少站"
+    r"|车站列表|站点列表|站名列表|站序)"
+)
 _PHOTO_RE = re.compile(r"(拍|摄影|机位|蹲守|取景|拍到)")
 _KNOWLEDGE_HINT_RE = re.compile(
     r"(为什么|为何|区别|有什么不同|原理|历史|由来|命名|参数|功率|速度是多少|厂家|品牌|关系|介绍一下|科普|怎么样)")
@@ -74,7 +85,15 @@ def _line_in_text(text: str) -> str:
     from app.data import dict as D
     from app.tools.rail_line import normalize_line_name
 
-    for m in re.finditer(r"([\u4e00-\u9fa5]{2,6}(?:高速)?(?:线|高铁))", text or ""):
+    # `{2,6}?` 必须**懒惰**匹配。原来写的是贪心 `{2,6}`，于是它先吃到最长的候选：
+    # 「陇海线沿线有哪些车站」里 "陇海线沿" + "线" 被拼成 "陇海线沿线"，校验不通过就
+    # 整段跳过，而 finditer 从匹配结束处继续 —— 真正的 "陇海线" 再没机会被试到。
+    # 结果是所有带"沿线 / 全线"的说法都取不到线路名（实测：''），
+    # 连带 rail_line 的整条分支都进不去。
+    # 后缀也要认「铁路」：「京沪铁路沿线有哪些车站」这种说法很常见，
+    # 而 normalize_line_name 本来就能把 京沪铁路→京沪线、京沪高速铁路→京沪高速线。
+    # 安全性由后面的线路表校验兜底（"中国铁路"这类会被过滤掉）。
+    for m in re.finditer(r"([\u4e00-\u9fa5]{2,6}?(?:高速)?(?:线|高铁|铁路))", text or ""):
         raw = m.group(1)
         name = normalize_line_name(raw)
         if name and (D.line_master(name) or D.search_lines(name, 1)):
@@ -183,6 +202,14 @@ async def plan(message: str, history: list[dict] | None = None) -> FastPlan | No
         return FastPlan("rail_line", "realtime",
                         slots(target=line or None, direction=f"{od[0]}→{od[1]}" if od else None),
                         "里程/径路+区间或线路", matched)
+
+    # ---- 5b) 线路的沿线车站（需要线路名）----
+    # 实测缺陷：'京沪线的所有车站' 被 LLM 判成 station，于是去调 station.lookup('京沪线')
+    # —— 拿线路名当站名查，必然失败；用户拿到的是"本次无法给出完整列表"。
+    # 同一件事换个说法（'京沪线经过哪些车站'）却又判成 rail_line。既然口径可以由
+    # "线路名 + 车站清单词"完全确定，就不该交给模型猜（顺带省掉两次 LLM 往返）。
+    if line and _LINE_STATIONS_RE.search(text):
+        return FastPlan("rail_line", "realtime", slots(target=line), "沿线车站+线路", matched)
 
     # ---- 6) 车站信息（站名 + 车站类关键词）----
     if _STATION_RE.search(text) and station:

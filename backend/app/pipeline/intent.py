@@ -87,6 +87,9 @@ async def classify(message: str, history: list[dict] | None = None) -> tuple[Int
         '  "CR400AF用的哪个品牌的动力系统？"  → intent=general, question_type=knowledge\n'
         '  "复兴号和和谐号的区别是什么？"       → intent=general, question_type=knowledge\n'
         '  "CR400AF样车的车组号是多少？"       → intent=emu_routing, question_type=knowledge\n'
+        "- **rail_line 与 station 的区分（容易判错）**：问【某条线路】经过 / 沿线 / 有哪些车站 → rail_line，target 填线路名；问【某一座车站】本身（大屏 / 检票口 / 电报码 / 到发车次 / 在哪个城市）→ station。句子里出现「车站」二字**并不等于** station —— 实测反例：「京沪线的所有车站」曾被判成 station，于是拿线路名当站名去查，必然失败。\n"
+        '  "京沪线经过哪些车站？"             → intent=rail_line, question_type=realtime\n'
+        '  "上海虹桥站大屏现在有哪些车？"       → intent=station, question_type=realtime\n'
         '  "从上海怎么去迪士尼方便？要坐什么线？" → intent=general, question_type=knowledge\n'
         '  "机场到市区怎么走最方便？"           → intent=general, question_type=knowledge\n'
         "  （判别要点：问“今天/某日 具体是哪个”多为 realtime；\n"

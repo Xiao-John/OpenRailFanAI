@@ -193,6 +193,32 @@ def test_routing_sends_line_questions_to_new_tool():
     print("[PASS] 路由：站序→rail.line_stations；纯里程→rail.mileage（本地）；两站间→rail.line（口径不混）")
 
 
+def test_line_station_phrasings_survive_the_whole_chain():
+    """整链回归：线路车站类问法换种说法也不能跑偏（快路径判定 → 工具计划）。
+
+    用户实测缺陷：'京沪线经过哪些车站' 正常回答，而 '京沪线的所有车站' 被判成
+    station（车站信息查询），于是去调 station.lookup('京沪线') —— 拿**线路名**当
+    **站名**查，必然失败，用户拿到的是"本次无法给出完整列表"。
+    同一件事换个说法结果完全不同，说明这不是数据问题而是判定问题。
+
+    这类问法的口径由"线路名 + 车站清单词"完全确定，不该交给模型猜。
+    """
+    from app.pipeline import fastpath
+
+    for msg in ["京沪线经过哪些车站", "京沪线的所有车站",
+                "京沪高铁经过哪些站", "京沪线沿线有哪些车站"]:
+        fp = asyncio.run(fastpath.plan(msg))
+        assert fp is not None, f"{msg} 未被快路径接管（会交给 LLM 猜，实测会判错）"
+        assert fp.intent == "rail_line", f"{msg} → intent={fp.intent}（应为 rail_line）"
+        names = _plan(msg, target=fp.slots.target)
+        assert names == ["rail.line_stations"], f"{msg} → {names}"
+    # 车站类问题不能被带偏（station.lookup 查的是**单座车站**）
+    for msg in ["上海虹桥站大屏", "北京南站的电报码是多少"]:
+        fp = asyncio.run(fastpath.plan(msg))
+        assert fp is not None and fp.intent == "station", f"{msg} → {fp and fp.intent}"
+    print("[PASS] 整链：线路车站类问法→rail_line→rail.line_stations；车站类仍走 station")
+
+
 def test_line_name_detection_and_normalization():
     assert rl.normalize_line_name("老京沪线") == "京沪线"
     assert rl.normalize_line_name("京沪高铁") == "京沪高速线"
@@ -212,6 +238,7 @@ def main():
     test_result_is_cached()
     test_unknown_line_is_honest()
     test_routing_sends_line_questions_to_new_tool()
+    test_line_station_phrasings_survive_the_whole_chain()
     test_line_name_detection_and_normalization()
     print("\n按线路名查站序/里程（F06+F05）回归测试全部通过 ✔")
 
