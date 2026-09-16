@@ -70,6 +70,13 @@ bash scripts/android/build.sh -PincludeDict=true assembleRelease   # 带上 14MB
 
 工具链全部落在 `.android-build/`（已 gitignore），删掉该目录即完全卸载。
 
+> ⚠️ **发布包必须真的装到设备上跑一遍，不能用 debug 包代替。** 两者加载的资产不同，
+> 差异足以让整包不可用：`-PincludeDict=true` 曾因为解包字典时清空了 `filesDir`
+> （它与 `webapp/` 共用），把刚解包好的前端一起删掉 —— 结果是 release 包主页 404、
+> 界面只剩 `{"detail":"Not Found"}`，而 debug 包（默认**不带**字典，压根走不到那段代码）
+> 一切正常。验收最低标准：启动日志里 `/` 与 `/src/main.js` 都是 **HTTP 200**、
+> 「页面自检」能读出完整界面文本、`本地字典：可用`（带字典构建时）。
+
 ### 签名（发布正式包必做）
 
 ```bash
@@ -113,6 +120,7 @@ bash scripts/android/build.sh assembleRelease
 | Python | 起服务后自检 `/` 与 `/src/main.js`；不通过则把结论 + 最近日志回传给界面 |
 | Python | 启动**逐阶段回报**（选端口 / 准备 TLS / 导入 app / 导入 uvicorn / 起服务 / 自检），卡住时最后一条就是答案 |
 | WebView | 页面加载完成后用 JS 把**实际渲染结果**读回日志（标题、消息区子节点数、错误横幅、引导条是否显示、正文摘录）——`onPageFinished` 只说明文档加载完，不代表渲染正确 |
+| WebView | `target="_blank"` 与一切非 `http://127.0.0.1` 的链接**交给系统浏览器**：需要 `setSupportMultipleWindows(true)` + `onCreateWindow` 接管，否则在 WebView 里点外链毫无反应（设置页的"在 GitHub 上打开仓库"就是这条路径） |
 
 ### 真机（模拟器）自测
 
@@ -131,6 +139,9 @@ bash scripts/android/run-emulator.sh screenshot /tmp/shot.png
 ```bash
 python3 scripts/android/cdp.py --targets                     # 列出可调试页面
 python3 scripts/android/cdp.py "document.title"              # 执行任意 JS
+python3 scripts/android/cdp.py --eval-file /tmp/probe.js     # 复杂脚本写文件
+python3 scripts/android/cdp.py --tap-sel "#menu-btn"         # 真的点一下（按元素中心）
+python3 scripts/android/cdp.py --tap 206,400                 # 或按页面坐标点
 python3 scripts/android/cdp.py --screenshot /tmp/s.png       # 由渲染器截图
 ```
 
@@ -138,6 +149,24 @@ python3 scripts/android/cdp.py --screenshot /tmp/s.png       # 由渲染器截�
 > 的最后一帧，可能明显滞后（本项目实测拿到过"引导条只画了一半、页头按钮还没出现"
 > 的中间态，据此误判成布局 bug）。`--screenshot` 走渲染器，与 DOM 测量同一时刻，
 > 两者交叉验证才可靠。
+
+关于"点击"，有两条血泪教训，都曾导致**完全错误的结论**：
+
+1. **先确认 App 真的在前台。** `adb shell input tap` 只投递给**当前前台窗口**。
+   本项目曾出现过程序还活着（CDP 能读到实时 DOM、WebView 一直在渲染）但前台已经
+   回到 launcher 的情况 —— 此时所有点击都被 launcher 吃掉，界面上"点什么都没反应"，
+   于是被误判成"页头 105px 触摸死区"。真相是：app 在后台 + 点的还是安全区留白。
+   判断方法：`adb shell dumpsys window | grep mCurrentFocus`。
+   拉回前台要写**完整组件名**，注意 debug 包名带后缀而类名不带：
+   `adb shell am start -n org.openrailfanai.app.debug/org.openrailfanai.app.MainActivity`。
+   （同一后台状态下，点击外链还会被 Android 15 的 BAL 拦截，日志里是
+   `Background activity launch blocked!`，很容易让人以为代码没接上。）
+
+2. **要点击就用 `cdp.py --tap/--tap-sel`，它走渲染器输入管线，顺带做了命中测试。**
+   注意 WebView 的 `Input.dispatchTouchEvent` 是**静默失效**的（不回包、不报错、页面
+   毫无反应），必须用 `Input.dispatchMouseEvent`，`tap()` 已按此实现。
+   验证"能不能点到"不能只看坐标：`document.elementFromPoint(x,y)` 能一眼看出
+   那个点上究竟是按钮还是它上面的浮层/遮罩（侧栏展开时 `#menu-btn` 就会被盖住）。
 
 再配合端口转发就能直接调设备内的后端（验证整链而无需手点界面）：
 
@@ -162,10 +191,12 @@ curl -s -XPOST http://127.0.0.1:<端口>/api/chat -H 'Content-Type: application/
 ## 已知限制
 
 - **已在 Android 15 arm64 模拟器上实测通过**：启动各阶段、前端渲染（DOM 探针核对到完整界面文本）、
-  设备内真实问答（12306 + rail.re + LLM 全链，返回正确担当车组）。仍未验证的是**实体机**上的
-  长时间后台回收行为、以及不同厂商 WebView 版本的兼容性。
+  设备内真实问答（12306 + rail.re + LLM 全链，返回正确担当车组）。**release 包（带字典）也已
+  全新安装验证**：前后端自检均 HTTP 200、界面完整渲染、`本地字典：可用`。
+  仍未验证的是**实体机**上的长时间后台回收行为、以及不同厂商 WebView 版本的兼容性。
 - **本地字典默认不打**，因此 `rail.mileage`、车站档案、离线时刻这类依赖字典的工具
-  会如实报告不可用；需要完整功能请用 `-PincludeDict=true` 构建。
+  会如实报告不可用；需要完整功能请用 `-PincludeDict=true` 构建（该开关曾整包失效，
+  见「构建」下的注意事项）。
 - 后端跑在应用进程内，**没有前台 Service**：切到后台久了可能被系统回收，
   回到前台需重新冷启动（表现为重新加载页面）。
 - 目录访问等需要凭据的第三方数据源在移动网络下的可用性未做专门适配。
@@ -173,7 +204,7 @@ curl -s -XPOST http://127.0.0.1:<端口>/api/chat -H 'Content-Type: application/
 ## 首次使用
 
 应用不内置任何 API Key（社区版定位，也避免把 Key 随包分发被反编译提取）。
-首次打开请在界面「⚙️ 模型」里选择供应商并填入**你自己的** Key（BYOK），
+首次打开请在界面「⚙️ 设置」里选择供应商并填入**你自己的** Key（BYOK），
 或先用 `LLM_MOCK=true` 方式体验整链。填写方式与桌面版完全一致，见 `docs/run.md`。
 
 ## 故障排查
@@ -182,6 +213,8 @@ curl -s -XPOST http://127.0.0.1:<端口>/api/chat -H 'Content-Type: application/
 |---|---|
 | 卡在"正在启动本地服务…" | Python 侧启动失败，界面会显示 traceback；多为依赖缺失或数据目录不可写 |
 | 白屏但已进入应用 | 前端静态资源未解包成功（检查 `filesDir/webapp/index.html`）或 `FRONTEND_DIR` 未生效 |
+| 界面上点什么都没反应 | 先用 `dumpsys window \| grep mCurrentFocus` 确认 App 是否真在前台；不在前台时点击全被 launcher 接走（用 CDP 点击则不受影响） |
+| 点外链没反应 / 日志报 `Background activity launch blocked!` | 同样是 App 不在前台时 Android 15 拦下了外部 Intent；代码路径本身没问题（日志会有「已在系统浏览器打开」） |
 | 「未配置 LLM」 | 未在设置页填 Key；或 Key 被清空（未勾选"记住 Key"时重启会丢） |
 | 实时查询全部失败 | 设备网络不通，或 12306 触发风控（与桌面版相同） |
 | `includeDict=true` 报错 | `backend/data/dict.db` 不存在，先跑 `scripts/mirror_dict.py` |

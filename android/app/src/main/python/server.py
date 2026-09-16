@@ -240,6 +240,11 @@ def serve(activity=None, webapp_dir: str = "", data_dir: str = "") -> None:
             os.chdir(data_dir)
         except OSError:
             _log.warning("切换到数据目录失败：%s", data_dir, exc_info=True)
+        # 字典库必须**显式**指到解包位置：后端默认按 `backend/data/dict.db` 解析，
+        # 而 app/data/dict.py 里的相对路径是相对**代码目录**（不是 CWD）——APK 内那是
+        # 只读的打包区。两者对不上，于是 `-PincludeDict=true` 打了字典也等于没打，
+        # 相关工具会一直如实报"本地字典尚未构建"。Java 侧把 dict.db 解包在数据目录根下。
+        os.environ.setdefault("DICT_DB_PATH", os.path.join(data_dir, "dict.db"))
 
     try:
         _beat(activity, "导入 app 包（含依赖兼容层）…")
@@ -252,6 +257,16 @@ def serve(activity=None, webapp_dir: str = "", data_dir: str = "") -> None:
 
         _beat(activity, "导入后端应用 app.main…")
         from app.main import app as asgi_app
+
+        # 一条把"字典到底有没有用上"摆到明处的日志：这个能力以前是**静默**缺失的
+        # （打了包却查不到，用户只会看到工具回"字典尚未构建"，无从判断是谁的问题）。
+        try:
+            from app.data.dict import available as dict_available, db_path as dict_db_path
+
+            _log.info("本地字典：%s（%s）",
+                      "可用" if dict_available() else "不可用", dict_db_path())
+        except Exception:  # 字典是增强能力，探测失败不该拖垮启动
+            _log.warning("本地字典探测失败", exc_info=True)
 
         _beat(activity, "导入 uvicorn…")
         import uvicorn

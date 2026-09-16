@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebResourceError;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -111,14 +112,38 @@ public class MainActivity extends Activity {
         s.setAllowFileAccess(false);         // 页面只来自本机 HTTP，不需要文件访问
         s.setAllowContentAccess(false);
 
+        // target="_blank" 的链接不会走 shouldOverrideUrlLoading，必须由 onCreateWindow 接住，
+        // 否则同样是"点了没反应"（前端那个 GitHub 链接就带 _blank）。
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog,
+                                          boolean isUserGesture, android.os.Message resultMsg) {
+                // 不为新窗口建 WebView：取到目标地址后交给系统浏览器
+                WebView probe = new WebView(MainActivity.this);
+                probe.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
+                        openExternally(req.getUrl().toString());
+                        return true;
+                    }
+                });
+                ((WebView.WebViewTransport) resultMsg.obj).setWebView(probe);
+                resultMsg.sendToTarget();
+                return true;
+            }
+        });
+
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String host = request.getUrl().getHost();
                 if (host != null && (host.equals("127.0.0.1") || host.equals("localhost"))) {
-                    return false;
+                    return false;               // 本地页面：WebView 内处理
                 }
-                boot("已拦截外部跳转：" + request.getUrl());
+                // 外部链接**交给系统浏览器打开**。
+                // 早期版本直接 return true 把跳转吞掉，结果「联系我们」里的
+                // GitHub issue 链接点了毫无反应（用户实测反馈）。
+                openExternally(request.getUrl().toString());
                 return true;
             }
 
@@ -160,6 +185,21 @@ public class MainActivity extends Activity {
         setContentView(root);
 
         new Thread(this::bootstrap, "railfan-bootstrap").start();
+    }
+
+    /** 用系统浏览器打开外部链接；没有可用浏览器时给出可见提示而不是静默失败。 */
+    private void openExternally(String url) {
+        try {
+            android.content.Intent it = new android.content.Intent(
+                    android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url));
+            it.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(it);
+            boot("已在系统浏览器打开：" + url);
+        } catch (Exception e) {
+            Log.w(TAG, "打开外部链接失败：" + url, e);
+            boot("无法打开外部链接（设备上没有可用浏览器）：" + url
+                    + "\n可长按链接或使用「复制链接」按钮。");
+        }
     }
 
     private void showWebView() {
@@ -210,7 +250,7 @@ public class MainActivity extends Activity {
                 fail("前端首页缺失，无法启动。请把以上信息反馈给开发者。");
                 return;
             }
-            extractAssets(ASSET_DICT, dataDir);
+            extractAssets(ASSET_DICT, dataDir, false);   // dataDir 与 webapp/ 等共用，绝不能清空
 
             boot("启动 Python 解释器…");
             if (!Python.isStarted()) {
@@ -231,6 +271,20 @@ public class MainActivity extends Activity {
     // ---------------------------------------------------------------- 资产解包
     /** 解包 assets 子目录到目标目录，返回本次写入的文件数（已是最新版本时返回 -1）。 */
     private int extractAssets(String assetSubDir, File targetDir) throws IOException {
+        return extractAssets(assetSubDir, targetDir, true);
+    }
+
+    /**
+     * @param cleanTarget 解包前是否清空目标目录；**只有目标目录由本资产独占时才能为 true**。
+     *
+     * `dict` 的目标是 filesDir 本身，它和 webapp/、chaquopy/、.local_port 等共用同一个目录。
+     * 早期版本对字典也传 true，于是 `deleteContents(filesDir)` 把**刚刚解包好的 webapp/**
+     * 连同一切一起删掉，主页随即 404、界面只剩 `{"detail":"Not Found"}`。
+     * 这个缺陷极难在开发时发现：debug 包默认不带字典（`am.list("dict")` 为空直接返回），
+     * 只有 `-PincludeDict=true` 的 release 包才会触发 —— 也就是说，**打包开关本身
+     * 决定了程序能不能跑**。
+     */
+    private int extractAssets(String assetSubDir, File targetDir, boolean cleanTarget) throws IOException {
         AssetManager am = getAssets();
         String[] children = am.list(assetSubDir);
         if (children == null || children.length == 0) {
@@ -246,8 +300,10 @@ public class MainActivity extends Activity {
 
         //noinspection ResultOfMethodCallIgnored
         targetDir.mkdirs();
-        // 先清空旧内容：否则上一版"拍平"留下的散落文件会污染新版本
-        deleteContents(targetDir);
+        // 先清空旧内容：否则上一版"拍平"留下的散落文件会污染新版本（仅对独占目录成立）
+        if (cleanTarget) {
+            deleteContents(targetDir);
+        }
         int count = copyAssets(am, assetSubDir, targetDir);
         writeMarker(marker, expected);
         return count;

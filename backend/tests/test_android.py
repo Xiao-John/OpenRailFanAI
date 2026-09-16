@@ -517,6 +517,61 @@ def test_frontend_reports_boot_errors():
     print("[PASS] 前端错误可见化 + 未配置模型的引导条已接线")
 
 
+def test_dict_extraction_does_not_wipe_shared_data_dir():
+    """解包字典时不得清空目标目录 —— 它的目标是 filesDir，与 webapp/ 共用。
+
+    这是一次**只在 release 包上出现**的事故：`extractAssets` 为清理旧版本残留会先
+    `deleteContents(targetDir)`，而字典被解包到 filesDir 本身，于是刚解包好的
+    `webapp/` 被连带删掉 —— 后端启动后 `/` 与 `/src/main.js` 全 404，界面只剩
+    `{"detail":"Not Found"}`。Java 侧的自检还认为"index.html：有"（它在删之前查的）。
+
+    为什么开发时看不见：debug 包默认**不带字典**，`am.list("dict")` 为空会直接返回，
+    压根走不到删除那一步。也就是说"打不打包字典"这个开关决定了程序能不能跑。
+    """
+    src = (ANDROID_DIR / "app/src/main/java/org/openrailfanai/app/MainActivity.java"
+           ).read_text(encoding="utf-8")
+    calls = dict(re.findall(
+        r"extractAssets\(\s*ASSET_(\w+)\s*,\s*\w+\s*(?:,\s*(true|false))?\s*\)", src))
+    assert "WEBAPP" in calls and "DICT" in calls, (
+        f"没解析到 webapp/dict 两处解包调用（找到 {sorted(calls)}），检查方式可能已失效"
+    )
+    assert calls["DICT"] == "false", (
+        "字典解包又会清空 filesDir：它的目标目录与 webapp/ 共用，"
+        "清空会把刚解包好的前端一起删掉（release 包主页 404）→ 传 cleanTarget=false"
+    )
+    assert calls["WEBAPP"] in ("", "true"), (
+        "webapp 的目标目录归它独占，仍需清空以免旧版残留污染"
+    )
+    assert re.search(r"if \(cleanTarget\)\s*\{\s*deleteContents\(", src), (
+        "deleteContents 没有被 cleanTarget 保护住"
+    )
+    print("[PASS] 字典解包不清空共用的数据目录，前端不会被连带删除")
+
+
+def test_android_points_dict_db_path_at_extracted_copy():
+    """Android 上必须把 DICT_DB_PATH 显式指到解包出来的 dict.db。
+
+    后端默认值是相对路径 `data/dict.db`，而 `app/data/dict.py` 把相对路径解析到
+    **代码目录**（不是 CWD）——APK 里那是只读打包区，永远找不到。而 Java 侧把字典
+    解包在数据目录根下。两边对不上时 `-PincludeDict=true` 打了字典也等于没打，
+    且**完全静默**：用户只会看到工具回"本地字典尚未构建"，无从判断是谁的问题。
+    """
+    gradle = (ANDROID_DIR / "app/build.gradle.kts").read_text(encoding="utf-8")
+    assert 'File(dstDir, "dict.db")' in gradle, (
+        "打包字典的产物文件名变了，解包与 DICT_DB_PATH 的约定需要同步更新"
+    )
+    srv = (ANDROID_DIR / "app/src/main/python/server.py").read_text(encoding="utf-8")
+    assert 'os.environ.setdefault("DICT_DB_PATH"' in srv, (
+        "server.py 没有设置 DICT_DB_PATH：字典会被解包到数据目录，"
+        "但后端仍去只读的代码目录找，等于没打包"
+    )
+    assert 'os.path.join(data_dir, "dict.db")' in srv, (
+        "DICT_DB_PATH 必须指向 Java 解包出来的 <data_dir>/dict.db"
+    )
+    assert "dict_available" in srv, "启动日志没有如实报告本地字典是否可用"
+    print("[PASS] DICT_DB_PATH 指向解包出来的 <data_dir>/dict.db，且启动时如实报告可用性")
+
+
 def main():
     test_android_requirements_are_pure_python()
     test_android_requirements_are_pinned()
@@ -531,6 +586,8 @@ def main():
     test_mcp_package_kept_out_of_normal_resolution()
     test_shell_scripts_avoid_cjk_variable_capture()
     test_apk_assets_satisfy_index_html_references()
+    test_dict_extraction_does_not_wipe_shared_data_dir()
+    test_android_points_dict_db_path_at_extracted_copy()
     test_python_callbacks_use_attribute_access()
     test_android_sets_tls_ca_bundle()
     test_llm_diagnostics_include_cause_chain()
