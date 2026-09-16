@@ -217,6 +217,14 @@
                font-size:12px; }
     .md pre.code { background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
                    padding:8px 10px; margin:5px 0; overflow:auto; white-space:pre; font-size:12px; }
+    /* 表格（车次/余票这类回答基本都是表格）。
+       必须能横向滚动：车次表天然六七列，窄屏铺开会把整个对话区撑到变形。
+       nowrap 是刻意的 —— 宁可滚动，也不要把"06:18—12:11"折成两行。 */
+    .md .table-wrap { overflow-x:auto; margin:8px 0; padding-bottom:2px;
+                      -webkit-overflow-scrolling:touch; }
+    .md table { border-collapse:collapse; font-size:12px; white-space:nowrap; }
+    .md th, .md td { border:1px solid var(--line); padding:4px 9px; vertical-align:top; }
+    .md th { background:var(--panel-2); font-weight:600; }
     .stats { margin-top:7px; font-size:12px; color:var(--accent); }
     .progress { font-size:12px; color:var(--mut); margin-bottom:5px; }
     .sources { margin-top:6px; font-size:12px; color:var(--mut); word-break:break-all; }

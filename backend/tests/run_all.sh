@@ -60,6 +60,8 @@ SUITES=(
   test_android
   # 前端数据层（多对话逻辑，需 node）
   test_frontend_store
+  # 前端渲染（Markdown 表格等，需 node）
+  test_frontend_render
 )
 
 FAILED=()

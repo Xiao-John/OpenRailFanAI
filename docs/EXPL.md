@@ -113,6 +113,6 @@ scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预
 
 **数据源工具（重点）**：`tools/emu_routing.py`（rail.re 交路）、`tools/rail_line.py`（径路解析，含 800KB 页面抗噪定位）、`tools/_rt12306.py`（12306 实时共享助手）、`tools/_http.py`（浏览器级请求头 + `format_error()`）、`tools/registry.py`（工具注册表）。
 
-**前端**（`frontend/`）：`src/main.js`（hash 路由 `#/c/<id>` `#/doc/<key>`、SSE 消费、对话列表、AbortController、编辑重发）、`src/store.js`（对话/主题持久化 + 容量上限；持久化后端可切换：浏览器用 localStorage，Android 用原生桥写的应用私有文件）、`src/native.js`（原生桥的 JS 契约，未接桥时全部安全退化）、`src/pages.js`（帮助/免责/联系静态页 + 设置页：供应商 BYOK、模型探测、关于卡片）、`index.html`（移动优先三端自适应 UI）、`tests/store.test.mjs`（node 直跑前端数据层单测）。
+**前端**（`frontend/`）：`src/main.js`（hash 路由 `#/c/<id>` `#/doc/<key>`、SSE 消费、对话列表、AbortController、编辑重发）、`src/store.js`（对话/主题持久化 + 容量上限；持久化后端可切换：浏览器用 localStorage，Android 用原生桥写的应用私有文件）、`src/native.js`（原生桥的 JS 契约，未接桥时全部安全退化）、`src/markdown.js`（回答正文的轻量 Markdown 渲染，含 GFM 表格；单独成模块是为了能脱离浏览器用 node 跑测试）、`src/pages.js`（帮助/免责/联系静态页 + 设置页：供应商 BYOK、模型探测、关于卡片）、`index.html`（移动优先三端自适应 UI）、`tests/store.test.mjs`（node 直跑前端数据层单测）。
 
 **配套文档**：`docs/datasources.md`（数据源端点、参数、字段与踩坑）、`docs/run.md`（安装、配置、启动、测试、数据准备）。

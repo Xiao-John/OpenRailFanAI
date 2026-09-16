@@ -13,6 +13,7 @@
 //   5) 三端自适应：移动优先（抽屉侧栏），≥1024px 侧栏常驻
 //   6) 无需登录：对话匿名可用，不存任何凭据
 import { store } from "./store.js";
+import { renderMarkdown } from "./markdown.js";
 import { native } from "./native.js";
 import { renderDocPage, renderSettingsPage, APP_VERSION, ROOT_KEY_ID } from "./pages.js";
 
@@ -182,26 +183,8 @@ function renderLlmNotice() {
 }
 
 // ---------- 小工具 ----------
-function esc(s) {
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-function renderMarkdown(text) {
-  let h = esc(text);
-  h = h.replace(/```([\s\S]*?)```/g, (_m, code) => '<pre class="code">' + code + "</pre>");
-  h = h.replace(/(<pre[\s\S]*?<\/pre>)/g, "\u0000$1\u0000");
-  h = h.replace(/`([^`\n]+)`/g, "<code>$1</code>");
-  h = h.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
-  h = h.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
-  h = h.replace(/^###\s+(.+)$/gm, "<h3>$1</h3>");
-  h = h.replace(/^##\s+(.+)$/gm, "<h3>$1</h3>");
-  h = h.replace(/^#\s+(.+)$/gm, "<h3>$1</h3>");
-  h = h.replace(/^\s*[-*]\s+(.+)$/gm, "•  $1");
-  h = h.replace(/\n/g, "<br>");
-  h = h.replace(/\u0000/g, "");
-  return h;
-}
+// Markdown 渲染在 ./markdown.js 里：它的规则（尤其表格）边界情况多，
+// 单独成模块才能用 node 直接跑测试，不必起浏览器。
 function el(tag, cls, text) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
