@@ -494,6 +494,18 @@ function renderAssistantRow(msg, index) {
   const progress = el("div", "progress", "");
   bubble.appendChild(progress);
 
+  // 流程日志与思考过程放在正文**上方**：先看"是怎么查到的"，再看结论。
+  // 放上面还有个好处 —— 展开/收起时正文不会被顶来顶去，正文位置是固定的。
+  const logs = details("流程日志（意图 / 抽取 / 检索 / 生成）", []);
+  const logBody = logs.querySelector(".fold-body");
+  if (Array.isArray(meta.processLogs)) {
+    for (const l of meta.processLogs) logBody.appendChild(el("div", "log-line", "· " + l));
+  }
+  bubble.appendChild(logs);
+
+  const thinkPre = el("pre", null, meta.thinking || "");
+  bubble.appendChild(details("思考过程（think）", [thinkPre]));
+
   const ans = el("div", "md");
   ans.innerHTML = renderMarkdown(msg.content || "");
   bubble.appendChild(ans);
@@ -515,16 +527,7 @@ function renderAssistantRow(msg, index) {
   }
   if (meta.error) bubble.appendChild(el("div", "error-box", "⚠️ " + meta.error));
 
-  const logs = details("流程日志（意图 / 抽取 / 检索 / 生成）", []);
-  const logBody = logs.querySelector(".fold-body");
-  if (Array.isArray(meta.processLogs)) {
-    for (const l of meta.processLogs) logBody.appendChild(el("div", "log-line", "· " + l));
-  }
-  bubble.appendChild(logs);
-
-  const thinkPre = el("pre", null, meta.thinking || "");
-  bubble.appendChild(details("思考过程（think）", [thinkPre]));
-
+  // 数据来源**保持在正文下方**（用户明确要求）：它是结论的出处，跟在结论后面读最顺。
   if (Array.isArray(meta.sources) && meta.sources.length) {
     bubble.appendChild(el("div", "sources", "数据来源：" + meta.sources.join(" · ")));
   }
@@ -829,7 +832,11 @@ async function runAssistant(convId, userIndex) {
     updateCtxInfo(conv.messages);
     updateHeaderTitle();
     renderConvList();
-    inputEl.focus();
+    // 完成后**不要**自动聚焦输入框：在手机上这会立刻弹出软键盘，把刚生成的回答
+    // 顶走半屏（用户实测反馈）。桌面端有实体键盘，聚焦一下能接着打下一句，仍然保留。
+    // 判据用 (hover: hover) 而不是"是不是 Android"：真正决定要不要弹键盘的是
+    // 有没有指针设备，不是平台。
+    if (!window.matchMedia || window.matchMedia("(hover: hover)").matches) inputEl.focus();
   }
 }
 

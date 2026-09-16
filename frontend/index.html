@@ -235,7 +235,9 @@
     .qtype.knowledge { color:#f59e0b; border-color:#a16207; }
     .qtype.mixed { color:#a78bfa; border-color:#6d28d9; }
     .knowledge-hint { margin-top:6px; font-size:12px; color:#f59e0b; }
-    .fold { margin-top:8px; background:var(--panel-2); border:1px solid var(--line);
+    /* 流程日志/思考过程现在排在正文**上方**，所以上下都要留白：
+       否则折叠块会紧贴下面的正文，读起来像同一段。 */
+    .fold { margin:8px 0; background:var(--panel-2); border:1px solid var(--line);
             border-radius:8px; padding:6px 10px; }
     .fold summary { cursor:pointer; color:var(--accent); font-size:12px; user-select:none; }
     .fold .fold-body { margin-top:6px; color:var(--mut); font-size:12px; }
