@@ -52,6 +52,18 @@ class Settings(BaseSettings):
     llm_extra_body: str = ""
     # 单次 LLM 请求超时（秒）：推理模型首 token 可能很慢，别设太小
     llm_timeout_s: float = 60.0
+    # 单次生成的最大输出 token（**含思考 token**）。原值 1200 过小：
+    # 推理模型先想掉一部分，长回答（如逐站列出）就会在半句话处被截断，
+    # 而模型其实会给出 finish_reason=length —— 应用现已据此显式声明截断。
+    llm_max_tokens: int = 4096
+    # 模型的上下文窗口（token）。用于把"输出预算"限制在窗口之内：
+    #   实际输出上限 = min(llm_max_tokens, 窗口 - 已用输入 - 安全余量)
+    # 各家差别很大（8k / 32k / 128k / 200k），自己填一个与所用模型相符的值，
+    # 避免请求因超窗口被上游 400 拒绝。留 0 表示不做窗口约束。
+    llm_context_tokens: int = 32000
+    # 提示词 token 的估算系数：中文约 1 token ≈ 1.5 字，故 字符数 / 该系数 ≈ token。
+    # 只是估算（用于预算与告警），不求精确 —— 精确计数要额外调用 tokenizer。
+    llm_chars_per_token: float = 1.5
     # 是否允许把 LLM 请求发往内网/环回地址（自定义供应商 + 本地 Ollama 需要；
     # 生产多租户部署下开启等于开放 SSRF，故默认关闭且仅对显式配置的供应商放行）
     llm_allow_private_base_url: bool = False

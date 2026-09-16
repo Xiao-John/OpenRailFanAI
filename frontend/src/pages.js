@@ -270,7 +270,7 @@ function buttonEl(text, cls, onClick) {
 }
 
 /** 一个供应商条目行：名称 + 自定义标签 + 状态点 + 使用中标记 + 操作。 */
-function providerRow(entry, rerender) {
+function providerRow(entry, rerender, onEdit) {
   const row = el("div", "prov-row");
   if (store.llm().activeId === entry.id) row.classList.add("active");
 
@@ -284,7 +284,7 @@ function providerRow(entry, rerender) {
   row.appendChild(left);
 
   const actions = el("div", "prov-actions");
-  actions.appendChild(buttonEl("编辑", "", () => openEditor(entry)));
+  actions.appendChild(buttonEl("编辑", "", () => onEdit(entry)));
   if (entry.custom || store.llmEntries().length > 1) {
     actions.appendChild(buttonEl("删除", "danger", () => {
       store.removeLlmEntry(entry.id);
@@ -324,7 +324,7 @@ export function renderSettingsPage(deps) {
       c.appendChild(el("p", "sub", "还没有添加提供方。点下面的按钮选一个常用服务，或自己填地址。"));
     }
     for (const e of entries) {
-      c.appendChild(providerRow(e, () => { editing = null; render(); }));
+      c.appendChild(providerRow(e, () => { editing = null; render(); }, openEditor));
     }
 
     const addRow = el("div", "prov-add-row");
@@ -353,6 +353,13 @@ export function renderSettingsPage(deps) {
     body.appendChild(c);
 
     if (editing) body.appendChild(editorCard());
+  }
+
+  /** 打开某个已添加条目的编辑表单（用副本，取消时不污染已存配置）。 */
+  function openEditor(entry) {
+    if (!entry) return;
+    editing = { ...entry };
+    render();
   }
 
   // ---- 从预设挑选（与"添加自定义"进入同一个表单）----
@@ -408,6 +415,26 @@ export function renderSettingsPage(deps) {
     const baseInp = inputEl("text", "https://api.example.com/v1", e.base_url);
     const keyInp = inputEl("password", "sk-…（只保存在本机）", e.key);
     const manualInp = inputEl("text", "手工填写模型名", e.model);
+    // 生成预算：BYOK 场景下 .env 往往不可达（尤其 Android），所以这两项要能在界面上调
+    const maxTokInp = inputEl("text", "留空用服务端默认", e.max_tokens || "");
+    maxTokInp.inputMode = "numeric";
+    const ctxOptions = [
+      ["", "留空用服务端默认"],
+      ["8192", "8k（小窗口 / 老模型）"],
+      ["32768", "32k"],
+      ["65536", "64k"],
+      ["131072", "128k"],
+      ["200000", "200k"],
+      ["__custom__", "手工输入…"],
+    ];
+    const ctxSel = selectEl(ctxOptions, e.context_tokens ? String(e.context_tokens) : "");
+    const ctxCustom = inputEl("text", "窗口大小（token）", "");
+    ctxCustom.inputMode = "numeric";
+    ctxCustom.style.display = "none";
+    ctxSel.addEventListener("change", () => {
+      ctxCustom.style.display = ctxSel.value === "__custom__" ? "" : "none";
+      if (ctxSel.value === "__custom__") ctxCustom.focus();
+    });
     const modelSel = selectEl([["", "（先填 API Key，再自动探测）"]], e.model);
     const status = el("div", "sub", "");
 
@@ -425,6 +452,19 @@ export function renderSettingsPage(deps) {
     modelCol.appendChild(manualInp);
     modelWrap.appendChild(modelCol);
     c.appendChild(modelWrap);
+    c.appendChild(formRow("最大输出", maxTokInp));
+    const ctxWrap = el("div", "form-row");
+    ctxWrap.appendChild(el("label", null, "上下文窗口"));
+    const ctxCol = el("div");
+    ctxCol.style.flex = "1";
+    ctxCol.appendChild(ctxSel);
+    ctxCol.appendChild(ctxCustom);
+    ctxWrap.appendChild(ctxCol);
+    c.appendChild(ctxWrap);
+    c.appendChild(el("p", "sub",
+      "「最大输出」是单次生成的 token 上限（含思考 token，调小会让长回答在半句处被截断）；"
+      + "「上下文窗口」填所用模型的窗口大小（8k/32k/128k），用于把输出预算收进窗口内。"
+      + "两者留空即用服务端默认。"));
 
     modelSel.addEventListener("change", () => {
       if (modelSel.value === "__manual__") {
@@ -488,6 +528,10 @@ export function renderSettingsPage(deps) {
     btnRow.appendChild(buttonEl("保存", "primary", () => {
       const id = e.id;
       const isCustom = !!e.custom;
+      const asInt = (v) => {
+        const n = parseInt(String(v || "").trim(), 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+      };
       store.upsertLlmEntry({
         id,
         label: (isCustom ? nameInp.value.trim() : e.label) || id,
@@ -496,6 +540,10 @@ export function renderSettingsPage(deps) {
         api: e.api || "",
         key: keyInp.value.trim(),
         custom: isCustom,
+        max_tokens: asInt(maxTokInp.value),
+        context_tokens: ctxSel.value === "__custom__"
+          ? asInt(ctxCustom.value)
+          : asInt(ctxSel.value),
       });
       editing = null;
       render();

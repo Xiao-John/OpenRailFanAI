@@ -63,6 +63,21 @@ _RUN_METRICS: contextvars.ContextVar[dict[str, int | float] | None] = contextvar
 )
 
 
+# ---- 截断标记（ContextVar 隔离并发请求）----
+# 为什么必须显式记录：模型在被长度上限截断时会给出 finish_reason="length"，
+# 而应用此前**完全没读这个字段** —— 于是"长回答写到一半断掉"看起来毫无原因。
+# 记下来才能如实告知用户，而不是让他以为是自己网络或模型的问题。
+_TRUNCATED: contextvars.ContextVar[bool] = contextvars.ContextVar("llm_truncated", default=False)
+
+
+def mark_truncated() -> None:
+    _TRUNCATED.set(True)
+
+
+def was_truncated() -> bool:
+    return bool(_TRUNCATED.get())
+
+
 def _metrics_ref() -> dict[str, int | float]:
     """取当前上下文的计费 dict，没有就建一个（见上方注释）。"""
     m = _RUN_METRICS.get()
@@ -82,6 +97,7 @@ _DIALECT_CACHE: dict[str, str] = {}
 
 def reset_run_metrics() -> None:
     _RUN_METRICS.set(_new_metrics_dict())
+    _TRUNCATED.set(False)
 
 
 def get_run_metrics() -> dict[str, int | float]:
@@ -314,6 +330,25 @@ def get_client(provider: Provider | None = None, *, require_model: bool = True) 
 
 
 # ---------------------------------------------------------------- 消息与响应
+def _chat_finish_reason(resp_or_chunk) -> str:
+    """取 chat completions 的 finish_reason（非流式响应或流式 chunk 都适用）。"""
+    choices = getattr(resp_or_chunk, "choices", None) or []
+    if not choices:
+        return ""
+    return getattr(choices[0], "finish_reason", "") or ""
+
+
+def _responses_incomplete(resp) -> bool:
+    """Responses 方言：status=incomplete 且原因与输出上限有关。"""
+    status = getattr(resp, "status", "") or ""
+    if status != "incomplete":
+        return False
+    details = getattr(resp, "incomplete_details", None)
+    reason = getattr(details, "reason", "") if details is not None else ""
+    # 没有 details 时也按截断处理：status=incomplete 本身就说明输出不完整
+    return (not reason) or ("token" in reason) or ("length" in reason)
+
+
 def _reasoning_of(message) -> str:
     """从响应 message 中提取思考内容（兼容 DeepSeek/OpenAI 两种字段）。"""
     for attr in ("reasoning_content", "reasoning"):
@@ -423,6 +458,54 @@ def _text_of_response(resp) -> str:
             if getattr(c, "type", None) == "output_text" and getattr(c, "text", None):
                 chunks.append(c.text)
     return "".join(chunks)
+
+
+# ---------------------------------------------------------------- 输出预算
+def estimate_tokens(text: str) -> int:
+    """按字符数粗略估算 token（中文约 1 token ≈ 1.5 字）。
+
+    只用于"输出预算"和超窗告警 —— 精确计数需要 tokenizer（额外依赖/调用），
+    而这里要回答的问题只是"还剩下多少额度可以写答案"，粗略足够。
+    """
+    settings = get_settings()
+    per = settings.llm_chars_per_token or 1.5
+    return int(len(text or "") / per) + 1
+
+
+def _spec_override(key: str):  # noqa: ANN201
+    """取请求级供应商描述里的覆盖项（如 max_tokens / context_tokens）。"""
+    spec = _ACTIVE_PROVIDER.get() or {}
+    return spec.get(key)
+
+
+def effective_max_tokens(messages: list[dict], requested: int | None = None) -> int:
+    """把输出上限收敛到"模型窗口装得下"的范围内。
+
+    为什么需要：用户自备的模型窗口差别极大（8k / 32k / 128k）。若输出上限
+    按固定值给，小窗口模型会直接 400（context_length_exceeded），
+    而大窗口模型又写不满。这里按"窗口 - 已用输入 - 余量"动态收窄。
+    """
+    settings = get_settings()
+    # 优先级：调用方显式传入 > 请求级覆盖（用户在自己那台设备上按模型窗口设置）> 服务端配置
+    want = requested if requested is not None else (_spec_override("max_tokens") or settings.llm_max_tokens)
+    window = _spec_override("context_tokens") or (settings.llm_context_tokens or 0)
+    if window <= 0:
+        return want
+    used = sum(estimate_tokens(m.get("content", "")) for m in messages)
+    # 余量给 512：不同实现把 system/工具定义/特殊 token 也算进窗口，留点空间更稳
+    room = window - used - 512
+    if room <= 0:
+        _log.warning(
+            "提示词已占满上下文窗口（估算 输入≈%d + 余量512 > 窗口 %d）——"
+            "回答可能立即被截断，请调大 LLM_CONTEXT_TOKENS 或减少历史/事实注入",
+            used, window,
+        )
+        return max(256, min(want, 256))
+    if room < want:
+        _log.info("按上下文窗口收窄输出上限：%d → %d（估算输入 %d / 窗口 %d）",
+                  want, room, used, window)
+        return room
+    return want
 
 
 # ---------------------------------------------------------------- 请求参数
@@ -612,7 +695,7 @@ async def chat_with_reasoning(
     system: str | None = _SYSTEM_ASSISTANT,
     model: str | None = None,
     temperature: float = 0.7,
-    max_tokens: int = 1200,
+    max_tokens: int | None = None,
     history: list[dict] | None = None,
 ) -> tuple[str, str]:
     """普通文本生成，返回 (回答, 思考内容 think)。
@@ -630,6 +713,7 @@ async def chat_with_reasoning(
     provider = current_provider()
     client = get_client(provider)
     messages = build_messages(prompt, system, history)
+    max_tokens = effective_max_tokens(messages, max_tokens)
     ladder = _Ladder(provider)
 
     while True:
@@ -650,8 +734,12 @@ async def chat_with_reasoning(
 
         _record_usage(resp, (time.perf_counter() - _t0) * 1000.0, ladder.dialect)
         if ladder.dialect == "chat_completions":
+            if _chat_finish_reason(resp) == "length":
+                mark_truncated()
             msg = resp.choices[0].message
             return (msg.content or "", _reasoning_of(msg))
+        if _responses_incomplete(resp):
+            mark_truncated()
         return (_text_of_response(resp), _reasoning_of_response(resp))
 
 
@@ -661,7 +749,7 @@ async def stream_completion(
     system: str | None = _SYSTEM_ASSISTANT,
     model: str | None = None,
     temperature: float = 0.7,
-    max_tokens: int = 1200,
+    max_tokens: int | None = None,
     history: list[dict] | None = None,
 ) -> AsyncIterator[tuple[str, str]]:
     """流式生成，逐块产出 (kind, text)。
@@ -683,6 +771,7 @@ async def stream_completion(
     provider = current_provider()
     client = get_client(provider)
     messages = build_messages(prompt, system, history)
+    max_tokens = effective_max_tokens(messages, max_tokens)
     ladder = _Ladder(provider)
 
     # 流式请求的失败常在**首个事件**才暴露（SDK 先返回流对象，连接错误延后抛出），
@@ -744,9 +833,14 @@ async def stream_completion(
                         _latency_recorded = True
 
             if ladder.dialect == "chat_completions":
+                # 末个 chunk 会带 finish_reason；"length" 即触到长度上限
+                if _chat_finish_reason(chunk) == "length":
+                    mark_truncated()
                 for item in _map_chat_chunk(chunk):
                     yield item
             else:
+                if _responses_incomplete(getattr(chunk, "response", None)) or _responses_incomplete(chunk):
+                    mark_truncated()
                 for item in _map_responses_event(chunk)[0]:
                     yield item
     finally:
@@ -763,7 +857,7 @@ async def chat(
     system: str | None = _SYSTEM_ASSISTANT,
     model: str | None = None,
     temperature: float = 0.7,
-    max_tokens: int = 1200,
+    max_tokens: int | None = None,
     history: list[dict] | None = None,
 ) -> str:
     """普通文本生成，返回回答字符串（思考内容见 chat_with_reasoning）。"""

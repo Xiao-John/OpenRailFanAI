@@ -46,6 +46,18 @@
       color:var(--fg); font-size:13px; line-height:1.6;
     }
     .notice .btn { flex:none; }
+    .notice-close { flex:none; background:transparent; border:none; color:var(--mut);
+                    font-size:16px; line-height:1; padding:4px 6px; cursor:pointer; border-radius:8px; }
+    .notice-close:hover { color:var(--fg); background:rgba(255,255,255,.08); }
+    /* 对话内的错误提示（用户关掉引导条后又没配 Key 时用） */
+    .chat-error { margin:12px; padding:12px 14px; border-radius:12px;
+                  background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.5);
+                  color:var(--fg); font-size:13px; line-height:1.6;
+                  display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    /* 回答被长度上限截断时的提示 */
+    .truncate-note { margin-top:8px; padding:8px 10px; border-radius:10px;
+                     background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.45);
+                     color:var(--fg); font-size:12px; line-height:1.6; }
 
     /* ============ 布局：移动优先（≤1023px 抽屉式侧栏） ============ */
     .app { display:flex; height:100dvh; height:100vh; }
@@ -349,6 +361,7 @@
           <span id="llm-notice-text"></span>
           <span class="spacer"></span>
           <button class="btn primary" id="llm-notice-go">去配置</button>
+          <button class="notice-close" id="llm-notice-close" title="关闭提示" aria-label="关闭提示">✕</button>
         </div>
         <div id="chat">
           <div class="empty">

@@ -61,7 +61,26 @@ function llmSpec() {
   if (e.model) spec.model = e.model;
   if (e.api) spec.api = e.api;
   if (e.key) spec.api_key = e.key;
+  if (e.max_tokens) spec.max_tokens = e.max_tokens;
+  if (e.context_tokens) spec.context_tokens = e.context_tokens;
   return spec;
+}
+
+/**
+ * 判断"当前是否已配置可用模型"。
+ *
+ * **必须先看客户端自己的 BYOK 条目**，再看服务端 llm_ready：
+ * Android 等自备 Key 的场景下服务端根本没有 Key（返回 llm_ready=false），
+ * 若只看服务端，用户明明配好了却会被判定为"未配置"而拦下发送（实测踩到）。
+ * 本地免 Key 服务（Ollama/LM Studio/vLLM）同样算已配置。
+ */
+function llmConfigured() {
+  const e = store.activeLlmEntry();
+  if (e) {
+    const keyless = ["ollama", "lmstudio", "vllm"].includes(e.id);
+    if (e.key || keyless) return true;
+  }
+  return !!state.llmReady || !!state.llmMock;
 }
 
 /** 顶栏徽标：显示当前实际生效的供应商，避免"以为在用 A 其实在跑 B"。 */
@@ -118,11 +137,15 @@ function renderLlmNotice() {
   const go = document.getElementById("llm-notice-go");
   if (!box || !text) return;
 
+  if (state.llmNoticeDismissed) {
+    box.classList.add("hidden");
+    return;
+  }
   if (state.llmMock) {
     text.textContent = "当前为 Mock 演示模式（LLM_MOCK=true）：回答由本地确定性规则生成，不是真实模型。";
     go.textContent = "配置真实模型";
     box.classList.remove("hidden");
-  } else if (state.llmReady === false) {
+  } else if (!llmConfigured()) {
     text.textContent = "尚未配置模型 API：社区版不内置 Key，请填你自己的 OpenAI 兼容接口"
       + "（支持 chat.completions 与 responses 两种方言，也可选本地 Ollama 等免 Key 服务）。";
     go.textContent = "去配置";
@@ -134,6 +157,14 @@ function renderLlmNotice() {
   if (!go._wired) {
     go._wired = true;
     go.addEventListener("click", () => navigate("#/settings"));
+    const close = document.getElementById("llm-notice-close");
+    if (close) {
+      close.addEventListener("click", () => {
+        // 关闭是会话级记忆：不要每次重绘又弹回来
+        state.llmNoticeDismissed = true;
+        box.classList.add("hidden");
+      });
+    }
   }
 }
 
@@ -376,6 +407,9 @@ function handleRoute() {
     renderConvList();
     updateHeaderTitle();
     renderChat();
+    // 每次回到对话页都重算：用户可能刚在设置页配好了 Key，
+    // 若只在启动时算一次，配完返回仍会看到那条引导条（真实反馈过）。
+    void loadProviders();
     return;
   }
   // 默认：当前对话
@@ -449,6 +483,12 @@ function renderAssistantRow(msg, index) {
       "ℹ️ 本题含知识型内容，可能包含未经检索确认的模型知识，请以官方资料为准"));
   }
   if (meta.stopped) bubble.appendChild(el("div", "stopped-tag", "⏹ 已停止生成（内容可能不完整）"));
+  // 模型因长度上限停止：如实标注，否则用户会以为内容本来就到这儿了
+  if (meta.truncated) {
+    bubble.appendChild(el("div", "truncate-note",
+      "⚠️ 回答因输出长度上限被截断（内容不完整）。可在「⚙️ 模型 → 编辑」里调大「最大输出」，"
+      + "或让问题更聚焦后重问。"));
+  }
   if (meta.error) bubble.appendChild(el("div", "error-box", "⚠️ " + meta.error));
 
   const logs = details("流程日志（意图 / 抽取 / 检索 / 生成）", []);
@@ -508,6 +548,18 @@ function emptyState() {
 }
 
 /** 重绘当前对话。 */
+/** 在对话区插入一条可操作的错误提示（带「去配置」）。 */
+function showChatError(message) {
+  chatEl.innerHTML = "";
+  const box = el("div", "chat-error");
+  box.appendChild(el("span", null, "⚠️ " + message));
+  const go = el("button", "btn primary", "去配置");
+  go.addEventListener("click", () => navigate("#/settings"));
+  box.appendChild(go);
+  chatEl.appendChild(box);
+  scrollBottom();
+}
+
 function renderChat() {
   const conv = store.get(state.convId) || store.current();
   state.convId = conv.id;
@@ -545,6 +597,13 @@ async function send() {
   if (state.generating) { stopGeneration(); return; }
   const text = inputEl.value.trim();
   if (!text) return;
+
+  // 用户主动关掉了引导条、却仍未配置任何 Key：不要在对话里默默失败，
+  // 直接给一条可操作的错误（并保留「去配置」入口）。
+  if (!llmConfigured()) {
+    showChatError("尚未配置模型 API，无法生成回答。请先在「⚙️ 模型」里选择供应商并填入 API Key。");
+    return;
+  }
 
   inputEl.value = "";
   autoGrow();
@@ -673,6 +732,9 @@ async function runAssistant(convId, userIndex) {
               thinking: ev.thinking || thinkRaw,
               sources: ev.sources || [],
               processLogs: ev.process_logs || [],
+              // 模型是否因长度上限停止：必须在气泡里如实提示，
+              // 否则用户会以为回答本来就写到这儿（真实反馈过）
+              truncated: !!ev.truncated,
             };
             refs.stats.textContent = formatStats(assistant.meta);
             if (assistant.meta.thinking) refs.thinkPre.textContent = assistant.meta.thinking;
@@ -685,6 +747,11 @@ async function runAssistant(convId, userIndex) {
             if (assistant.meta.questionType === "knowledge" || assistant.meta.questionType === "mixed") {
               refs.bubble.appendChild(el("div", "knowledge-hint",
                 "ℹ️ 本题含知识型内容，可能包含未经检索确认的模型知识，请以官方资料为准"));
+            }
+            if (assistant.meta.truncated) {
+              refs.bubble.appendChild(el("div", "truncate-note",
+                "⚠️ 回答因输出长度上限被截断（内容不完整）。可在「⚙️ 模型 → 编辑」里调大"
+                + "「最大输出」，或让问题更聚焦后重问。"));
             }
             if (assistant.meta.sources.length) {
               refs.bubble.appendChild(el("div", "sources", "数据来源：" + assistant.meta.sources.join(" · ")));

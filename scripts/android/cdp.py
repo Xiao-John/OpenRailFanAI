@@ -70,7 +70,7 @@ def fetch_targets() -> list[dict]:
         return json.load(r)
 
 
-async def evaluate(ws_url: str, expr: str) -> str:
+async def evaluate(ws_url: str, expr: str, timeout_s: float = 30.0) -> str:
     import websockets  # 由后端 venv 提供
 
     # 必须显式 proxy=None：websockets 默认会读代理设置，而 macOS 的 urllib.getproxies()
@@ -88,9 +88,11 @@ async def evaluate(ws_url: str, expr: str) -> str:
             },
         }))
         while True:
-            msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=30))
+            msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=timeout_s))
             if msg.get("id") == 1:
                 result = msg.get("result", {})
+                if "exceptionDetails" in result:
+                    return "JS 异常: " + json.dumps(result["exceptionDetails"], ensure_ascii=False)[:400]
                 if "exceptionDetails" in result:
                     return "JS 异常: " + json.dumps(
                         result["exceptionDetails"].get("text", result["exceptionDetails"]),
@@ -129,6 +131,8 @@ def main() -> int:
     ap.add_argument("expr", nargs="?", help="要执行的 JS 表达式")
     ap.add_argument("--eval-file", help="从文件读取 JS")
     ap.add_argument("--targets", action="store_true", help="列出可调试页面")
+    ap.add_argument("--timeout", type=float, default=30.0,
+                    help="等待求值结果的上限（秒）；含长 await 的脚本要调大")
     ap.add_argument("--screenshot", metavar="OUT.png",
                     help="由渲染器截图（比 adb screencap 可靠，见函数注释）")
     args = ap.parse_args()
@@ -161,7 +165,7 @@ def main() -> int:
         ap.print_help()
         return 1
 
-    print(asyncio.run(evaluate(page["webSocketDebuggerUrl"], expr)))
+    print(asyncio.run(evaluate(page["webSocketDebuggerUrl"], expr, args.timeout)))
     return 0
 
 

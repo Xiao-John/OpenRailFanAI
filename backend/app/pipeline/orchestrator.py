@@ -140,6 +140,9 @@ async def run_stream(
 
         # done 事件字段与块式 PipelineResult 对齐（含 tool_trace），
         # 并如实标注本次是否真的产出了回答（answer_done），避免"空答案 + done=true"误导前端。
+        if llm_client.was_truncated():
+            # 如实标注：模型明确表示因长度上限而停止（finish_reason=length）
+            logs.append("⚠️ 回答因输出长度上限被截断（可提高 LLM_MAX_TOKENS 后重试）")
         yield {
             "type": "done",
             "intent": intent_str or "general",
@@ -149,6 +152,7 @@ async def run_stream(
             "tool_trace": (retrieval.get("tool_trace") or []),
             "thinking": "".join(gathered_thinking),
             "answer_done": not generation_failed,
+            "truncated": llm_client.was_truncated(),
             "planner": planner_used,
             "error": failure_message or None,
             "usage": {
@@ -244,6 +248,8 @@ async def run(
         logs.append(f"[用量] 总计 token：{metrics['total_tokens']}（输入 {metrics['prompt_tokens']} / 输出 {metrics['completion_tokens']}） · LLM 耗时 {metrics['latency_ms']}ms")
         logs.append(f"[整体] 流水线耗时 {_ms(t_all)}ms")
 
+        if llm_client.was_truncated():
+            logs.append("⚠️ 回答因输出长度上限被截断（可调大「最大输出 token」或 LLM_MAX_TOKENS 后重试）")
         return PipelineResult(
             intent=f"{intent_.value}（{intent_.label_zh}）",
             question_type=question_type,
@@ -254,6 +260,8 @@ async def run(
             tool_trace=retrieval.get("tool_trace", []) or [],
             process_logs=logs,
             planner=planner_used,
+            # 模型若因长度上限停止，必须如实带给前端（此前该字段被完全忽略）
+            truncated=llm_client.was_truncated(),
             usage={
                 "total_tokens": metrics["total_tokens"],
                 "prompt_tokens": metrics["prompt_tokens"],

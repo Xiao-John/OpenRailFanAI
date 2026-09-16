@@ -435,6 +435,42 @@ def test_llm_diagnostics_include_cause_chain():
     print("[PASS] LLM 失败日志含因果链与堆栈（能定位 SSL/DNS/超时等真实原因）")
 
 
+def test_settings_row_gets_edit_callback():
+    """供应商行必须通过**回调**拿到编辑入口，不能在模块级函数里引用闭包内函数。
+
+    真机事故：`providerRow` 定义在模块作用域，却直接调用 `openEditor(entry)` ——
+    而 `openEditor` 定义在 `renderSettingsPage` 内部，两者作用域不同，
+    于是点「编辑」抛 `ReferenceError: openEditor is not defined`，按钮完全没反应
+    （文件里定义了也没用）。这类错误静态看代码很难发现，靠页面上的错误横幅才立刻暴露。
+    """
+    pages = (REPO_ROOT / "frontend/src/pages.js").read_text(encoding="utf-8")
+    # 模块级函数 providerRow 的签名要带 onEdit 回调
+    assert "function providerRow(entry, rerender, onEdit)" in pages, (
+        "providerRow 未通过参数接收编辑回调（会引用不到闭包内的 openEditor）"
+    )
+    assert "() => onEdit(entry)" in pages, "编辑按钮未使用传入的回调"
+    # 且不能再出现对 openEditor 的直接调用（只能作为回调传递）
+    direct = [ln.strip() for ln in pages.splitlines()
+              if "openEditor(" in ln and "function openEditor" not in ln and "openEditor)" not in ln]
+    assert not direct, f"仍存在对 openEditor 的直接调用：{direct}"
+    print("[PASS] 供应商行的编辑入口通过回调传递（作用域正确）")
+
+
+def test_android_uses_stable_local_port():
+    """本地端口必须在重启后保持稳定。
+
+    WebView 的 localStorage 按「源」隔离，而源包含端口。端口每次启动都变的话，
+    每次启动都是一个"新用户"—— 用户的对话、供应商配置、记住的 Key 全部丢失。
+    真机实测过：58213 下存的数据在 43657 下读不到。
+    """
+    srv = (ANDROID_DIR / "app/src/main/python/server.py").read_text(encoding="utf-8")
+    assert "_stable_port" in srv, "缺少稳定端口逻辑"
+    assert ".local_port" in srv, "未把上次端口记录下来，重启后无法复用"
+    serve_body = srv.split("def serve(", 1)[1]
+    assert "_stable_port(" in serve_body, "serve() 未使用稳定端口"
+    print("[PASS] 本地端口在重启后复用（保住 WebView 的 localStorage）")
+
+
 def test_frontend_api_calls_have_api_prefix():
     """前端调用后端必须带 `/api` 前缀 —— 否则静默 404。
 
@@ -498,6 +534,8 @@ def main():
     test_python_callbacks_use_attribute_access()
     test_android_sets_tls_ca_bundle()
     test_llm_diagnostics_include_cause_chain()
+    test_settings_row_gets_edit_callback()
+    test_android_uses_stable_local_port()
     test_frontend_api_calls_have_api_prefix()
     test_server_selfcheck_covers_entry_script()
     test_frontend_reports_boot_errors()

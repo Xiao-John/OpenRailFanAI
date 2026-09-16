@@ -46,6 +46,7 @@ cd backend && python3 -m venv .venv
 | `LLM_STRUCTURED_MODEL` / `LLM_MOCK` | 意图·抽取用更强模型（留空沿用 `LLM_MODEL`）/ `true` 走确定性本地 mock（无 Key 演示与 CI） |
 | 多供应商 | 界面「⚙️ 模型」里点「添加提供方」即可选常用预设（OpenAI / DeepSeek / 硅基流动 / 阿里云百炼 / 智谱 GLM 优先展示，另含 moonshot/openrouter/gemini/ollama/lmstudio/vllm），填 Key 后**自动探测模型**并以下拉列出；也可「添加自定义提供方」。服务端侧 `LLM_PROVIDER` 选内置供应商；`LLM_PROVIDERS`（JSON）或 `LLM_PROVIDERS_FILE`（文件）添加/覆盖自定义供应商（字段级合并，可只写 `{"deepseek":{"model":"deepseek-reasoner"}}`）；`LLM_API_KEY` 作全局兜底 Key、`LLM_MODEL` 只填空不顶替 |
 | API 方言 | `LLM_API_DIALECT=auto`（默认）：先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存；也可显式指定 `chat_completions`/`responses`。不支持的可选参数（`temperature`/`response_format`/`enable_thinking`）会被自动丢弃重试 |
+| 生成预算 | `LLM_MAX_TOKENS=4096`（单次输出上限，**含思考 token**——原值 1200 会让长回答在半句处被截断）、`LLM_CONTEXT_TOKENS=32000`（模型窗口，用于把输出预算收进窗口：实际上限 = min(最大输出, 窗口-输入-512)）、`LLM_CHARS_PER_TOKEN=1.5`（估算系数）。**界面「⚙️ 模型 → 编辑」里可按供应商覆盖前两项**（BYOK 场景下 `.env` 常不可达）。模型因上限停止时会返回 `truncated=true`，前端在气泡里如实提示 |
 | 供应商网络项 | `LLM_TIMEOUT_S=60.0`（推理模型首 token 慢，勿调太小）、`LLM_EXTRA_HEADERS`/`LLM_EXTRA_BODY`（JSON，自定义网关用）、`LLM_ALLOW_PRIVATE_BASE_URL=false`（`true` 才允许指向内网/本机；生产开启等于开放 SSRF） |
 | `T12306_BASE` | 自备 12306 反代；**留空则 `t12306.search_tickets` 停用**（路由不主动调用） |
 | `RAILRE_API_BASE` / `RAILRE_BASE` / `JPRAILFAN_BASE` / `CNRAIL_BASE` | rail.re 交路 API / rail.re 主站 / 黄河铁路网 / cnrail 地图 |

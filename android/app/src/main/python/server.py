@@ -51,11 +51,59 @@ def recent_logs(limit: int = 40) -> str:
     return "\n".join(lines)
 
 
+def _can_bind(port: int) -> bool:
+    """端口现在能否绑定。
+
+    **必须设 SO_REUSEADDR**：上一次的监听 socket 关闭后常处于 TIME_WAIT，
+    此时不带该选项的 bind() 会失败，于是会被误判成"端口被占用"而换新端口 ——
+    那正好破坏了"复用端口保住 localStorage"这件事（实测踩到，白修一轮）。
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            s.bind((HOST, port))
+            return True
+        except OSError as e:
+            _log.info("上次的端口 %d 不可用（%s），将另选端口", port, e)
+            return False
+
+
 def _pick_free_port() -> int:
-    """让内核分配一个空闲端口（固定端口在真机上会与其它应用或残留进程冲突）。"""
+    """让内核分配一个空闲端口。"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, 0))
         return int(s.getsockname()[1])
+
+
+def _stable_port(data_dir: str) -> int:
+    """**尽量复用上次用过的端口** —— 这不是优化，是正确性要求。
+
+    原因：WebView 的 localStorage 按「源」隔离，而源 = scheme://host:port。
+    端口每次启动都变的话，每次启动都是一个"新用户"：
+    用户的对话、供应商配置、记住的 API Key 会**全部丢失**
+    （真机实测：`http://127.0.0.1:58213` 存的数据在 `http://127.0.0.1:43657` 下读不到）。
+
+    策略：能绑上上次的端口就复用；被占用（极少见）才换新的并记下来。
+    """
+    marker = os.path.join(data_dir, ".local_port") if data_dir else ""
+    if marker:
+        try:
+            with open(marker, encoding="utf-8") as f:
+                port = int(f.read().strip())
+            if 1024 < port < 65536 and _can_bind(port):
+                _log.info("复用上次的本地端口 %d（保持 WebView 源不变，localStorage 才能延续）", port)
+                return port
+        except (OSError, ValueError):
+            pass
+
+    port = _pick_free_port()
+    if marker:
+        try:
+            with open(marker, "w", encoding="utf-8") as f:
+                f.write(str(port))
+        except OSError:
+            _log.warning("无法记录本地端口（下次可能换端口，localStorage 会重新开始）")
+    return port
 
 
 def _self_check(port: int) -> tuple[bool, str]:
@@ -173,8 +221,8 @@ def serve(activity=None, webapp_dir: str = "", data_dir: str = "") -> None:
     webapp_dir —— Java 侧从 assets 解包出的前端目录（对应 FRONTEND_DIR）；
     data_dir   —— 应用私有可写目录（放 dict.db 等运行期数据）。
     """
-    _beat(activity, "选择空闲端口…")
-    port = _pick_free_port()
+    _beat(activity, "选择本地端口…")
+    port = _stable_port(data_dir)
 
     # 必须在任何 httpx2 客户端创建之前完成（openai SDK / mcp_12306 都会自建客户端）
     _beat(activity, "准备 TLS 信任库…")

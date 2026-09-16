@@ -41,6 +41,13 @@ class ChatRequest(BaseModel):
         None, description="API 方言：auto 为自动探测（chat.completions 优先，404/405 退 responses）"
     )
     base_url: Optional[str] = Field(None, description="自定义供应商的 base_url（填了即视为临时自定义供应商）")
+    # 生成预算：让用户按自己模型的窗口调整（BYOK 场景下 .env 往往不可达，尤其 Android）
+    max_tokens: Optional[int] = Field(
+        None, ge=64, le=200000, description="本次生成的最大输出 token（含思考）；留空用服务端 LLM_MAX_TOKENS"
+    )
+    context_tokens: Optional[int] = Field(
+        None, ge=1024, le=2000000, description="所用模型的上下文窗口；留空用服务端 LLM_CONTEXT_TOKENS"
+    )
     # repr=False：**任何**日志/异常里打印 ChatRequest 都不应带出 Key
     api_key: Optional[str] = Field(None, repr=False, description="用户自带的 API Key（仅随本次请求使用，不落库不写日志）")
 
@@ -66,6 +73,8 @@ class ChatRequest(BaseModel):
                 "api": self.api,
                 "base_url": self.base_url,
                 "api_key": self.api_key,
+                "max_tokens": self.max_tokens,
+                "context_tokens": self.context_tokens,
             }.items()
             if v
         }
@@ -106,6 +115,11 @@ class PipelineResult(BaseModel):
     sources: list[str] = Field(default_factory=list)        # 引用的数据来源 URL
     tool_trace: list[str] = Field(default_factory=list)     # 调用的工具与关键操作（调试用）
     process_logs: list[str] = Field(default_factory=list)   # 流程日志：各阶段耗时/工具/计费（可折叠）
+    truncated: bool = Field(
+        False,
+        description="回答是否因输出长度上限被截断（模型 finish_reason=length / 响应 incomplete）。"
+                    "为 True 时前端必须如实提示，不能让用户以为是内容写完了。",
+    )
     planner: str = Field(
         "llm-legacy",
         description="决策来源：deterministic（确定性快路径）/ llm-merged（合并调用）/ llm-legacy（两次调用）",
