@@ -13,6 +13,7 @@
 //   5) 三端自适应：移动优先（抽屉侧栏），≥1024px 侧栏常驻
 //   6) 无需登录：对话匿名可用，不存任何凭据
 import { store } from "./store.js";
+import { native } from "./native.js";
 import { renderDocPage, renderSettingsPage, APP_VERSION, ROOT_KEY_ID } from "./pages.js";
 
 // API 地址：默认与页面同源（空串 → 相对路径）；可由宿主注入 window.__API_BASE__
@@ -216,12 +217,13 @@ function details(title, bodyNodes) {
   return d;
 }
 let toastTimer = null;
-function toast(msg) {
+/** duration 可调：默认 1.8s 够读"已复制"，但读不完一句要用户照做的长提示。 */
+function toast(msg, duration = 1800) {
   if (!toastEl) return;
   toastEl.textContent = msg;
   toastEl.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1800);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), duration);
 }
 async function copyText(text) {
   try {
@@ -236,6 +238,27 @@ async function copyText(text) {
     document.body.removeChild(ta);
   }
 }
+/** 分享一条回答：正文与「复制」保持一致（避免"复制到的是 A、分享出去的是 B"），
+ *  再附上来源链接 —— 收到的人想核对出处时不必回头找。 */
+async function shareText(msg) {
+  let text = String((msg && msg.content) || "");
+  const sources = (msg && msg.meta && msg.meta.sources) || [];
+  if (Array.isArray(sources) && sources.length) text += "\n\n数据来源：\n" + sources.join("\n");
+  try {
+    const ok = await native.share(text);
+    // 返回值只表示"分享面板有没有被唤起"：用户在系统面板上按返回取消是正常操作，
+    // 弹错误只会让人以为程序坏了。
+    //
+    // 但**桌面浏览器没有分享面板**时，native.share 会退化成"复制到剪贴板" ——
+    // 那种情况下什么都不说，用户点了没反应，只会以为坏了。所以这一条要如实讲。
+    if (!native.available && !navigator.share) {
+      toast(ok ? "当前环境没有分享面板，内容已复制到剪贴板" : "复制失败：请改用「复制」按钮");
+    }
+  } catch (e) {
+    toast("分享失败：" + ((e && e.message) || "当前环境不支持分享"));
+  }
+}
+
 function scrollBottom() { chatEl.scrollTop = chatEl.scrollHeight; }
 function relTime(ts) {
   const d = Date.now() - (ts || 0);
@@ -410,6 +433,9 @@ function handleRoute() {
     pageBody.appendChild(renderSettingsPage({
       onBack: () => navigate("#/c/" + state.convId),
       navigate,
+      // 设置页的表单很长，卡片底部那行 .sub 提示常落在折叠线以下；
+      // 把外壳的 toast 传下去，按钮的反馈才真正可见（样式仍是同一套）。
+      toast,
     }));
     pageBody.parentElement.scrollTop = 0;
     void refreshProviderBadge();
@@ -524,6 +550,7 @@ function renderAssistantRow(msg, index) {
 
   const actions = el("div", "actions");
   actions.appendChild(actionBtn("复制", "复制回答", () => copyText(msg.content || "")));
+  actions.appendChild(actionBtn("分享", "分享这条回答（调起系统分享面板）", () => shareText(msg)));
   const regen = actionBtn("重新生成", "丢弃这条回答并重新生成", () => regenerate(index));
   regen.disabled = state.generating;
   actions.appendChild(regen);

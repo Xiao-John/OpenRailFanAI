@@ -278,6 +278,9 @@
                       outline:none; min-width:0; }
     .form-row input:focus, .form-row select:focus { border-color:var(--accent); }
     .form-row .btn { min-width:96px; }
+    /* 输入框同一行里的紧凑按钮（如 Key 旁的「粘贴」）：96px 的最小宽度会把输入框
+       挤到没法用，而这类按钮只有两个字。 */
+    .form-row .btn.inline { min-width:auto; flex:none; padding:9px 14px; }
     .form-row label { color:var(--mut); font-size:12px; align-self:center; min-width:64px; }
     /* 顶栏的供应商入口：比 .btn 更紧凑，窄屏时只留图标不挤掉标题 */
     .llm-btn { background:transparent; border:1px solid var(--line); color:var(--mut);

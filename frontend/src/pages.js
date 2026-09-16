@@ -4,6 +4,7 @@
 // 侧栏「ℹ️ 关于」与顶栏「⚙️ 设置」并列，用户要找一个设置得先猜它在哪一边）。
 
 import { store } from "./store.js";
+import { native } from "./native.js";
 
 const API_BASE = window.__API_BASE__ || "";
 
@@ -358,6 +359,9 @@ function providerRow(entry, rerender, onEdit) {
 
 export function renderSettingsPage(deps) {
   const { onBack, navigate } = deps;
+  // 反馈走外壳的 toast（与对话页同一套样式与位置）。设置页的表单很高，
+  // 卡片底部那行 .sub 提示经常落在折叠线以下 —— 只写那里等于"点了没反应"。
+  const notify = typeof deps.toast === "function" ? deps.toast : () => {};
   const root = el("div");
   // 标题从「模型」改成「设置」：这一页现在同时承载模型供应商与关于，
   // 顶栏入口叫「⚙️ 设置」，进来看见「模型」会让人以为走错了地方。
@@ -495,9 +499,47 @@ export function renderSettingsPage(deps) {
     const modelSel = selectEl([["", "（先填 API Key，再自动探测）"]], e.model);
     const status = el("div", "sub", "");
 
+    // 「粘贴」按钮：Key 是一长串随机字符，手输几乎必错；而"复制 Key → 切回应用 →
+    // 长按输入框 → 选粘贴"这条路在 WebView 里常常走不通（长按不出系统菜单）。
+    // 读取失败时**如实**说明原因 —— 假装成功会让用户对着空输入框找不到问题在哪。
+    const pasteBtn = buttonEl("粘贴", "inline", async () => {
+      const raw = await native.clipboard.read();
+      // 剪贴板里常常是整段文字（Key 前面带一句说明、或一次复制了多行配置），
+      // 而 Key 本身不含换行，所以只取第一行；trim 掉复制来的首尾空白与换行。
+      const text = String(raw || "").trim().split(/\r?\n/)[0].trim();
+      if (!text) {
+        // 空串不是"剪贴板就是空的"：Android 10+ 只允许有焦点的应用读剪贴板，
+        // 桌面浏览器也可能因权限被拒。两种原因都只能靠用户手动粘贴绕过。
+        const tip = "读不到剪贴板（Android 10+ 只允许当前应用读取剪贴板，请手动长按粘贴）。";
+        // 长提示给足阅读时间；同时留在 status 里，toast 消失后仍能回看
+        notify(tip, 4000);
+        status.textContent = tip;
+        // 提示条在表单底部，手机上往往在折叠线以下；不滚过去，用户看到的就是"什么都没发生"
+        status.scrollIntoView({ block: "nearest" });
+        return;
+      }
+      keyInp.value = text;
+      notify("已从剪贴板填入 API Key");
+      status.textContent = "已从剪贴板填入 API Key，确认无误后点「保存」。";
+      // 聚焦而非直接探测：与手输 Key 完全同一条路径（失焦时既有逻辑会自动探测模型），
+      // 避免粘贴触发一次用户没预期的网络请求。
+      keyInp.focus();
+    });
+    // 既没有原生桥、浏览器也不提供 clipboard API 时，没有任何可用的读取路径，
+    // 按钮点了必然只能报错，不如直接禁用。桌面浏览器上 clipboard.readText() 仍可能
+    // 因权限被拒返回空串，那走上面的空串分支，与 Android 是同一条提示。
+    if (!native.available && !(navigator.clipboard && navigator.clipboard.readText)) {
+      pasteBtn.disabled = true;
+      pasteBtn.title = "当前浏览器不支持读取剪贴板，请手动长按粘贴";
+    }
+    const keyWrap = el("div");
+    keyWrap.style.cssText = "display:flex; gap:8px; flex:1; min-width:0";
+    keyWrap.appendChild(keyInp);
+    keyWrap.appendChild(pasteBtn);
+
     if (e.custom) c.appendChild(formRow("名称", nameInp));
     c.appendChild(formRow("接口地址", baseInp));
-    c.appendChild(formRow("API Key", keyInp));
+    c.appendChild(formRow("API Key", keyWrap));
 
     // 模型：下拉优先（探测结果），下拉里带"手工输入…"这一项兜底
     const modelWrap = el("div", "form-row");
