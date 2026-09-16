@@ -84,6 +84,12 @@ public class MainActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
 
         // ---- 启动/诊断面板：失败时它就是唯一的排障入口 ----
+        // 颜色**写死**，不跟随主题：这块面板是"白屏时唯一能看见的东西"，
+        // 一旦随主题变成深底深字就等于白屏，而白色窗口底在冷启动时又会闪一下。
+        final int panelBg = 0xFF101216;
+        final int panelFg = 0xFFE6E9EF;
+        root.setBackgroundColor(panelBg);
+
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(40, 56, 40, 40);
@@ -91,6 +97,7 @@ public class MainActivity extends Activity {
         hintView = new TextView(this);
         hintView.setTextSize(17f);
         hintView.setTypeface(Typeface.DEFAULT_BOLD);
+        hintView.setTextColor(panelFg);
         hintView.setText("正在启动本地服务…");
         panel.addView(hintView);
 
@@ -98,6 +105,7 @@ public class MainActivity extends Activity {
         logView.setTextSize(12f);
         logView.setTypeface(Typeface.MONOSPACE);
         logView.setPadding(0, 20, 0, 20);
+        logView.setTextColor(panelFg);
         logView.setTextIsSelectable(true);      // 方便用户复制给我们排查
         panel.addView(logView);
 

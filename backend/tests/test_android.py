@@ -647,6 +647,36 @@ def test_native_state_write_is_atomic():
     print("[PASS] 状态落盘为原子写（tmp + fsync + rename），进程被杀不会留下半个 JSON")
 
 
+def test_theme_declares_no_actionbar():
+    """必须显式声明 NoActionBar 主题 —— 否则顶部约 275px 会整个点不动。
+
+    这是一次真机才会暴露、而且**症状极具欺骗性**的缺陷：清单里不声明主题时
+    （targetSdk 35），平台会给一个带 ActionBar 的默认主题。这条 ActionBar 在本应用里
+    看不见（没有标题、透明），但它确实存在，并以 ActionBarOverlayLayout 的叠加模式
+    **盖在 WebView 之上**，吃掉顶部约 275px 的全部触摸。
+
+    表现：界面完全正常，顶栏的「☰」和侧栏的「＋ 新对话」也画在那里，但怎么点都没反应。
+    用户的原话是"创建新对话的功能怎么没了"。
+    （那 275px = 挖孔安全区 128 + ActionBar 高度 147，与实测的触摸死区边界完全吻合；
+    排查依据是 `dumpsys activity top` 视图层级里的 ActionBarContainer 0,0-1080,275。）
+
+    注意：只给顶栏加 env(safe-area-inset-top) 解决不了这个问题 —— 那只解决"看起来
+    被状态栏压住"的观感，不解决"摸不到"。
+    """
+    manifest = (ANDROID_DIR / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+    assert 'android:theme="@style/AppTheme"' in manifest, (
+        "清单没有声明主题：平台会给带 ActionBar 的默认主题，"
+        "它会在 WebView 之上吃掉顶部约 275px 的触摸（顶栏按钮点不动）"
+    )
+    styles = ANDROID_DIR / "app/src/main/res/values/styles.xml"
+    assert styles.exists(), "缺少 res/values/styles.xml（AppTheme 定义在这里）"
+    text = styles.read_text(encoding="utf-8")
+    assert "NoActionBar" in text, (
+        "AppTheme 必须继承 NoActionBar 主题，否则顶部触摸死区会回来"
+    )
+    print("[PASS] 主题显式声明为 NoActionBar，顶部触摸死区不会复现")
+
+
 def main():
     test_android_requirements_are_pure_python()
     test_android_requirements_are_pinned()
@@ -666,6 +696,7 @@ def main():
     test_native_bridge_contract_matches_java()
     test_byok_keys_use_android_keystore()
     test_native_state_write_is_atomic()
+    test_theme_declares_no_actionbar()
     test_python_callbacks_use_attribute_access()
     test_android_sets_tls_ca_bundle()
     test_llm_diagnostics_include_cause_chain()

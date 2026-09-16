@@ -252,6 +252,7 @@ curl -s -XPOST http://127.0.0.1:<端口>/api/chat -H 'Content-Type: application/
 
 | 现象 | 可能原因 |
 |---|---|
+| 界面正常，但顶部（顶栏「☰」「⚙️」、侧栏「＋ 新对话」）**怎么点都没反应** | 平台的默认主题带来了一条看不见的 ActionBar，它叠加在 WebView 之上吃掉顶部约 275px 的触摸。已在 `res/values/styles.xml` 里声明 `NoActionBar` 主题修掉；若又出现，先看清单里 `android:theme` 是否还在（`test_android.py` 有断言钉住）。注意只加 `env(safe-area-inset-top)` 解决不了——那只解决观感，不解决触摸 |
 | 卡在"正在启动本地服务…" | Python 侧启动失败，界面会显示 traceback；多为依赖缺失或数据目录不可写 |
 | 白屏但已进入应用 | 前端静态资源未解包成功（检查 `filesDir/webapp/index.html`）或 `FRONTEND_DIR` 未生效 |
 | 界面上点什么都没反应 | 先用 `dumpsys window \| grep mCurrentFocus` 确认 App 是否真在前台；不在前台时点击全被 launcher 接走（用 CDP 点击则不受影响） |
