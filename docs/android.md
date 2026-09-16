@@ -108,6 +108,43 @@ bash scripts/android/build.sh assembleRelease
 - 若不需要 HTTPS 校验则去掉 OpenSSL（**不推荐**：12306 与 LLM 均需 TLS）；
 - 按 ABI 出多包（App Bundle）而不是单包。
 
+## 原生桥（`window.RailNative`）
+
+WebView 上有三件事纯网页做不好，所以 MainActivity 里挂了一个自己的小桥
+（`addJavascriptInterface`，**零依赖**；契约见 `frontend/src/native.js`）：
+
+| 问题 | 纯网页的处境 | 桥的做法 |
+|---|---|---|
+| 状态持久化 | localStorage 按**源**隔离，而源含端口。后端端口一变（上次那个被别的 App 占了就换），应用在浏览器眼里就是另一个站点 —— 对话/配置/记住的 Key 全部读不到 | 状态写进应用私有目录的 `state.json`，与端口无关 |
+| 粘贴 API Key | `navigator.clipboard.readText()` 在 WebView 里不可靠（要权限 + 用户手势） | `readClipboard()` 走系统剪贴板 |
+| 分享 | 没有系统分享入口 | `shareText()` 调起系统分享面板 |
+| Key 的静态加密 | 明文躺在 localStorage | `securePut/Get` 走 **Android Keystore**（AES-GCM），加密密钥永不出密钥库 |
+
+**为什么不用 Capacitor 之类**：本项目需要的只有上面这几项，自己写百来行就能覆盖；
+引一整套运行时还要在构建链里插 `npx cap sync`，而且**解决不了核心那条**（源随端口变化）。
+
+设计要点：
+
+- **同步**。`@JavascriptInterface` 的返回值同步回到 JS，所以 `store.js` 现有的同步读写
+  模型一行都没改。也正因为同步会阻塞页面，写盘做了**合并**（250ms 内的多次写入只落一次），
+  并在 `visibilitychange`/`pagehide` 时立即补写。
+- **原子落盘**：先写 `.tmp`、`fsync`、再 `renameTo`。应用被系统在写到一半时回收
+  （移动端很常见）不会留下半个 JSON —— 那会让下次启动读到损坏状态，用户看到"数据全没了"。
+- **优雅降级**：桥不存在时（桌面浏览器、node 单测、未接桥的旧包）`native.js` 全部退化为
+  安全空实现，`store.js` 退回 localStorage，调用方不需要到处写 `if (android)`。
+- **Key 与状态分文件**：`secrets.json` 只放密文，`state.json` 里一个 Key 都不留；
+  取消勾选「记住 Key」、删除条目、清空配置时都会**真的删掉**密钥库里的副本。
+- 密钥库被重置（刷机/清除数据）后旧密文解不开，此时如实返回空让用户重填，而不是抛异常把设置页带崩。
+
+> ⚠️ **安全前提**：桥对 WebView 里加载的**任何页面**都可见。本项目外链一律交给系统浏览器
+> （见 `openExternally`），WebView 永远停在 `127.0.0.1` 上，所以不存在陌生页面调用本桥的路径。
+> **将来若允许 WebView 内打开第三方页面，必须先重新评估这个前提。**
+> `backend/tests/test_android.py` 会把这条前提和"两边方法名一致"一起钉住
+> —— 桥是**按方法名反射**暴露的，名字写错既不报错也不抛异常，只会"点了没反应"。
+
+启动自检的日志里会带 `bridge` 字段（`android` 或 `缺失`）：桥没接上时前端会**静默**退回
+localStorage，界面上完全看不出来，所以把它显式打进日志。
+
 ## 排障设计（白屏必须能自证原因）
 
 真机排障拿不到 logcat，所以**任何失败都必须显示在屏幕上**，而不是留一片白：
@@ -191,14 +228,18 @@ curl -s -XPOST http://127.0.0.1:<端口>/api/chat -H 'Content-Type: application/
 ## 已知限制
 
 - **已在 Android 15 arm64 模拟器上实测通过**：启动各阶段、前端渲染（DOM 探针核对到完整界面文本）、
-  设备内真实问答（12306 + rail.re + LLM 全链，返回正确担当车组）。**release 包（带字典）也已
+  设备内真实问答（12306 + rail.re + LLM 全链，返回正确担当车组）、**原生桥全链**
+  （剪贴板往返、Keystore 写读、**强行换端口后对话与配置仍在**）。**release 包（带字典）也已
   全新安装验证**：前后端自检均 HTTP 200、界面完整渲染、`本地字典：可用`。
   仍未验证的是**实体机**上的长时间后台回收行为、以及不同厂商 WebView 版本的兼容性。
 - **本地字典默认不打**，因此 `rail.mileage`、车站档案、离线时刻这类依赖字典的工具
   会如实报告不可用；需要完整功能请用 `-PincludeDict=true` 构建（该开关曾整包失效，
   见「构建」下的注意事项）。
 - 后端跑在应用进程内，**没有前台 Service**：切到后台久了可能被系统回收，
-  回到前台需重新冷启动（表现为重新加载页面）。
+  回到前台需重新冷启动（表现为重新加载页面）。**正在生成的长回答会被一并中断**——
+  这是目前最主要的体验短板，修法是加一个前台服务（代价是常驻通知），尚未做。
+- 只打 arm64-v8a（`minSdk 24`）：32 位老机装不上，需要时在 `build.gradle.kts` 的
+  `abiFilters` 里追加 `armeabi-v7a`（APK 体积会明显变大）。
 - 目录访问等需要凭据的第三方数据源在移动网络下的可用性未做专门适配。
 
 ## 首次使用
@@ -215,6 +256,7 @@ curl -s -XPOST http://127.0.0.1:<端口>/api/chat -H 'Content-Type: application/
 | 白屏但已进入应用 | 前端静态资源未解包成功（检查 `filesDir/webapp/index.html`）或 `FRONTEND_DIR` 未生效 |
 | 界面上点什么都没反应 | 先用 `dumpsys window \| grep mCurrentFocus` 确认 App 是否真在前台；不在前台时点击全被 launcher 接走（用 CDP 点击则不受影响） |
 | 点外链没反应 / 日志报 `Background activity launch blocked!` | 同样是 App 不在前台时 Android 15 拦下了外部 Intent；代码路径本身没问题（日志会有「已在系统浏览器打开」） |
-| 「未配置 LLM」 | 未在设置页填 Key；或 Key 被清空（未勾选"记住 Key"时重启会丢） |
+| 「未配置 LLM」 | 未在设置页填 Key；或 Key 被清空（未勾选"记住 Key"时重启会丢）；刷过机/清过应用数据后密钥库被重置，旧 Key 解不开（会如实让你重填） |
+| 对话/供应商配置不见了 | 先看启动日志里自检的 `bridge` 字段：显示 `缺失` 说明桥没接上、前端退回了 localStorage —— 那是跑到了没接桥的旧包。正常应为 `android`（数据在 `filesDir/state.json`） |
 | 实时查询全部失败 | 设备网络不通，或 12306 触发风控（与桌面版相同） |
 | `includeDict=true` 报错 | `backend/data/dict.db` 不存在，先跑 `scripts/mirror_dict.py` |

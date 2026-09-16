@@ -100,7 +100,7 @@ LLM_ALLOW_PRIVATE_BASE_URL=true
 - **两种 API 都支持**：只提供 `/responses` 的网关无需配置，`auto` 会在 `/chat/completions` 返回 404/405 时自动改试并记住结论。要固定可设 `LLM_API_DIALECT`。
 - **不确定能不能用**：启动后打开界面「⚙️ 设置 → 测试连接」，会返回可用性、实际使用的方言、延迟与可选模型清单。
 - **安全边界**：`APP_ENV=production` 时，**请求体带来的** `base_url`（界面自定义供应商、`/api/providers/test`）只允许公网地址，内网/环回/云元数据地址一律拒绝，除非显式设 `LLM_ALLOW_PRIVATE_BASE_URL=true`；`.env` / 配置文件里的地址属管理员可信配置，不受此限。开发环境不限制（便于连本机 Ollama）。
-- **不想配 `.env`**：界面「⚙️ 设置」里选供应商并填自己的 Key 即可（BYOK）。Key 默认只留在浏览器内存，勾选「记住 Key」才写入 localStorage，服务端不落库、不写日志。
+- **不想配 `.env`**：界面「⚙️ 设置」里选供应商并填自己的 Key 即可（BYOK）。Key 默认只留在内存，勾选「记住 Key」才落盘（浏览器里是 localStorage；Android 应用里走系统密钥库加密后存应用私有文件），服务端不落库、不写日志。
 
 > ⚠️ **密钥**：`.env` 含真实 Key（已在 `.gitignore`），仅本地保存、不进库、不随包分发；**部署公网前必须改为环境变量注入并轮换 Key**。当前 `main.py` 为开发默认：CORS `allow_origins=["*"]`（`allow_credentials=False`）、无鉴权（`/health` 返回 `auth: "disabled"`）、无限流；对外提供访问应在反向代理层收敛入口并加限流、改白名单。
 
@@ -142,7 +142,7 @@ python3 scripts/mirror_dict.py --stats    # 查看本地库现状
 
 ## 7. 前端交互与上下文治理
 
-多对话并存（「☰」列表，`#/` 新建，hover「✎」重命名 /「🗑」删除，标题默认取首条用户消息，各对话独立 `messages[]`/`history` 存 localStorage）· 多轮追问（前端回传 `history`）· 暂停输出（「■」或 `ESC`，`AbortController`，保留已生成内容并标记"已停止"）· 编辑重发（丢弃该消息之后的内容）/ 重新生成 / 复制 · `Enter` 发送、`Shift+Enter` 换行（中文输入法组合态已处理）· 深/浅色跟随系统并记忆 · 静态页路由 `#/doc/<key>`（`help` / `disclaimer` / `contact` 三页正文均已填写）；「关于」已并入设置页 `#/settings`，旧的 `#/doc/about` 会重定向过去。移动优先三端自适应：默认抽屉式侧栏（`☰` 呼出、遮罩点击关闭）+ 底部输入区带 `env(safe-area-inset-bottom)` 安全区，`≥768px` 加宽留白，`≥1024px` 侧栏常驻。上下文裁剪在服务端 `app/context.py`：**最近 6 条 / 单条 ≤800 字 / 合计 ≤3000 字**；前端 `frontend/src/store.js` 上限 **对话 ≤100 段 / 每段 ≤300 条消息 / 思考内容 ≤4000 字 / 工具日志 ≤60 条**。
+多对话并存（「☰」列表，`#/` 新建，hover「✎」重命名 /「🗑」删除，标题默认取首条用户消息，各对话独立 `messages[]`/`history` 存本机（浏览器用 localStorage；Android 用应用私有文件，见 `docs/android.md` 的原生桥一节））· 多轮追问（前端回传 `history`）· 暂停输出（「■」或 `ESC`，`AbortController`，保留已生成内容并标记"已停止"）· 编辑重发（丢弃该消息之后的内容）/ 重新生成 / 复制 · `Enter` 发送、`Shift+Enter` 换行（中文输入法组合态已处理）· 深/浅色跟随系统并记忆 · 静态页路由 `#/doc/<key>`（`help` / `disclaimer` / `contact` 三页正文均已填写）；「关于」已并入设置页 `#/settings`，旧的 `#/doc/about` 会重定向过去。移动优先三端自适应：默认抽屉式侧栏（`☰` 呼出、遮罩点击关闭）+ 底部输入区带 `env(safe-area-inset-bottom)` 安全区，`≥768px` 加宽留白，`≥1024px` 侧栏常驻。上下文裁剪在服务端 `app/context.py`：**最近 6 条 / 单条 ≤800 字 / 合计 ≤3000 字**；前端 `frontend/src/store.js` 上限 **对话 ≤100 段 / 每段 ≤300 条消息 / 思考内容 ≤4000 字 / 工具日志 ≤60 条**。
 
 ## 8. 常见故障与处置
 
