@@ -109,8 +109,13 @@
     header {
       /* 高度 = 内容高 + 顶部安全区。
          不能只写 height:var(--header-h) 再加 padding-top:安全区 —— 那会把内容盒
-         压成 (52-49)=3px，按钮溢出到状态栏区域；而状态栏区域**收不到触摸**，
-         导致顶栏的 ☰ 与设置按钮点不动（真机上同样如此，曾被误当成模拟器问题）。 */
+         压成 (52-49)=3px，按钮溢出到状态栏区域；而状态栏区域**收不到触摸**。
+
+         注意现在这条通常**不生效**（env() = 0）：Android 侧已经用 window insets 把
+         整块 WebView 收进安全区了（见 MainActivity 里的 setOnApplyWindowInsetsListener），
+         视口不再与状态栏/挖孔重叠，浏览器上报的 safe-area 自然为 0。
+         保留它是给 API 24–29 的老机型兜底：那些系统上没有对应的 Java 处理，
+         而窗口可能仍然伸进挖孔区。两套机制不会叠加 —— 只要 Java 缩进生效，这里就是 0。 */
       height:calc(var(--header-h) + env(safe-area-inset-top, 0px));
       flex-shrink:0; display:flex; align-items:center; gap:8px;
       padding:0 10px; border-bottom:1px solid var(--line); background:var(--panel-2);

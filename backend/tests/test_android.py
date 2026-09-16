@@ -677,6 +677,37 @@ def test_theme_declares_no_actionbar():
     print("[PASS] 主题显式声明为 NoActionBar，顶部触摸死区不会复现")
 
 
+def test_app_canvas_is_inset_from_system_bars():
+    """整块界面必须按 window insets 收进安全区，不能铺到状态栏/手势条底下。
+
+    为什么必须做在 Java 侧、而不能再只靠 CSS 的 env(safe-area-inset-*)：
+    Android 15（API 35）对 targetSdk 35 的应用**强制边到边**，内容会铺到状态栏与手势条
+    底下；而 WebView 的 env(safe-area-inset-*) 在 Android 上**只反映挖孔** —— 没有挖孔的
+    机器会得到 0，于是按钮又贴回状态栏（用户报的正是「＋ 新对话」贴着系统栏）。
+
+    另外底部要把输入法 insets 一并算上：边到边模式下 `adjustResize` **不再自动压缩窗口**
+    （实测键盘弹起时窗口 frame 仍是 0,0-1080,2400），底部输入框会被键盘整个盖住。
+    """
+    java = _main_java()
+    assert "setOnApplyWindowInsetsListener" in java, (
+        "根视图没有处理 window insets：边到边模式下界面会铺到状态栏/手势条底下"
+    )
+    assert "WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout()" in java, (
+        "安全区应同时取系统栏与挖孔"
+    )
+    assert "WindowInsets.Type.ime()" in java, (
+        "底部未计入输入法 insets：键盘弹起时输入框会被盖住"
+        "（边到边下 adjustResize 不再自动压缩窗口）"
+    )
+    assert "Build.VERSION_CODES.R" in java, (
+        "WindowInsets.Type 是 API 30+ 的接口，必须有版本判断；"
+        "低版本本来就不是边到边，由 CSS 的 env() 兜底"
+    )
+    css = (REPO_ROOT / "frontend/index.html").read_text(encoding="utf-8")
+    assert "env(safe-area-inset-top, 0px)" in css, "CSS 侧的老机型兜底被删掉了"
+    print("[PASS] 界面按 window insets（系统栏+挖孔+输入法）收进安全区，CSS 兜底仍在")
+
+
 def main():
     test_android_requirements_are_pure_python()
     test_android_requirements_are_pinned()
@@ -697,6 +728,7 @@ def main():
     test_byok_keys_use_android_keystore()
     test_native_state_write_is_atomic()
     test_theme_declares_no_actionbar()
+    test_app_canvas_is_inset_from_system_bars()
     test_python_callbacks_use_attribute_access()
     test_android_sets_tls_ca_bundle()
     test_llm_diagnostics_include_cause_chain()

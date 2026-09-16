@@ -9,12 +9,14 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.res.AssetManager;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Bundle;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceError;
@@ -82,6 +84,28 @@ public class MainActivity extends Activity {
         Log.i(TAG, "启动一体化运行环境");
 
         FrameLayout root = new FrameLayout(this);
+
+        // 把整块界面收进安全区：顶部（状态栏 / 挖孔）与底部（手势条）都不占用。
+        //
+        // 为什么必须在 Java 里做，而不是只靠 CSS 的 env(safe-area-inset-*)：
+        // Android 15（API 35）对 targetSdk 35 的应用**强制边到边**，内容会铺到状态栏
+        // 与手势条底下；而 WebView 的 env(safe-area-inset-*) 在 Android 上只反映
+        // **挖孔**——没有挖孔的机器会得到 0，于是按钮又贴回状态栏。按 window insets
+        // 缩进才是通吃的做法。
+        // 症状就是用户报的：「＋ 新对话」贴着系统栏，既难点中、也不该被遮住。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            root.setOnApplyWindowInsetsListener((v, insets) -> {
+                android.graphics.Insets bars = insets.getInsets(
+                        WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                // 底部还要算上输入法：边到边模式下 `adjustResize` **不再自动压缩窗口**
+                // （实测键盘弹起时本窗口 frame 仍是 0,0-1080,2400），底部输入框会被键盘
+                // 整个盖住。把输入法 insets 并进底部内边距，键盘弹起时视图才真的让位。
+                android.graphics.Insets ime = insets.getInsets(WindowInsets.Type.ime());
+                v.setPadding(bars.left, bars.top, bars.right,
+                        Math.max(bars.bottom, ime.bottom));
+                return insets;
+            });
+        }
 
         // ---- 启动/诊断面板：失败时它就是唯一的排障入口 ----
         // 颜色**写死**，不跟随主题：这块面板是"白屏时唯一能看见的东西"，
