@@ -87,6 +87,34 @@ bash scripts/android/build.sh assembleRelease
 密钥库与口令在 `.android-build/keystore/` 与 `android/keystore.properties`（均 gitignore，权限 600）。
 **丢失密钥库后，已发布的包将永远无法升级**（签名不一致会被系统拒绝安装），请自行备份。
 
+## 版本号（发新版必读）
+
+**唯一来源是仓库根的 `VERSION` 文件**（纯文本，如 `0.1.2`）。同一条号决定：
+
+| 用途 | 从哪来 |
+|---|---|
+| Android 的 `versionName` / `versionCode` | 构建时读 `VERSION`；`versionCode = 主*10000 + 次*100 + 修`（保证单调递增） |
+| APK 文件名 | `dist/android/OpenRailFanAI-<VERSION>-arm64-<类型>.apk`（构建脚本自动归置） |
+| 界面「设置 → 关于 → 版本」 | 打包时写入 `build.json`；桌面/自建部署读 `/api/version` |
+| 侧栏版本角标 | 同上 |
+
+> 为什么必须较真：同一个 `0.1.1` 曾经对应过好几个**内容不同**的包，用户无法判断自己装的是
+> 哪一版，只能靠口头说明"请重新下载"；而 Android 自身的"应用信息"里也只有这个号。
+> 界面上另外写死的 `v0.5`/`v0.6` 已全部移除 —— 同时出现两个号只会更乱。
+
+发新版流程：
+
+```bash
+printf '0.1.3\n' > VERSION                    # 1) 升版本（唯一改动点）
+bash scripts/android/build.sh -PincludeDict=true assembleDebug assembleRelease
+# 2) 产物已自动归置到 dist/android/OpenRailFanAI-0.1.3-arm64-*.apk
+```
+
+构建脚本只归置**本次真的重新构建过**的产物：Gradle 对没变化的类型报 UP-TO-DATE，
+那种 APK 还是旧内容，按新版本号复制过去就成了"同名不同内容"。
+另外「关于」里还有一行**构建**（提交号 + 构建时间，工作区有未提交改动时带 `-dirty`），
+用来直接对照"你装的"和"我说的"是不是同一个包。
+
 ## 体积
 
 以 arm64-v8a、不带本地字典为例，APK 约 **25MB**，构成：

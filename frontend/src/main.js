@@ -1,4 +1,5 @@
-// RailFanAI v0.5 · M11 —— 前端入口（多对话 + 个人中心 + 移动优先自适应）
+// RailFanAI —— 前端入口（多对话 + 设置 + 移动优先自适应）
+// 版本号不写在这里：唯一来源是仓库根的 VERSION，由 pages.loadAppVersion() 运行时取。
 //
 // 结构：
 //   store.js   本机数据层（对话与偏好，localStorage）
@@ -15,7 +16,8 @@
 import { store } from "./store.js";
 import { renderMarkdown } from "./markdown.js";
 import { native } from "./native.js";
-import { renderDocPage, renderSettingsPage, APP_VERSION, ROOT_KEY_ID } from "./pages.js";
+import { renderDocPage, renderSettingsPage, versionLabel, loadAppVersion,
+         ROOT_KEY_ID } from "./pages.js";
 
 // API 地址：默认与页面同源（空串 → 相对路径）；可由宿主注入 window.__API_BASE__
 const API_BASE = window.__API_BASE__ || "";
@@ -975,7 +977,12 @@ window.addEventListener("resize", () => {
 // ---------- 初始化 ----------
 store.load();
 store.setTheme(store.theme());
-if (verBadge) verBadge.textContent = APP_VERSION;
+// 版本是异步取的（Android 读 build.json、桌面读 /api/version）。
+// 拿到后刷新角标；如果用户正停在设置/文档页，顺手重渲染一次把文字更新掉。
+loadAppVersion().then(() => {
+  if (verBadge) verBadge.textContent = versionLabel();
+  if (/^#\/(settings|doc\/)/.test(location.hash)) handleRoute();
+});
 state.convId = store.currentId;
 if (totalEl) totalEl.textContent = store.totalTokens().toLocaleString();
 renderConvList();

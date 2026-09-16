@@ -744,6 +744,53 @@ def test_app_canvas_is_inset_from_system_bars():
     print("[PASS] 界面按 window insets（系统栏+挖孔+输入法）收进安全区，CSS 兜底仍在")
 
 
+def test_version_is_single_sourced():
+    """版本号只能有一个来源：仓库根的 VERSION。
+
+    背景：同一个 `0.1.1` 曾经对应过好几个**内容不同**的包，用户无法判断自己装的是哪一版，
+    只能靠口头说"请重新下载"；而界面上还同时写死过 `v0.5`/`v0.6` 两个互不相干的号。
+    所以这里钉住四件事：VERSION 存在且成格式、gradle 从它读、前端不写死、后端能报出来。
+    """
+    ver_file = REPO_ROOT / "VERSION"
+    assert ver_file.exists(), "缺少仓库根的 VERSION 文件（版本号的唯一来源）"
+    ver = ver_file.read_text(encoding="utf-8").strip()
+    assert re.fullmatch(r"\d+\.\d+\.\d+", ver), f"VERSION 内容不是 x.y.z 形式：{ver!r}"
+
+    gradle = (ANDROID_DIR / "app/build.gradle.kts").read_text(encoding="utf-8")
+    assert 'repoRoot.resolve("VERSION")' in gradle, "gradle 没有从 VERSION 读版本"
+    assert not re.search(r'versionName\s*=\s*"', gradle), (
+        "gradle 里又出现写死的 versionName —— 版本号必须来自 VERSION"
+    )
+    assert not re.search(r"versionCode\s*=\s*\d+", gradle), (
+        "gradle 里又出现写死的 versionCode —— 应由 VERSION 推导"
+    )
+    assert '"version":"$appVersion"' in gradle, "build.json 里没带上版本号"
+
+    # 扫描前先去掉注释：注释里提到历史版本号是有价值的说明，不该被判为"写死"。
+    html = re.sub(r"<!--.*?-->", "", (REPO_ROOT / "frontend/index.html").read_text(encoding="utf-8"), flags=re.S)
+    pages = re.sub(r"^\s*//.*$", "", (REPO_ROOT / "frontend/src/pages.js").read_text(encoding="utf-8"), flags=re.M)
+    for name, blob in (("index.html", html), ("pages.js", pages)):
+        bad = re.findall(r'v0\.\d+[^"\s<]*', blob)
+        assert not bad, f"{name} 里又写死了版本号：{bad}（应改为运行时读取）"
+
+    main_py = (REPO_ROOT / "backend/app/main.py").read_text(encoding="utf-8")
+    assert '"/api/version"' in main_py, "后端没有 /api/version（桌面/自建部署靠它显示版本）"
+    print(f"[PASS] 版本单一来源 VERSION={ver}：gradle / 前端 / 后端三处都从它取，无写死")
+
+
+def test_version_bump_updates_artifact_name():
+    """构建脚本要把产物按版本号命名，否则"我手上是哪个文件"又要靠嘴说。"""
+    sh = (REPO_ROOT / "scripts/android/build.sh").read_text(encoding="utf-8")
+    assert "dist/android/OpenRailFanAI-$APP_VERSION-arm64-$TYPE.apk" in sh, (
+        "构建脚本没有按版本号命名产物"
+    )
+    assert "-nt " in sh and "BUILD_STARTED_AT" in sh, (
+        "构建脚本没有跳过「本次未重新构建」的旧产物："
+        "把旧内容的 APK 按新版本号复制过去，就成了同名不同内容"
+    )
+    print("[PASS] 产物按版本号命名，且只归置本次真正重建过的")
+
+
 def main():
     test_android_requirements_are_pure_python()
     test_android_requirements_are_pinned()
@@ -765,6 +812,8 @@ def main():
     test_native_state_write_is_atomic()
     test_theme_declares_no_actionbar()
     test_apk_contains_build_stamp()
+    test_version_is_single_sourced()
+    test_version_bump_updates_artifact_name()
     test_app_canvas_is_inset_from_system_bars()
     test_python_callbacks_use_attribute_access()
     test_android_sets_tls_ca_bundle()

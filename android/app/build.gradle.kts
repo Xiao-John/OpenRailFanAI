@@ -33,6 +33,18 @@ val repoRoot: File = rootProject.projectDir.parentFile
  * 其余能力（12306 实时查询、交路、站序等）不受影响。
  * 需要完整功能时：bash scripts/android/build.sh -PincludeDict=true assembleRelease
  */
+// 版本号的**唯一来源**：仓库根的 VERSION 文件（前端与后端也读它）。
+// 为什么必须统一：同一个 "0.1.1" 曾经对应过好几个内容不同的包，用户无法判断
+// 自己装的是哪一版；Android 自身的"应用信息"里也只能看到这个版本号。
+val appVersion: String = repoRoot.resolve("VERSION").readText().trim().ifEmpty { "0.0.0" }
+
+// versionCode 由语义化版本导出，保证单调递增（Android 用它判断"是不是升级"）。
+// 0.1.2 → 0*10000 + 1*100 + 2 = 102
+val appVersionCode: Int = run {
+    val seg = appVersion.substringBefore("-").split(".").map { it.trim().toIntOrNull() ?: 0 }
+    (seg.getOrElse(0) { 0 } * 10000) + (seg.getOrElse(1) { 0 } * 100) + seg.getOrElse(2) { 0 }
+}
+
 val includeDict: Boolean = (project.findProperty("includeDict") as String?)?.toBoolean() ?: false
 
 /**
@@ -60,8 +72,8 @@ android {
         minSdk = 24
         targetSdk = 35
         // 每次出包递增：用户报障时需要能区分版本
-        versionCode = 2
-        versionName = "0.1.1"
+        versionCode = appVersionCode
+        versionName = appVersion
 
         // 只打 arm64：原生库（CPython 运行时）体积直接减半。
         // 需要覆盖 32 位老机时在此追加 "armeabi-v7a"。
@@ -133,7 +145,7 @@ val stageWebApp by tasks.registering(Copy::class) {
     doLast {
         val dst = layout.buildDirectory.dir("staged-assets/webapp").get().asFile
         File(dst, "build.json").writeText(
-            """{"commit":"${gitShortHead()}","builtAt":"${buildTimeIso()}"}"""
+            """{"version":"$appVersion","commit":"${gitShortHead()}","builtAt":"${buildTimeIso()}"}"""
         )
     }
 }

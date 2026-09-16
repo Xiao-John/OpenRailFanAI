@@ -82,6 +82,18 @@ def test_static_assets_are_not_heuristically_cached():
     print("[PASS] 静态资源带 no-cache，重装后不会拿到旧的 JS")
 
 
+def test_version_endpoint_matches_version_file():
+    """`/api/version` 必须与仓库根的 VERSION 一致（桌面/自建部署靠它显示版本）。"""
+    from pathlib import Path
+
+    ver = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
+    r = client.get("/api/version")
+    assert r.status_code == 200, r.status_code
+    assert r.json().get("version") == ver, f"/api/version 与 VERSION 不一致：{r.json()} vs {ver}"
+    assert client.get("/health").json().get("version") == ver, "/health 没带 version"
+    print(f"[PASS] /api/version 与 VERSION 一致：{ver}")
+
+
 def test_health():
     r = client.get("/health")
     assert r.status_code == 200, r.text
@@ -231,6 +243,7 @@ def test_question_type_realtime():
 
 
 def main():
+    test_version_endpoint_matches_version_file()
     test_static_assets_are_not_heuristically_cached()
     test_health()
     test_sessions_info()

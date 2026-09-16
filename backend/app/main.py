@@ -44,15 +44,36 @@ app.add_middleware(
 )
 
 
+def app_version() -> str:
+    """应用版本 —— 唯一来源是仓库根的 VERSION 文件。
+
+    为什么不让前端硬编码：以前界面写死 "v0.6"，而 Android 包的版本是另一个号，
+    同时出现两个互不相干的版本号，用户根本无从判断自己装的是哪一版。
+    读不到就如实返回 "dev"（从源码直接跑的自建部署就该显示 dev），不要编一个号。
+    """
+    try:
+        v = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
+        return v or "dev"
+    except OSError:
+        return "dev"
+
+
 @app.get("/health")
 def health() -> dict:
     """健康检查。"""
     return {
         "status": "ok",
+        "version": app_version(),
         "llm_ready": settings.llm_ready,
         "model": settings.llm_model,
         "auth": "disabled",   # 不需要登录
     }
+
+
+@app.get("/api/version")
+def version() -> dict:
+    """应用版本（前端「关于」显示它；Android 包会优先读打包时写入的 build.json）。"""
+    return {"version": app_version()}
 
 
 def _include_routes() -> None:

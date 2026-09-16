@@ -397,7 +397,10 @@
       <header>
         <button class="icon-btn menu-btn" id="menu-btn" title="打开对话列表" aria-label="打开对话列表">☰</button>
         <span class="title">🚄 RailFanAI</span>
-        <span class="badge" id="ver-badge">v0.5 · M11</span>
+        <!-- 版本号由 pages.loadAppVersion() 运行时填入（唯一来源是仓库根的 VERSION）。
+             这里只放一个中性兜底，不要写死版本 —— 写死过 "v0.5 · M11"，
+             与 Android 包的版本号并存，正是"我到底装的哪一版"这类疑惑的来源。 -->
+        <span class="badge" id="ver-badge">Community</span>
         <span class="conv-title" id="conv-title"></span>
         <span class="spacer"></span>
         <!-- 图标必须在 .txt 之外：≤480px 时 .txt 被隐藏，图标留在按钮上（窄屏唯一可见的入口） -->

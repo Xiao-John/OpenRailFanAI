@@ -19,7 +19,38 @@ export const DOCS = {
   contact: { title: "联系我们", icon: "✉️" },
 };
 
-export const APP_VERSION = "v0.6 · Community";
+// 版本号**不再硬编码**。以前这里写死 "v0.6 · Community"，而 Android 包的版本是
+// 另一个号（0.1.1），界面上同时出现两个互不相干的版本 —— 正是"我到底装的哪一版"
+// 这类疑惑的来源。现在统一从 `/api/version`（后端读仓库根的 VERSION）或打包时写入的
+// build.json 取，号只有一个。
+export const EDITION = "Community";
+export let APP_VERSION = "";            // 运行时填充；空值时界面显示"…"
+
+/** 版本展示文案：`0.1.2 · Community`。取不到就退回只显示版本号或占位。 */
+export function versionLabel() {
+  return APP_VERSION ? `${APP_VERSION} · ${EDITION}` : EDITION;
+}
+
+let _versionPromise = null;
+
+/** 取应用版本（只请求一次）。Android 优先读打包时写入的 build.json，桌面读 /api/version。 */
+export function loadAppVersion() {
+  if (_versionPromise) return _versionPromise;
+  const fromBuild = fetch("build.json", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((b) => (b && b.version) || null)
+    .catch(() => null);
+  _versionPromise = fromBuild
+    .then((v) => v || fetch(API_BASE + "/api/version", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => (b && b.version) || "")
+      .catch(() => ""))
+    .then((v) => {
+      APP_VERSION = String(v || "").trim();
+      return APP_VERSION;
+    });
+  return _versionPromise;
+}
 
 // 未选择具体供应商时，用户的 BYOK Key 记在这个键下
 // （语义：只覆盖 Key，供应商地址/模型仍用服务端默认配置）
@@ -123,7 +154,7 @@ export function renderDocPage(key, deps) {
     root.appendChild(placeholder("本节为条款正文占位，待法务/运营补齐后替换本段。"));
   }
 
-  root.appendChild(el("div", "meta", `版本 ${APP_VERSION} · 内容随版本更新`));
+  root.appendChild(el("div", "meta", `版本 ${APP_VERSION || "…"} · ${EDITION}｜内容随版本更新`));
   return root;
 }
 
@@ -144,7 +175,14 @@ export function aboutCard(navigate) {
   c.appendChild(intro);
 
   c.appendChild(kv("应用", "RailFanAI（OpenRailFanAI）"));
-  c.appendChild(kv("版本", APP_VERSION));
+  c.appendChild(kv("版本", "…"));
+  // 版本拿到后回填（避免为了一个号把整页渲染改成异步）
+  loadAppVersion().then((v) => {
+    const row = [...c.querySelectorAll(".kv")].find(
+      (r) => r.querySelector(".k") && r.querySelector(".k").textContent === "版本");
+    const val = row && row.querySelector(".v");
+    if (val) val.textContent = versionLabel();
+  });
   c.appendChild(kv("许可", "MIT（第三方数据的版权归各数据源所有）"));
   c.appendChild(kv("技术栈", "FastAPI（SSE 流式）+ 原生 HTML/JS（无构建工具）"));
 
