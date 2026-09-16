@@ -1,16 +1,20 @@
-// OpenRailFanAI · 内容页（使用帮助 / 免责声明 / 关于 / 联系我们）
-// 说明：免责声明正文已填写（依据仓库文档与实现现状）；使用帮助 / 关于 / 联系我们
-// 仍为**占位骨架**（结构齐全、正文待填），页面会显式标注"待补充"，避免把模板当正式内容对外发布。
-// 填充位置见各处 .todo 区块。
+// OpenRailFanAI · 内容页（使用帮助 / 免责声明 / 联系我们）+ 设置页（模型供应商 / 关于）
+// 说明：免责声明正文已填写（依据仓库文档与实现现状）；使用帮助已填写。
+// 「关于」不再是独立页面，而是**设置页里的一张卡片**（入口重复过一次：
+// 侧栏「ℹ️ 关于」与顶栏「⚙️ 设置」并列，用户要找一个设置得先猜它在哪一边）。
 
 import { store } from "./store.js";
 
 const API_BASE = window.__API_BASE__ || "";
 
+// 唯一的对外反馈入口（GitHub Issues）。写死在这里而不是可配置项：
+// 社区版没有工单系统，留一个"待填写"的客服邮箱只会让用户白等回复。
+export const ISSUES_URL = "https://github.com/Xiao-John/OpenRailFanAI/issues";
+export const REPO_URL = "https://github.com/Xiao-John/OpenRailFanAI";
+
 export const DOCS = {
   disclaimer: { title: "免责声明", icon: "⚠️" },
   help: { title: "使用帮助", icon: "❓" },
-  about: { title: "关于我们", icon: "ℹ️" },
   contact: { title: "联系我们", icon: "✉️" },
 };
 
@@ -38,10 +42,6 @@ function kv(k, v) {
   row.appendChild(el("span", "k", k));
   row.appendChild(el("span", "v", v));
   return row;
-}
-
-function todo(text) {
-  return el("div", "todo", "【待补充】" + text);
 }
 
 function placeholder(text) {
@@ -82,12 +82,11 @@ function pageHeader(title, onBack) {
 }
 
 export function renderDocPage(key, deps) {
-  const { onBack, navigate } = deps;
+  const { onBack } = deps;
   const meta = DOCS[key] || { title: "文档", icon: "📄" };
   const root = el("div");
   root.appendChild(pageHeader(meta.title, onBack));
 
-  if (key === "about") return renderAbout(root, deps);
   if (key === "contact") return renderContact(root, deps);
   if (key === "help") return renderHelp(root, deps);
 
@@ -127,57 +126,113 @@ export function renderDocPage(key, deps) {
   return root;
 }
 
-function renderAbout(root, deps) {
-  const intro = card("这是什么");
-  intro.appendChild(el("p", null,
-    "RailFanAI 是面向中国铁路爱好者的 RAG / Agent 助手：输入一句自然语言，系统先判断意图与问题性质，" +
-    "再调用真实数据源检索，最后给出带来源与时效说明的回答。"));
-  root.appendChild(intro);
+/**
+ * 「关于」卡片 —— 挂在**设置页**底部，不再单独占一个路由。
+ *
+ * 为什么保留这一张卡而不是直接删掉：应用名/版本/许可是用户排查问题时
+ * 第一个会被问到的信息（"你装的是哪版"），随手可查比藏在某个折叠块里有用。
+ * 免责声明 / 使用帮助 / 联系我们 三个入口也从这里进 —— 它们原来是从
+ * 「关于」页链接过去的，不在这里留入口就等于改完找不到了。
+ */
+export function aboutCard(navigate) {
+  const c = card("关于");
 
-  const cap = card("能做什么");
-  for (const t of [
-    "车次 ↔ 担当车组（交路）互查 —— rail.re",
-    "两站间实时余票 / 车次时刻 / 经停站 —— 12306",
-    "车站当日到发车次（站台、车底型号、担当客运段）—— 12306 车站大屏",
-    "按线路名查站序、指定径路与里程（含既有线口径）—— 黄河铁路网",
-    "站名/拼音/电报码互查（3384 站，含同音纠错）—— 12306 站点库",
-    "拍摄点建议（结合交路与站点，拒答危险行为）",
-    "多轮追问、生成中停止、编辑重发、多对话管理",
-  ]) {
-    const li = el("li", null, t);
-    cap.appendChild(li);
-  }
-  root.appendChild(cap);
+  const intro = el("p", "sub",
+    "RailFanAI 是面向中国铁路爱好者的 RAG / Agent 助手：输入一句自然语言，"
+    + "系统先判断意图与问题性质，再调用真实数据源检索，最后给出带来源与时效说明的回答。");
+  c.appendChild(intro);
 
-  const tech = card("技术说明");
-  tech.appendChild(kv("流水线", "意图分类 → 槽位抽取 → 数据检索 → 回答生成"));
-  tech.appendChild(kv("前端", "原生 HTML/JS（无构建工具），移动优先自适应"));
-  tech.appendChild(kv("后端", "FastAPI（SSE 流式）"));
-  tech.appendChild(kv("账户", "手机号 + 验证码 / JWT（M11.1）"));
-  tech.appendChild(kv("前端版本", APP_VERSION));
-  tech.appendChild(el("div", "sub",
-    "开源与数据版权：各数据源版权归其所有者，本项目仅做检索与转述，回答中均附来源。"));
-  root.appendChild(tech);
+  c.appendChild(kv("应用", "RailFanAI（OpenRailFanAI）"));
+  c.appendChild(kv("版本", APP_VERSION));
+  c.appendChild(kv("许可", "MIT（第三方数据的版权归各数据源所有）"));
+  c.appendChild(kv("技术栈", "FastAPI（SSE 流式）+ 原生 HTML/JS（无构建工具）"));
 
-  const links = card("更多");
-  for (const [key, meta] of Object.entries(DOCS)) {
-    if (key === "about") continue;
+  // 仓库地址与反馈地址是**两个**链接：仓库给"想看源码/自建"的人，
+  // issue 给"要报问题"的人，用同一个地址会让人以为只能提 issue。
+  c.appendChild(externalLink("在 GitHub 上打开仓库", REPO_URL));
+  c.appendChild(el("div", "url-plain", REPO_URL));
+
+  const links = el("div");
+  links.style.marginTop = "10px";
+  for (const key of ["disclaimer", "help", "contact"]) {
+    const meta = DOCS[key];
     const row = el("div", "list-link");
     row.appendChild(el("span", null, `${meta.icon} ${meta.title}`));
     row.appendChild(el("span", "arrow", "›"));
-    row.addEventListener("click", () => deps.navigate && deps.navigate("#/doc/" + key));
+    row.addEventListener("click", () => { if (navigate) navigate("#/doc/" + key); });
     links.appendChild(row);
   }
-  root.appendChild(links);
-  return root;
+  c.appendChild(links);
+  return c;
 }
 
-function renderContact(root, deps) {
-  const c = card("联系方式");
-  c.appendChild(todo("客服邮箱 / 微信公众号 / 反馈群 / 商务合作邮箱 —— 待填写"));
-  c.appendChild(kv("问题反馈", "待填写"));
-  c.appendChild(kv("商务合作", "待填写"));
-  c.appendChild(kv("响应时间", "待填写（建议：工作日 1-3 个工作日）"));
+/**
+ * 外链元素。
+ *
+ * `target="_blank"` + `rel="noopener"` 是给浏览器用的；Android 一体化版的
+ * WebView 里 MainActivity.shouldOverrideUrlLoading **会拦截一切非 127.0.0.1 的跳转**
+ * （只在启动日志里记一行"已拦截外部跳转"），所以页面上同时明写 URL 文本并配"复制链接"，
+ * 保证跳不出去时用户还有路可走 —— 只给一个点了没反应的链接等于没有入口。
+ */
+function externalLink(text, url) {
+  const a = document.createElement("a");
+  a.className = "link-out";
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.appendChild(el("span", null, text));
+  a.appendChild(el("span", null, "↗"));
+  return a;
+}
+
+/**
+ * 复制文本：与 main.js 里同一套兜底顺序。
+ *
+ * 不能只用 Clipboard API —— 它在"没有用户手势 / 文档失焦"时会直接 reject
+ * （真机上被判为"复制失败"就是这么来的），所以 reject 后必须退到 execCommand。
+ */
+function copyText(text) {
+  const legacy = () => new Promise((resolve, reject) => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    // 不能 display:none（那样选不中），挪出视口即可
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    ta.remove();
+    ok ? resolve() : reject(new Error("copy failed"));
+  });
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(legacy);
+  }
+  return legacy();
+}
+
+function renderContact(root) {
+  const c = card("联系我们");
+  c.appendChild(el("p", "sub",
+    "问题反馈、功能建议、数据纠错统一走 GitHub Issues —— 这里能看到处理进度，也方便其他车迷搜到同样的答案。"));
+  c.appendChild(externalLink("在 GitHub 上提 issue", ISSUES_URL));
+
+  // WebView 可能拦掉外链跳转（见 externalLink 注释），所以地址要能看见、能复制。
+  // 地址与按钮**上下排**而不是左右排：窄屏上并排会把 URL 挤成"i ssues"这种断词。
+  const copyWrap = el("div");
+  copyWrap.style.marginTop = "10px";
+  copyWrap.appendChild(el("div", "url-plain", ISSUES_URL));
+  const copyBtn = el("button", "btn ghost", "复制链接");
+  copyBtn.style.marginTop = "8px";
+  copyBtn.addEventListener("click", () => {
+    copyText(ISSUES_URL).then(
+      () => { copyBtn.textContent = "已复制"; },
+      () => { copyBtn.textContent = "复制失败，请长按地址"; }
+    );
+  });
+  copyWrap.appendChild(copyBtn);
+  c.appendChild(copyWrap);
   root.appendChild(c);
 
   const note = card("提交问题时请附上");
@@ -185,7 +240,7 @@ function renderContact(root, deps) {
     note.appendChild(el("li", null, t));
   }
   root.appendChild(note);
-  root.appendChild(el("div", "meta", "本页信息待补齐；当前版本未提供工单系统。"));
+  root.appendChild(el("div", "meta", "这三项能把排查从「猜」变成「看」：缺了它们往往只能靠运气复现。"));
   return root;
 }
 
@@ -302,9 +357,11 @@ function providerRow(entry, rerender, onEdit) {
 }
 
 export function renderSettingsPage(deps) {
-  const { onBack } = deps;
+  const { onBack, navigate } = deps;
   const root = el("div");
-  root.appendChild(pageHeader("模型", onBack));
+  // 标题从「模型」改成「设置」：这一页现在同时承载模型供应商与关于，
+  // 顶栏入口叫「⚙️ 设置」，进来看见「模型」会让人以为走错了地方。
+  root.appendChild(pageHeader("设置", onBack));
 
   let presets = [];          // 服务端内置/已配置的供应商（仅作预设来源）
   let editing = null;        // 正在编辑的条目副本（null = 不在编辑态）
@@ -555,5 +612,8 @@ export function renderSettingsPage(deps) {
   }
 
   render();
+  // 「关于」并入本页（侧栏那个重复的「ℹ️ 关于」入口已移除）。
+  // 挂在 body **之外**：body 每次增删/编辑供应商都会整体重建，静态卡片没必要跟着重建。
+  root.appendChild(aboutCard(navigate));
   return root;
 }

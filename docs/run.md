@@ -44,9 +44,9 @@ cd backend && python3 -m venv .venv
 |---|---|
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | OpenAI 兼容端点与模型；配 `LLM_MOCK=false` 走真实模型 |
 | `LLM_STRUCTURED_MODEL` / `LLM_MOCK` | 意图·抽取用更强模型（留空沿用 `LLM_MODEL`）/ `true` 走确定性本地 mock（无 Key 演示与 CI） |
-| 多供应商 | 界面「⚙️ 模型」里点「添加提供方」即可选常用预设（OpenAI / DeepSeek / 硅基流动 / 阿里云百炼 / 智谱 GLM 优先展示，另含 moonshot/openrouter/gemini/ollama/lmstudio/vllm），填 Key 后**自动探测模型**并以下拉列出；也可「添加自定义提供方」。服务端侧 `LLM_PROVIDER` 选内置供应商；`LLM_PROVIDERS`（JSON）或 `LLM_PROVIDERS_FILE`（文件）添加/覆盖自定义供应商（字段级合并，可只写 `{"deepseek":{"model":"deepseek-reasoner"}}`）；`LLM_API_KEY` 作全局兜底 Key、`LLM_MODEL` 只填空不顶替 |
+| 多供应商 | 界面「⚙️ 设置」里点「添加提供方」即可选常用预设（OpenAI / DeepSeek / 硅基流动 / 阿里云百炼 / 智谱 GLM 优先展示，另含 moonshot/openrouter/gemini/ollama/lmstudio/vllm），填 Key 后**自动探测模型**并以下拉列出；也可「添加自定义提供方」。服务端侧 `LLM_PROVIDER` 选内置供应商；`LLM_PROVIDERS`（JSON）或 `LLM_PROVIDERS_FILE`（文件）添加/覆盖自定义供应商（字段级合并，可只写 `{"deepseek":{"model":"deepseek-reasoner"}}`）；`LLM_API_KEY` 作全局兜底 Key、`LLM_MODEL` 只填空不顶替 |
 | API 方言 | `LLM_API_DIALECT=auto`（默认）：先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存；也可显式指定 `chat_completions`/`responses`。不支持的可选参数（`temperature`/`response_format`/`enable_thinking`）会被自动丢弃重试 |
-| 生成预算 | `LLM_MAX_TOKENS=4096`（单次输出上限，**含思考 token**——原值 1200 会让长回答在半句处被截断）、`LLM_CONTEXT_TOKENS=32000`（模型窗口，用于把输出预算收进窗口：实际上限 = min(最大输出, 窗口-输入-512)）、`LLM_CHARS_PER_TOKEN=1.5`（估算系数）。**界面「⚙️ 模型 → 编辑」里可按供应商覆盖前两项**（BYOK 场景下 `.env` 常不可达）。模型因上限停止时会返回 `truncated=true`，前端在气泡里如实提示 |
+| 生成预算 | `LLM_MAX_TOKENS=4096`（单次输出上限，**含思考 token**——原值 1200 会让长回答在半句处被截断）、`LLM_CONTEXT_TOKENS=32000`（模型窗口，用于把输出预算收进窗口：实际上限 = min(最大输出, 窗口-输入-512)）、`LLM_CHARS_PER_TOKEN=1.5`（估算系数）。**界面「⚙️ 设置 → 编辑」里可按供应商覆盖前两项**（BYOK 场景下 `.env` 常不可达）。模型因上限停止时会返回 `truncated=true`，前端在气泡里如实提示 |
 | 供应商网络项 | `LLM_TIMEOUT_S=60.0`（推理模型首 token 慢，勿调太小）、`LLM_EXTRA_HEADERS`/`LLM_EXTRA_BODY`（JSON，自定义网关用）、`LLM_ALLOW_PRIVATE_BASE_URL=false`（`true` 才允许指向内网/本机；生产开启等于开放 SSRF） |
 | `T12306_BASE` | 自备 12306 反代；**留空则 `t12306.search_tickets` 停用**（路由不主动调用） |
 | `RAILRE_API_BASE` / `RAILRE_BASE` / `JPRAILFAN_BASE` / `CNRAIL_BASE` | rail.re 交路 API / rail.re 主站 / 黄河铁路网 / cnrail 地图 |
@@ -98,9 +98,9 @@ LLM_ALLOW_PRIVATE_BASE_URL=true
 
 - **地址写法很宽松**：裸域名自动补 `/v1`；误粘完整 URL（`.../v1/chat/completions`）会自动剥掉后缀；带 `/api/paas/v4`、`/v1beta/openai` 这类自定义前缀的原样保留。
 - **两种 API 都支持**：只提供 `/responses` 的网关无需配置，`auto` 会在 `/chat/completions` 返回 404/405 时自动改试并记住结论。要固定可设 `LLM_API_DIALECT`。
-- **不确定能不能用**：启动后打开界面「⚙️ 模型 → 测试连接」，会返回可用性、实际使用的方言、延迟与可选模型清单。
+- **不确定能不能用**：启动后打开界面「⚙️ 设置 → 测试连接」，会返回可用性、实际使用的方言、延迟与可选模型清单。
 - **安全边界**：`APP_ENV=production` 时，**请求体带来的** `base_url`（界面自定义供应商、`/api/providers/test`）只允许公网地址，内网/环回/云元数据地址一律拒绝，除非显式设 `LLM_ALLOW_PRIVATE_BASE_URL=true`；`.env` / 配置文件里的地址属管理员可信配置，不受此限。开发环境不限制（便于连本机 Ollama）。
-- **不想配 `.env`**：界面「⚙️ 模型」里选供应商并填自己的 Key 即可（BYOK）。Key 默认只留在浏览器内存，勾选「记住 Key」才写入 localStorage，服务端不落库、不写日志。
+- **不想配 `.env`**：界面「⚙️ 设置」里选供应商并填自己的 Key 即可（BYOK）。Key 默认只留在浏览器内存，勾选「记住 Key」才写入 localStorage，服务端不落库、不写日志。
 
 > ⚠️ **密钥**：`.env` 含真实 Key（已在 `.gitignore`），仅本地保存、不进库、不随包分发；**部署公网前必须改为环境变量注入并轮换 Key**。当前 `main.py` 为开发默认：CORS `allow_origins=["*"]`（`allow_credentials=False`）、无鉴权（`/health` 返回 `auth: "disabled"`）、无限流；对外提供访问应在反向代理层收敛入口并加限流、改白名单。
 
@@ -142,7 +142,7 @@ python3 scripts/mirror_dict.py --stats    # 查看本地库现状
 
 ## 7. 前端交互与上下文治理
 
-多对话并存（「☰」列表，`#/` 新建，hover「✎」重命名 /「🗑」删除，标题默认取首条用户消息，各对话独立 `messages[]`/`history` 存 localStorage）· 多轮追问（前端回传 `history`）· 暂停输出（「■」或 `ESC`，`AbortController`，保留已生成内容并标记"已停止"）· 编辑重发（丢弃该消息之后的内容）/ 重新生成 / 复制 · `Enter` 发送、`Shift+Enter` 换行（中文输入法组合态已处理）· 深/浅色跟随系统并记忆 · 帮助/关于/免责页路由 `#/doc/<key>`（免责声明 `#/doc/disclaimer` 正文已填写，其余为【待补充】占位）。移动优先三端自适应：默认抽屉式侧栏（`☰` 呼出、遮罩点击关闭）+ 底部输入区带 `env(safe-area-inset-bottom)` 安全区，`≥768px` 加宽留白，`≥1024px` 侧栏常驻。上下文裁剪在服务端 `app/context.py`：**最近 6 条 / 单条 ≤800 字 / 合计 ≤3000 字**；前端 `frontend/src/store.js` 上限 **对话 ≤100 段 / 每段 ≤300 条消息 / 思考内容 ≤4000 字 / 工具日志 ≤60 条**。
+多对话并存（「☰」列表，`#/` 新建，hover「✎」重命名 /「🗑」删除，标题默认取首条用户消息，各对话独立 `messages[]`/`history` 存 localStorage）· 多轮追问（前端回传 `history`）· 暂停输出（「■」或 `ESC`，`AbortController`，保留已生成内容并标记"已停止"）· 编辑重发（丢弃该消息之后的内容）/ 重新生成 / 复制 · `Enter` 发送、`Shift+Enter` 换行（中文输入法组合态已处理）· 深/浅色跟随系统并记忆 · 静态页路由 `#/doc/<key>`（`help` / `disclaimer` / `contact` 三页正文均已填写）；「关于」已并入设置页 `#/settings`，旧的 `#/doc/about` 会重定向过去。移动优先三端自适应：默认抽屉式侧栏（`☰` 呼出、遮罩点击关闭）+ 底部输入区带 `env(safe-area-inset-bottom)` 安全区，`≥768px` 加宽留白，`≥1024px` 侧栏常驻。上下文裁剪在服务端 `app/context.py`：**最近 6 条 / 单条 ≤800 字 / 合计 ≤3000 字**；前端 `frontend/src/store.js` 上限 **对话 ≤100 段 / 每段 ≤300 条消息 / 思考内容 ≤4000 字 / 工具日志 ≤60 条**。
 
 ## 8. 常见故障与处置
 

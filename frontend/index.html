@@ -31,13 +31,33 @@
     button, input, textarea { font-family:inherit; }
     .hidden { display:none !important; }
     /* 启动/运行期错误横幅：模块脚本加载失败或抛错时唯一可见的线索
-       （真机排障拿不到控制台，必须显示在页面上） */
+       （真机排障拿不到控制台，必须显示在页面上）。
+       注意 1：这里**不做自动消失**的动画，显隐一律由内联脚本改 style.display ——
+       Android 侧的 onPageFinished 探针就是靠 `style.display !== 'none'` 判断
+       "横幅是否真的在显示"，用 class 切换会让探针永远报告"有错误"。
+       注意 2（真机实测踩到）：横幅**不能贴顶**。模拟器（Pixel 6 AVD）上顶部约 103 CSS px
+       的触摸根本不会送到 WebView（系统状态栏 + 手势区，adb input tap 在 y<270 物理像素
+       时页面收不到任何事件），贴顶的话 ✕ 点了没反应、第一行正文还被状态栏的时钟盖住。
+       所以整体下移：状态栏安全区 + 56px 余量。桌面浏览器里 env() 为 0，就是往下 56px，
+       正好落在 52px 顶栏之下。 */
     #boot-error {
-      display:none; position:fixed; top:0; left:0; right:0; z-index:99;
-      max-height:45vh; overflow:auto; margin:0; padding:12px 14px;
+      display:none; position:fixed; left:0; right:0; z-index:99;
+      top:calc(env(safe-area-inset-top, 0px) + 56px);
+      max-height:45vh; overflow:auto; margin:0;
+      padding:12px calc(46px + env(safe-area-inset-right, 0px)) 12px calc(14px + env(safe-area-inset-left, 0px));
       background:#7f1d1d; color:#fff; font-size:12px; line-height:1.6;
       white-space:pre-wrap; word-break:break-all;
     }
+    /* 手动关闭：横幅会自己消失，但用户不该被迫等这几秒（尤其它盖住内容时）。
+       top 必须与横幅同源（同样的安全区 + 56px + 6px 内边距），否则按钮会飘到横幅外面。 */
+    #boot-error-close {
+      display:none; position:fixed; z-index:100;
+      top:calc(env(safe-area-inset-top, 0px) + 62px);
+      right:calc(6px + env(safe-area-inset-right, 0px));
+      width:32px; height:32px; border:none; border-radius:8px; cursor:pointer;
+      background:rgba(255,255,255,.14); color:#fff; font-size:15px; line-height:1;
+    }
+    #boot-error-close:hover { background:rgba(255,255,255,.3); }
     /* 未配置模型时的引导条 */
     .notice {
       display:flex; align-items:center; gap:10px; flex-wrap:wrap;
@@ -87,7 +107,12 @@
 
     /* ============ 顶栏 ============ */
     header {
-      height:var(--header-h); flex-shrink:0; display:flex; align-items:center; gap:8px;
+      /* 高度 = 内容高 + 顶部安全区。
+         不能只写 height:var(--header-h) 再加 padding-top:安全区 —— 那会把内容盒
+         压成 (52-49)=3px，按钮溢出到状态栏区域；而状态栏区域**收不到触摸**，
+         导致顶栏的 ☰ 与设置按钮点不动（真机上同样如此，曾被误当成模拟器问题）。 */
+      height:calc(var(--header-h) + env(safe-area-inset-top, 0px));
+      flex-shrink:0; display:flex; align-items:center; gap:8px;
       padding:0 10px; border-bottom:1px solid var(--line); background:var(--panel-2);
       padding-top:env(safe-area-inset-top, 0px);
     }
@@ -298,6 +323,17 @@
     .form-row select { flex:1; }
     .card .sub + .prov-row { margin-top:12px; }
     .list-link .arrow { color:var(--mut); }
+    /* 外链：内容页里唯一需要真正跳出去的东西（GitHub issue）。
+       当普通链接样式会与正文糊在一起，这里给足点击区域与视觉提示。 */
+    a.link-out {
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:13px 12px; margin-top:4px; border:1px solid var(--accent);
+      border-radius:10px; color:var(--accent); text-decoration:none;
+      font-size:14px; word-break:break-all;
+    }
+    a.link-out:hover { background:rgba(59,130,246,.12); }
+    .url-plain { color:var(--mut); font-size:12px; word-break:break-all;
+                 user-select:text; -webkit-user-select:text; }
     .page h1 { font-size:18px; margin:4px 0 12px; }
     .page h2 { font-size:14px; margin:18px 0 6px; }
     .page p, .page li { font-size:13.5px; line-height:1.8; color:var(--fg); }
@@ -335,11 +371,6 @@
         <input id="conv-search" type="search" placeholder="搜索对话…" autocomplete="off" />
       </div>
       <div class="conv-list" id="conv-list"></div>
-      <div class="side-foot">
-        <div class="row">
-          <button class="btn" id="go-about" title="关于与协议">ℹ️ 关于</button>
-        </div>
-      </div>
     </aside>
     <div class="scrim" id="scrim"></div>
 
@@ -351,7 +382,8 @@
         <span class="badge" id="ver-badge">v0.5 · M11</span>
         <span class="conv-title" id="conv-title"></span>
         <span class="spacer"></span>
-        <button class="llm-btn" id="llm-btn" title="模型供应商设置">⚙️<span class="txt"> 模型</span></button>
+        <!-- 图标必须在 .txt 之外：≤480px 时 .txt 被隐藏，图标留在按钮上（窄屏唯一可见的入口） -->
+        <button class="llm-btn" id="llm-btn" title="设置：模型供应商 / 关于">⚙️<span class="txt"> 设置</span></button>
       </header>
 
       <!-- 对话视图 -->
@@ -394,17 +426,81 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- 错误横幅：在任何脚本之前注册捕获，确保"模块加载失败/运行期抛错"能被看见 -->
+  <!-- 错误横幅：在任何脚本之前注册捕获，确保"模块加载失败/运行期抛错"能被看见。
+       关闭按钮是**兄弟节点**（不是 pre 的子节点）：pre 里放 button 会让 textContent
+       混进一个 ✕，而 Android 侧探针读的正是 pre 的 textContent。 -->
   <pre id="boot-error"></pre>
+  <button type="button" id="boot-error-close" title="关闭错误提示" aria-label="关闭错误提示">✕</button>
   <script>
     (function () {
-      function show(msg) {
-        var el = document.getElementById("boot-error");
-        if (!el) return;
-        el.style.display = "block";
-        el.textContent += (el.textContent ? "\n\n" : "") + msg
-          + "\n（请把以上内容反馈给开发者）";
+      var el = document.getElementById("boot-error");
+      var closeBtn = document.getElementById("boot-error-close");
+      // 自动隐藏时长：用户要求"约 3s"，取 4s —— 太短来不及读完一行文件名/行号
+      var HIDE_MS = 4000;
+      var MAX_ITEMS = 5;         // 横幅里最多并列几条不同错误
+      var items = [];            // [{msg, n}] 按最近出现排序（n = 同一错误出现次数）
+      var timer = null;
+
+      function hide() {
+        clearTimeout(timer);
+        timer = null;
+        if (el) el.style.display = "none";
+        if (closeBtn) closeBtn.style.display = "none";
       }
+
+      function render() {
+        if (!el) return;
+        var parts = [];
+        for (var i = 0; i < items.length; i++) {
+          parts.push(items[i].msg + (items[i].n > 1 ? "（已重复 " + items[i].n + " 次）" : ""));
+        }
+        el.textContent = parts.join("\n\n") + "\n（请把以上内容反馈给开发者）";
+      }
+
+      /**
+       * 记录并显示一条错误。
+       *
+       * 三个刻意的设计：
+       *   1) **同一错误不重复堆叠** —— 之前用 textContent += ，一个每帧都抛的错
+       *      会把横幅刷到几屏长，真正有用的第一条反倒被顶走；
+       *   2) **console.error 永远留一份** —— 横幅会自己消失，控制台/CDP 是唯一
+       *      能在事后翻查的地方，不能因为"界面上藏了"就丢掉排查信息；
+       *   3) 自动隐藏只是隐藏：**再来新错误立刻重新弹出**，不是"展示过一次就不再打扰"。
+       */
+      function show(msg) {
+        var text = String(msg);
+        console.error("[RailFanAI] " + text);
+        if (!el) return;
+        // 去重的 key 只取**第一行**（"脚本错误：Uncaught Error: xxx"），不含位置行：
+        // 同一个异常从不同调用点抛出时行号不同，按整段比对会看到"同一句话堆两遍"
+        // （真机实测过）。位置行仍随最新一次出现更新，完整历史在 console 里。
+        var key = text.split("\n")[0];
+        var hit = null;
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].key === key) { hit = items[i]; break; }
+        }
+        if (hit) {
+          hit.n++;
+          hit.msg = text;          // 位置取最新一次：老位置通常已经被改掉了
+          items.splice(items.indexOf(hit), 1);
+          items.unshift(hit);      // 挪到最前：重复发生说明问题还在
+        } else {
+          items.unshift({ key: key, msg: text, n: 1 });
+          if (items.length > MAX_ITEMS) items.length = MAX_ITEMS;
+        }
+        render();
+        el.style.display = "block";
+        if (closeBtn) closeBtn.style.display = "block";
+        // 每次显示都重新计时：连续报错时不该在半途被上一次的定时器收走
+        clearTimeout(timer);
+        timer = setTimeout(hide, HIDE_MS);
+      }
+
+      // 初始化就把 inline style 钉成 none：Android 探针用 inline style 判断显隐，
+      // 只靠 CSS 的话探针会把"隐藏中"误报成"横幅有内容"。
+      hide();
+      if (closeBtn) closeBtn.addEventListener("click", hide);
+
       window.addEventListener("error", function (e) {
         var t = e.target;
         if (t && (t.tagName === "SCRIPT" || t.tagName === "LINK" || t.tagName === "IMG")) {

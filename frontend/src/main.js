@@ -83,10 +83,19 @@ function llmConfigured() {
   return !!state.llmReady || !!state.llmMock;
 }
 
-/** 顶栏徽标：显示当前实际生效的供应商，避免"以为在用 A 其实在跑 B"。 */
+/**
+ * 顶栏入口：显示"⚙️ 设置"，并把当前实际生效的供应商接在后面。
+ *
+ * 为什么还留这一截后缀：这个按钮同时是"现在到底在用谁"的唯一提示（BYOK 场景下
+ * 用户经常以为在跑 A 其实在跑 B）。按钮名字必须叫「设置」（它现在同时承载模型配置
+ * 与关于），但把供应商整段丢掉是拿功能换整洁，所以折中成「设置 · <名字>」——
+ * 后缀截断到 16 字，否则长模型名会把标题和对话名挤没。
+ */
 async function refreshProviderBadge() {
   if (!llmBtn) return;
   const e = store.activeLlmEntry();
+  // 没有可用供应商时沿用旧文案"未配置"：这是它变成纯「设置」入口后
+  // 唯一还留在顶栏的配置状态提示（引导条被用户关掉时全靠它）
   let text = "未配置";
   let title = "尚未配置模型 —— 点击选择供应商并填入 API Key";
   if (e) {
@@ -102,7 +111,10 @@ async function refreshProviderBadge() {
     if (p) { text = p.label; title = "使用服务端配置：" + p.label; }
   }
   const txtEl = llmBtn.querySelector(".txt");
-  if (txtEl) txtEl.textContent = " " + text;
+  if (txtEl) {
+    if (String(text).length > 16) text = String(text).slice(0, 16) + "…";
+    txtEl.textContent = text ? " 设置 · " + text : " 设置";
+  }
   llmBtn.title = title + "（点击修改）";
 }
 
@@ -380,6 +392,9 @@ function handleRoute() {
   const mConv = h.match(/^#\/c\/([\w-]+)/);
   const mDoc = h.match(/^#\/doc\/(\w+)/);
   if (mDoc) {
+    // 「关于」已并入设置页：老书签/旧链接仍指向 #/doc/about，重定向过去而不是
+    // 落到"文档占位"页 —— pages.js 里已经没有这个 key 了。
+    if (mDoc[1] === "about") return navigate("#/settings", true);
     showView("page");
     pageBody.innerHTML = "";
     pageBody.appendChild(renderDocPage(mDoc[1], {
@@ -486,7 +501,7 @@ function renderAssistantRow(msg, index) {
   // 模型因长度上限停止：如实标注，否则用户会以为内容本来就到这儿了
   if (meta.truncated) {
     bubble.appendChild(el("div", "truncate-note",
-      "⚠️ 回答因输出长度上限被截断（内容不完整）。可在「⚙️ 模型 → 编辑」里调大「最大输出」，"
+      "⚠️ 回答因输出长度上限被截断（内容不完整）。可在「⚙️ 设置 → 编辑」里调大「最大输出」，"
       + "或让问题更聚焦后重问。"));
   }
   if (meta.error) bubble.appendChild(el("div", "error-box", "⚠️ " + meta.error));
@@ -601,7 +616,7 @@ async function send() {
   // 用户主动关掉了引导条、却仍未配置任何 Key：不要在对话里默默失败，
   // 直接给一条可操作的错误（并保留「去配置」入口）。
   if (!llmConfigured()) {
-    showChatError("尚未配置模型 API，无法生成回答。请先在「⚙️ 模型」里选择供应商并填入 API Key。");
+    showChatError("尚未配置模型 API，无法生成回答。请先在「⚙️ 设置」里选择供应商并填入 API Key。");
     return;
   }
 
@@ -750,7 +765,7 @@ async function runAssistant(convId, userIndex) {
             }
             if (assistant.meta.truncated) {
               refs.bubble.appendChild(el("div", "truncate-note",
-                "⚠️ 回答因输出长度上限被截断（内容不完整）。可在「⚙️ 模型 → 编辑」里调大"
+                "⚠️ 回答因输出长度上限被截断（内容不完整）。可在「⚙️ 设置 → 编辑」里调大"
                 + "「最大输出」，或让问题更聚焦后重问。"));
             }
             if (assistant.meta.sources.length) {
@@ -886,7 +901,9 @@ menuBtn.addEventListener("click", () => {
 });
 scrimEl.addEventListener("click", closeSidebar);
 document.getElementById("newchat").addEventListener("click", newConv);
-document.getElementById("go-about").addEventListener("click", () => { closeSidebar(); navigate("#/doc/about"); });
+// 侧栏原来的「ℹ️ 关于」按钮已移除（与顶栏「⚙️ 设置」入口重复），
+// 关于内容并入设置页；对应的监听器也一并删除 —— 元素没了还去 addEventListener
+// 会直接抛 TypeError，而它会把启动期的错误横幅整个点亮。
 if (llmBtn) llmBtn.addEventListener("click", () => { navigate("#/settings"); });
 if (convSearchEl) convSearchEl.addEventListener("input", renderConvList);
 
