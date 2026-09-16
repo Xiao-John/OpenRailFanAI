@@ -519,6 +519,13 @@ function renderAssistantRow(msg, index) {
       "ℹ️ 本题含知识型内容，可能包含未经检索确认的模型知识，请以官方资料为准"));
   }
   if (meta.stopped) bubble.appendChild(el("div", "stopped-tag", "⏹ 已停止生成（内容可能不完整）"));
+  // 上次生成途中被系统回收（本应用刻意**不用前台服务**：不为一个聊天应用去要保活权限）。
+  // 本地只留下当时已经落盘的部分，如实说明，别让用户以为回答本来就这么短。
+  if (meta.streaming) {
+    bubble.appendChild(el("div", "stopped-tag",
+      "⏹ 上次回答在生成中被系统中断（应用切到后台后被回收），以上是当时已生成的部分。"
+      + "可点「重新生成」重问一次。"));
+  }
   // 模型因长度上限停止：如实标注，否则用户会以为内容本来就到这儿了
   if (meta.truncated) {
     bubble.appendChild(el("div", "truncate-note",
@@ -657,7 +664,10 @@ async function runAssistant(convId, userIndex) {
   const userText = conv.messages[userIndex].content;
   const history = buildHistory(conv.messages, userIndex);
 
-  const assistant = { role: "assistant", content: "", meta: {} };
+  // streaming 这个标记是"这条回答还没写完"的落盘证据：应用在生成途中被系统回收时，
+  // 进程里涨到一半的正文会丢，本地留下的就是这个标记 + 已经落盘的那部分内容。
+  // 下次打开据此如实提示"被打断了"，而不是让用户对着一个空气泡猜发生了什么。
+  const assistant = { role: "assistant", content: "", meta: { streaming: true } };
   store.addMessage(convId, assistant);
   const aIndex = conv.messages.length - 1;
   const refs = renderAssistantRow(assistant, aIndex);
@@ -675,6 +685,17 @@ async function runAssistant(convId, userIndex) {
   let thinkRaw = "";
   let finished = false;
   const persist = () => store.updateMessage(convId, aIndex, { content: answerRaw, meta: assistant.meta });
+  // 流式途中**定期落盘**。不这么做的话，进程在生成到一半时被系统回收（本应用刻意不用
+  // 前台服务，切到后台久了就会被杀），那条回答在本地就是空的 —— 正文原先只在结束时写一次。
+  // 节流到约 1.5 秒：每来一个 delta 就序列化整份状态没必要，代价也不小。
+  let persistedAt = 0;
+  const persistThrottled = () => {
+    const now = Date.now();
+    if (now - persistedAt < 1500) return;
+    persistedAt = now;
+    if (thinkRaw) assistant.meta = { ...assistant.meta, thinking: thinkRaw };
+    persist();
+  };
 
   try {
     const resp = await fetch(API_BASE + "/api/chat/stream", {
@@ -743,6 +764,7 @@ async function runAssistant(convId, userIndex) {
             assistant.content = answerRaw;
             refs.ans.innerHTML = renderMarkdown(answerRaw) + '<span class="caret"></span>';
             scrollBottom();
+            persistThrottled();
             break;
           case "billing":            // M11.3 起下发：先记录，暂不展示
             assistant.meta = { ...assistant.meta, billing: ev };
@@ -828,6 +850,9 @@ async function runAssistant(convId, userIndex) {
     }
     state.controller = null;
     setGenerating(false);
+    // 先摘掉"进行中"标记再落盘：万一正好死在这两步之间，下次会显示成"被打断"
+    // —— 偏保守，但不会骗人。
+    delete assistant.meta.streaming;
     persist();                     // 流式结束后一次性落盘（含 meta）
     updateCtxInfo(conv.messages);
     updateHeaderTitle();

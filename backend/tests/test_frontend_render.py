@@ -79,10 +79,31 @@ def test_answer_layout_and_focus():
     print("[PASS] 气泡顺序为 流程日志→思考→正文→来源，且触屏设备不再自动弹键盘")
 
 
+def test_interrupted_answer_is_visible():
+    """没有前台服务时，被系统回收的中途回答必须"看得见"，不能只剩一个空气泡。
+
+    本项目**刻意不申请保活权限**（产品决策），所以进程被回收是难免的。既然避免不了，
+    就要保证后果是可见的：流式途中定期落盘 + 打 `meta.streaming` 标记 + 重开时如实提示。
+    """
+    js = (REPO_ROOT / "frontend/src/main.js").read_text(encoding="utf-8")
+    assert 'meta: { streaming: true }' in js, (
+        "生成开始时没有打上 streaming 标记：进程被杀后无法判断这条回答是否写完"
+    )
+    assert "persistThrottled" in js, (
+        "流式途中没有定期落盘：正文只在结束时写一次，中途被杀会留下一个空气泡"
+    )
+    assert "delete assistant.meta.streaming" in js, (
+        "正常结束后没有摘掉 streaming 标记：会把完整回答误报成被打断"
+    )
+    assert "上次回答在生成中被系统中断" in js, "被打断的回答没有如实提示"
+    print("[PASS] 中断的回答会留下已生成部分并如实标注，且正常结束不会误报")
+
+
 def main():
     test_markdown_tables_render()
     test_renderer_is_a_separate_module()
     test_answer_layout_and_focus()
+    test_interrupted_answer_is_visible()
     print("\n前端渲染测试全部通过 ✔")
 
 
