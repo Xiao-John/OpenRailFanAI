@@ -68,7 +68,15 @@ def discover_socket(app_id: str | None = None) -> str:
 
 
 def fetch_targets() -> list[dict]:
-    with urllib.request.urlopen(f"http://127.0.0.1:{CDP_PORT}/json", timeout=10) as r:
+    """列出可调试页面。
+
+    必须**显式禁用代理**：macOS 的系统代理（本机常年开着 HTTP/SOCKS 代理）会被
+    urllib 自动读进来，于是连 127.0.0.1 的本地 CDP 端口也被塞进代理，代理回 502
+    Bad Gateway。调试通道走回环，绝不该过代理 —— 下面 websockets.connect 的
+    proxy=None 是同一个原因，两处必须一起改（实测：只改一处会在换机器/换网络时复发）。
+    """
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(f"http://127.0.0.1:{CDP_PORT}/json", timeout=10) as r:
         return json.load(r)
 
 

@@ -96,7 +96,32 @@ def test_interrupted_answer_is_visible():
         "正常结束后没有摘掉 streaming 标记：会把完整回答误报成被打断"
     )
     assert "上次回答在生成中被系统中断" in js, "被打断的回答没有如实提示"
-    print("[PASS] 中断的回答会留下已生成部分并如实标注，且正常结束不会误报")
+
+    # 关键回归：提示**不能**只看 meta.streaming。生成开始时那条消息的标记本来就是
+    # true，而它在流式开始时就渲染好了 —— 只判断标记的话，每生成一次都会立刻挂上
+    # "被中断"的提示，直到下次重渲染（切换对话）才消失。
+    # 用户实测原话："无条件附带……切换一下对话再切回来，这个提示就会消失。"
+    assert "state.live = { convId, index: aIndex }" in js, (
+        "流式开始时没有登记「哪一条正在生成」—— 无法区分「活着」与「上次被打断」"
+    )
+    assert "state.live = null" in js, "生成结束后没有清掉「正在生成」的登记"
+    assert "if (meta.streaming && !live)" in js, (
+        "中断提示又变成只看 meta.streaming 了：正在生成的那条会被误报为被打断"
+    )
+    print("[PASS] 中断的回答会留下已生成部分并如实标注，且正常结束/生成中都不会误报")
+
+
+def test_cdp_tool_bypasses_system_proxy():
+    """调试工具连的是回环端口，必须显式绕开系统代理。
+
+    实测踩过：macOS 的系统代理开着时，urllib 会把 127.0.0.1 的 CDP 端口也塞进代理，
+    代理回 502 Bad Gateway，整个调试通道突然不可用（而 websockets 那处早就写了
+    proxy=None）。两处必须一起绕，否则换网络就复发。
+    """
+    cdp = (REPO_ROOT / "scripts/android/cdp.py").read_text(encoding="utf-8")
+    assert "ProxyHandler({})" in cdp, "fetch_targets 没有绕开系统代理（回环会被代理成 502）"
+    assert "proxy=None" in cdp, "websockets 连接没有绕开系统代理"
+    print("[PASS] cdp.py 两处都绕开了系统代理，回环调试不会被代理劫持")
 
 
 def main():
@@ -104,6 +129,7 @@ def main():
     test_renderer_is_a_separate_module()
     test_answer_layout_and_focus()
     test_interrupted_answer_is_visible()
+    test_cdp_tool_bypasses_system_proxy()
     print("\n前端渲染测试全部通过 ✔")
 
 

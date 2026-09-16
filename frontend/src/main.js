@@ -46,6 +46,7 @@ const state = {
   generating: false,
   controller: null,
   convId: null,       // 当前对话 id（与 store.currentId 同步）
+  live: null,         // {convId, index}：此刻正在流式生成的那条消息（见 renderAssistantRow）
   providers: [],      // 服务端返回的供应商列表（用于顶栏显示名字）
   llmReady: false,
 };
@@ -523,7 +524,14 @@ function renderAssistantRow(msg, index) {
   if (meta.stopped) bubble.appendChild(el("div", "stopped-tag", "⏹ 已停止生成（内容可能不完整）"));
   // 上次生成途中被系统回收（本应用刻意**不用前台服务**：不为一个聊天应用去要保活权限）。
   // 本地只留下当时已经落盘的部分，如实说明，别让用户以为回答本来就这么短。
-  if (meta.streaming) {
+  //
+  // 必须排除**此刻正在生成**的那一条：它同样带着 streaming 标记，但它是活的。
+  // 这里曾经只判断 meta.streaming，而那条消息在流式开始时就渲染好了 —— 结果是每生成
+  // 一次都立刻挂上「被中断」的提示，直到下次重渲染（切换对话）才消失。
+  // 判据改用 state.live（登记"当前在生成哪条"），所以生成中途切走再切回来也不会误报。
+  const live = !!(state.live && state.live.convId === state.convId
+                  && state.live.index === index);
+  if (meta.streaming && !live) {
     bubble.appendChild(el("div", "stopped-tag",
       "⏹ 上次回答在生成中被系统中断（应用切到后台后被回收），以上是当时已生成的部分。"
       + "可点「重新生成」重问一次。"));
@@ -672,6 +680,10 @@ async function runAssistant(convId, userIndex) {
   const assistant = { role: "assistant", content: "", meta: { streaming: true } };
   store.addMessage(convId, assistant);
   const aIndex = conv.messages.length - 1;
+  // 登记"这一条正在生成"。渲染时靠它区分"活着"与"上次被打断"——
+  // 只看 meta.streaming 是不行的：生成开始时那条消息的标记本来就是 true，
+  // 于是每生成一次都会立刻挂上"被系统中断"的提示（用户实测就是这个现象）。
+  state.live = { convId, index: aIndex };
   const refs = renderAssistantRow(assistant, aIndex);
   assistant._refs = refs;
   chatEl.appendChild(refs.row);
@@ -855,6 +867,7 @@ async function runAssistant(convId, userIndex) {
     // 先摘掉"进行中"标记再落盘：万一正好死在这两步之间，下次会显示成"被打断"
     // —— 偏保守，但不会骗人。
     delete assistant.meta.streaming;
+    state.live = null;             // 生成结束：这条不再是「活的」
     persist();                     // 流式结束后一次性落盘（含 meta）
     updateCtxInfo(conv.messages);
     updateHeaderTitle();
