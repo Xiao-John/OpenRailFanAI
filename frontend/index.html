@@ -5,16 +5,70 @@
   <!-- 移动优先：禁止用户缩放导致的布局抖动，支持刘海屏安全区 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0f1115" />
+  <!-- 声明本页两套配色都支持：WebView 因此**不会**再对我们的深色做"算法变暗"
+       （那会在已经画好的深色上再压一层，实测是一片死黑），同时也让浏览器自绘控件
+       （滚动条、<select> 下拉、输入框光标）跟着走对。 -->
+  <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="data:," />
   <meta name="description" content="RailFanAI —— 面向中国铁路车迷的 RAG/Agent 助手：交路担当、余票、时刻、径路里程、机位推荐" />
   <title>RailFanAI · 中国铁路车迷助手</title>
+  <script>
+    /* 主题必须在**首次绘制之前**定下来，否则系统是浅色时页面会先黑一下再变白。
+       模块脚本是 defer 的（解析完才跑），来不及 —— 所以这里内联一份最小实现。
+       ⚠️ 它与 `src/theme.js` 是重复的，改一处必须改两处：模式取值、默认模式、主题色
+       三样都被 backend/tests/test_frontend_render.py 钉住（漂移会直接测试失败）。
+       读取顺序必须与 store.js 的 createBackend() 一致：有原生桥就读原生状态文件，
+       否则读 localStorage —— Android 上状态不在 localStorage 里（源含端口，换端口就读不到）。 */
+    (function () {
+      var MODES = ["auto", "light", "dark"];
+      var COLORS = { light: "#f6f7fb", dark: "#0f1115" };
+      var KEY = "railfan_theme";
+      var MIGRATED = "railfan_theme_v2";
+      var stored = null, migrated = null;
+      try {
+        if (window.RailNative && typeof window.RailNative.readState === "function") {
+          var doc = JSON.parse(window.RailNative.readState() || "{}");
+          if (doc) { stored = doc[KEY]; migrated = doc[MIGRATED]; }
+        }
+        if (stored == null && window.localStorage) {
+          stored = window.localStorage.getItem(KEY);
+          migrated = window.localStorage.getItem(MIGRATED);
+        }
+      } catch (e) { /* 状态损坏：当作没设置过，走默认（跟随系统） */ }
+      // 与 store.js 的 migrateTheme 同口径：迁移标记还没落盘时，老版本**自动写入**的
+      // dark/light 一律当"没设置过"——否则升级后第一次启动会先黑一下再变白。
+      // 这里只读不写：首帧阶段不做任何落盘（写整份状态是同步 IO）。
+      if (migrated == null) stored = null;
+      var raw = String(stored == null ? "" : stored).trim().toLowerCase();
+      var mode = MODES.indexOf(raw) >= 0 ? raw : "auto";
+      var light = false;
+      try { light = window.matchMedia("(prefers-color-scheme: light)").matches; } catch (e) {}
+      var theme = mode === "auto" ? (light ? "light" : "dark") : mode;
+      document.documentElement.setAttribute("data-theme", theme);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", COLORS[theme] || "");
+    })();
+  </script>
   <style>
     /* ============ 设计令牌 ============ */
+    /* `:root` 是**深色**一套（本应用的历史默认），浅色一套在下面覆盖。
+       `color-scheme` 不是装饰：它决定滚动条、`<select>` 下拉、输入框光标这些
+       **浏览器自绘控件**的配色；更要紧的是，声明了它 WebView 就不会再对我们的页面
+       做"算法变暗"（那会把已经画好的深色再压暗一层，实测表现为一片死黑）。 */
     :root {
+      color-scheme: dark;
       --bg:#0f1115; --panel:#1a1d24; --panel-2:#14171f; --fg:#e6e8ee; --mut:#8b92a3;
       --accent:#3b82f6; --accent-dim:#2563eb; --danger:#ef4444; --line:#2a2e39;
       --user-bg:#2b5fd9; --radius:14px;
       --sidebar-w:272px; --header-h:52px;
+      /* 语义色（原先散落在各处写死的十六进制，浅色下要么看不见、要么看不清）：
+         warn=提醒/知识型、purple=混合型、ok=正常状态点、code=行内代码、
+         hover=浅色悬停底、on-accent=铺在强调色上的文字。 */
+      --warn:#f59e0b; --warn-line:#a16207; --warn-bg:rgba(245,158,11,.08);
+      --purple:#a78bfa; --purple-line:#6d28d9;
+      --ok:#22c55e; --code-fg:#7fd0ff;
+      --hover:rgba(255,255,255,.10);
+      --on-accent:#fff;
       /* 四个方向的显示安全区：刘海/挖孔、横屏缺口、手势条都不占用。
          Java 侧已按 window insets 缩进根视图（见 MainActivity），Android 上这些通常是 0 ——
          保留是给 API 24–29 老机型兜底，两套机制不会叠加。 */
@@ -24,8 +78,23 @@
       --safe-l:env(safe-area-inset-left, 0px);
     }
     html[data-theme="light"] {
+      color-scheme: light;
       --bg:#f6f7fb; --panel:#ffffff; --panel-2:#eef1f6; --fg:#1a1d24; --mut:#5b6478;
       --line:#dde2ea; --user-bg:#2b5fd9;
+      /* 浅色下这几个色**必须跟着变**，不能沿用深色那一套（都是实测对比度，底 = #f6f7fb）：
+         · --accent 原值 #3b82f6 只有 3.44 —— 而它在本项目里**大量用作文字色**
+           （.intent / .stats / .fold summary / .badge / .ex…，字号 11–12px），
+           白底上根本达不到 AA；顺带白字铺在这个蓝上也只有 3.68。
+           换成 #2563eb：文字 4.83、白字按钮 5.17，两处一起达标。
+         · --danger 原值 #ef4444 只有 3.52，错误提示反而最难读；换 #b91c1c = 6.04。
+         · 琥珀 #f59e0b / 淡紫 #a78bfa / 淡蓝 #7fd0ff 在白底上同样只有 2 上下，
+           分别换 #b45309(4.69) / #6d28d9(6.64) / #0b6bcb(4.66)。 */
+      --accent:#2563eb; --accent-dim:#1d4ed8; --danger:#b91c1c;
+      --warn:#b45309; --warn-line:#fcd34d; --warn-bg:rgba(180,83,9,.08);
+      --purple:#6d28d9; --purple-line:#c4b5fd;
+      --ok:#16a34a; --code-fg:#0b6bcb;
+      --hover:rgba(15,17,21,.06);
+      --on-accent:#fff;
     }
     * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     /* 页面**不允许横向滚动**：横拖会把内容拽出安全区，竖排阅读也不需要它。
@@ -76,7 +145,7 @@
     .notice .btn { flex:none; }
     .notice-close { flex:none; background:transparent; border:none; color:var(--mut);
                     font-size:16px; line-height:1; padding:4px 6px; cursor:pointer; border-radius:8px; }
-    .notice-close:hover { color:var(--fg); background:rgba(255,255,255,.08); }
+    .notice-close:hover { color:var(--fg); background:var(--hover); }
     /* 对话内的错误提示（用户关掉引导条后又没配 Key 时用） */
     .chat-error { margin:12px; padding:12px 14px; border-radius:12px;
                   background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.5);
@@ -156,8 +225,8 @@
       min-height:38px;
     }
     .btn:hover { border-color:var(--accent); color:var(--accent); }
-    .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; flex:1; }
-    .btn.primary:hover { background:var(--accent-dim); color:#fff; }
+    .btn.primary { background:var(--accent); border-color:var(--accent); color:var(--on-accent); flex:1; }
+    .btn.primary:hover { background:var(--accent-dim); color:var(--on-accent); }
     .btn.danger { color:var(--danger); border-color:var(--danger); }
     .btn.wide { width:100%; }
     .searchbox { padding:0 12px 8px; }
@@ -216,7 +285,7 @@
 
     .bubble { min-width:0; max-width:100%; padding:11px 14px; border-radius:var(--radius); line-height:1.68; font-size:14px;
               word-break:break-word; }
-    .row.user .bubble { background:var(--user-bg); color:#fff; white-space:pre-wrap; }
+    .row.user .bubble { background:var(--user-bg); color:var(--on-accent); white-space:pre-wrap; }
     .row.assistant .bubble { background:var(--panel); }
 
     .actions { display:flex; gap:6px; margin-top:6px; font-size:12px; opacity:0;
@@ -232,7 +301,7 @@
     .intent { font-size:12px; color:var(--accent); margin-bottom:6px; }
     .md { white-space:pre-wrap; }
     .md h3 { font-size:14px; margin:8px 0 3px; }
-    .md code { background:var(--panel-2); color:#7fd0ff; padding:1px 5px; border-radius:4px;
+    .md code { background:var(--panel-2); color:var(--code-fg); padding:1px 5px; border-radius:4px;
                font-size:12px; }
     /* 代码块**不横向滚动**（规矩：只有表格可以横拖）—— 改成折行 */
     .md pre.code { background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
@@ -250,13 +319,13 @@
     .stats { margin-top:7px; font-size:12px; color:var(--accent); }
     .progress { font-size:12px; color:var(--mut); margin-bottom:5px; }
     .sources { margin-top:6px; font-size:12px; color:var(--mut); word-break:break-all; }
-    .stopped-tag { margin-top:6px; font-size:12px; color:#f59e0b; }
-    .error-box { margin-top:6px; font-size:12px; color:#ef4444; word-break:break-word; }
+    .stopped-tag { margin-top:6px; font-size:12px; color:var(--warn); }
+    .error-box { margin-top:6px; font-size:12px; color:var(--danger); word-break:break-word; }
     .qtype { font-size:11px; border-radius:999px; padding:1px 7px; margin-left:6px;
              border:1px solid var(--line); color:var(--mut); }
-    .qtype.knowledge { color:#f59e0b; border-color:#a16207; }
-    .qtype.mixed { color:#a78bfa; border-color:#6d28d9; }
-    .knowledge-hint { margin-top:6px; font-size:12px; color:#f59e0b; }
+    .qtype.knowledge { color:var(--warn); border-color:var(--warn-line); }
+    .qtype.mixed { color:var(--purple); border-color:var(--purple-line); }
+    .knowledge-hint { margin-top:6px; font-size:12px; color:var(--warn); }
     /* 流程日志/思考过程现在排在正文**上方**，所以上下都要留白：
        否则折叠块会紧贴下面的正文，读起来像同一段。 */
     .fold { margin:8px 0; background:var(--panel-2); border:1px solid var(--line);
@@ -288,7 +357,7 @@
              border-radius:var(--radius); padding:12px 14px; font-size:16px;  /* ≥16px 防 iOS 缩放 */
              line-height:1.55; outline:none; resize:none; max-height:36vh; overflow-y:auto; }
     #input:focus { border-color:var(--accent); }
-    #send { background:var(--accent); color:#fff; border:none; border-radius:var(--radius);
+    #send { background:var(--accent); color:var(--on-accent); border:none; border-radius:var(--radius);
             padding:0 18px; cursor:pointer; font-size:14px; min-width:64px; height:46px;
             flex-shrink:0; transition:background .15s; }
     #send:hover:not(:disabled) { background:var(--accent-dim); }
@@ -345,7 +414,7 @@
                 border-radius:6px; padding:1px 6px; white-space:nowrap; }
     .prov-tag.using { color:var(--accent); border-color:var(--accent); }
     .prov-dot { width:9px; height:9px; border-radius:50%; background:var(--line); flex:none; }
-    .prov-dot.ok { background:#22c55e; }
+    .prov-dot.ok { background:var(--ok); }
     .prov-actions { display:flex; gap:6px; flex:none; }
     .prov-actions .btn { min-width:auto; padding:6px 12px; font-size:13px; }
     .prov-add-row { display:flex; gap:10px; margin-top:4px; flex-wrap:wrap; }
@@ -377,8 +446,8 @@
     .page h1 { font-size:18px; margin:4px 0 12px; }
     .page h2 { font-size:14px; margin:18px 0 6px; }
     .page p, .page li { font-size:13.5px; line-height:1.8; color:var(--fg); }
-    .page .todo { color:#f59e0b; font-size:12px; background:rgba(245,158,11,.08);
-                  border:1px dashed #a16207; border-radius:8px; padding:8px 10px; margin:8px 0; }
+    .page .todo { color:var(--warn); font-size:12px; background:var(--warn-bg);
+                  border:1px dashed var(--warn-line); border-radius:8px; padding:8px 10px; margin:8px 0; }
     .page .meta { color:var(--mut); font-size:12px; margin-top:16px; }
     .placeholder-block { border:1px dashed var(--line); border-radius:10px; padding:12px;
                          color:var(--mut); font-size:13px; text-align:center; }

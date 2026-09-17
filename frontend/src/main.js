@@ -1010,7 +1010,9 @@ window.addEventListener("resize", () => {
 
 // ---------- 初始化 ----------
 store.load();
-store.setTheme(store.theme());
+// 外观：应用存下来的模式，并在系统切换深浅色时实时跟随（默认模式是"跟随系统"）。
+// 首屏那一下由 index.html 里的内联脚本负责（模块脚本是 defer 的，来不及防闪烁）。
+store.initTheme();
 // 版本是异步取的（Android 读 build.json、桌面读 /api/version）。
 // 拿到后刷新角标；如果用户正停在设置/文档页，顺手重渲染一次把文字更新掉。
 loadAppVersion().then(() => {

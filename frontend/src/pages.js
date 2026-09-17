@@ -709,8 +709,41 @@ export function renderSettingsPage(deps) {
   }
 
   render();
-  // 「关于」并入本页（侧栏那个重复的「ℹ️ 关于」入口已移除）。
-  // 挂在 body **之外**：body 每次增删/编辑供应商都会整体重建，静态卡片没必要跟着重建。
+  // 「外观」与「关于」都挂在 body **之外**：body 每次增删/编辑供应商都会整体重建，
+  // 这两张静态卡片没必要跟着重建（重建还会把用户正在填的表单状态抖掉）。
+  root.appendChild(themeCard());
   root.appendChild(aboutCard(navigate));
   return root;
+}
+
+/**
+ * 「外观」卡片：跟随系统 / 浅色 / 深色。
+ *
+ * 为什么要有三档：**默认就是"跟随系统"**。只给一个"深色/浅色"开关的话，这个默认状态
+ * 无处表达 —— 用户点一下浅色再点回来，跟随能力就永久丢了（本项目第一版深色就是这样，
+ * 只能改 localStorage 才能回去）。
+ *
+ * 为什么放在这一页：它属于**设备偏好**，与"填哪个供应商的 Key"是同一类东西，
+ * 都只作用于当前这台设备/浏览器。
+ */
+export function themeCard() {
+  const c = card("外观");
+  const sel = selectEl([
+    ["auto", "跟随系统"],
+    ["light", "浅色"],
+    ["dark", "深色"],
+  ], store.theme());
+  sel.addEventListener("change", () => store.setTheme(sel.value));
+
+  const row = el("div", "form-row");
+  row.appendChild(sel);
+  const lab = el("label", null, "主题");
+  lab.style.minWidth = "0";
+  row.appendChild(lab);
+  c.appendChild(row);
+
+  c.appendChild(el("p", "sub",
+    "「跟随系统」会随系统的深浅色实时切换（Android 上由系统的深色模式设置决定，"
+    + "改完不用重开应用）。选「浅色」或「深色」则固定不变。"));
+  return c;
 }

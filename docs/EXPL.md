@@ -14,7 +14,7 @@
 |---|---|
 | 后端 | **Python 3.12**（要求 ≥ 3.10）、FastAPI、**pydantic v1**（`from pydantic import BaseSettings`，**刻意不用 v2**：Android 一体化把 Python 运行时随 APK 分发，v2 依赖的 `pydantic-core` 是 Rust 扩展，Chaquopy 上没有可用轮子；见 `backend/app/config.py` 开头） |
 | LLM / 数据源库 | OpenAI 兼容（`AsyncOpenAI`），**多供应商 + 双 API 方言**：默认供应商沿用 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`，另可用 `LLM_PROVIDER` 选 11 家内置目录之一，或用 `LLM_PROVIDERS` / `LLM_PROVIDERS_FILE` 添加自定义供应商；`api=auto` 时先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存结论（两种方言的响应结构与 usage 字段名不同，已在 `app/llm/client.py` 抹平）；用户可在界面「设置」里用自己的 Key（BYOK），随请求下发、服务端不落库。`LLM_MOCK=true` 走确定性本地 mock；依赖 `mcp-server-12306`（12306 实时）、`httpx[http2]`、`brotli`（浏览器级请求头所需）、`pypinyin`（站名同音纠错） |
-| 前端 | 原生 HTML + JS（无构建工具），由 FastAPI 静态托管，SSE 流式；**移动优先三端自适应**，支持多对话并存 |
+| 前端 | 原生 HTML + JS（无构建工具），由 FastAPI 静态托管，SSE 流式；**移动优先三端自适应**，支持多对话并存；**深浅色默认跟随系统**（设置页「外观」可选 跟随系统/浅色/深色；Android 上要配合应用主题的 `isLightTheme`，见 `docs/android.md`） |
 | 网络前提 | **中国境内出口**（12306 与 rail.re 均仅境内可达） |
 
 一键启动（细节见 `docs/run.md`）：
@@ -113,6 +113,6 @@ scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预
 
 **数据源工具（重点）**：`tools/emu_routing.py`（rail.re 交路）、`tools/rail_line.py`（径路解析，含 800KB 页面抗噪定位）、`tools/_rt12306.py`（12306 实时共享助手）、`tools/_http.py`（浏览器级请求头 + `format_error()`）、`tools/registry.py`（工具注册表）。
 
-**前端**（`frontend/`）：`src/main.js`（hash 路由 `#/c/<id>` `#/doc/<key>`、SSE 消费、对话列表、AbortController、编辑重发）、`src/store.js`（对话/主题持久化 + 容量上限；持久化后端可切换：浏览器用 localStorage，Android 用原生桥写的应用私有文件）、`src/native.js`（原生桥的 JS 契约，未接桥时全部安全退化）、`src/markdown.js`（回答正文的轻量 Markdown 渲染，含 GFM 表格；单独成模块是为了能脱离浏览器用 node 跑测试）、`src/pages.js`（帮助/免责/联系静态页 + 设置页：供应商 BYOK、模型探测、关于卡片）、`index.html`（移动优先三端自适应 UI）、`tests/store.test.mjs`（node 直跑前端数据层单测）。
+**前端**（`frontend/`）：`src/main.js`（hash 路由 `#/c/<id>` `#/doc/<key>`、SSE 消费、对话列表、AbortController、编辑重发）、`src/store.js`（对话/主题持久化 + 容量上限；持久化后端可切换：浏览器用 localStorage，Android 用原生桥写的应用私有文件）、`src/native.js`（原生桥的 JS 契约，未接桥时全部安全退化）、`src/theme.js`（外观三档：跟随系统/浅色/深色；单独成模块是为了能脱离浏览器用 node 跑测试）、`src/markdown.js`（回答正文的轻量 Markdown 渲染，含 GFM 表格；单独成模块是为了能脱离浏览器用 node 跑测试）、`src/throttle.js`（流式渲染的合并/限频）、`src/pages.js`（帮助/免责/联系静态页 + 设置页：供应商 BYOK、模型探测、外观、关于卡片）、`index.html`（移动优先三端自适应 UI）、`tests/*.test.mjs`（node 直跑前端单测：数据层 / Markdown / 节流 / 主题）。
 
 **配套文档**：`docs/datasources.md`（数据源端点、参数、字段与踩坑）、`docs/run.md`（安装、配置、启动、测试、数据准备）。

@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -197,12 +198,149 @@ def test_streaming_render_is_throttled():
     print("[PASS] 流式渲染已合并限频，且收尾 cancel() 不会重贴光标")
 
 
+def test_theme_follows_system():
+    """深浅色必须**默认跟随系统**，并且首屏不能闪。
+
+    为什么钉这么细：这套逻辑在两处各有一份实现 —— `src/theme.js`（运行时）与
+    `index.html` 里的内联引导脚本（首屏）。模块脚本是 defer 的，等它跑完才应用主题，
+    系统是浅色时会先黑一下再变白，所以内联那份不能删；但两份实现**必须一致**，
+    否则"跟随系统"在首屏与之后的行为会不一样（且只在某些账号下复现）。
+    """
+    html = (REPO_ROOT / "frontend/index.html").read_text(encoding="utf-8")
+    store_js = (REPO_ROOT / "frontend/src/store.js").read_text(encoding="utf-8")
+    main_js = (REPO_ROOT / "frontend/src/main.js").read_text(encoding="utf-8")
+    pages_js = (REPO_ROOT / "frontend/src/pages.js").read_text(encoding="utf-8")
+    theme_js = (REPO_ROOT / "frontend/src/theme.js").read_text(encoding="utf-8")
+
+    assert (REPO_ROOT / "frontend/src/theme.js").exists(), "主题逻辑应独立成模块才可脱离浏览器测试"
+    assert re.search(r'<meta\s+name="color-scheme"\s+content="light dark"\s*/?>', html), (
+        "缺 color-scheme 声明：WebView 会自行对深色做算法变暗（叠起来是一片死黑），"
+        "滚动条/下拉框也不会跟着配色"
+    )
+    assert "color-scheme: dark" in html and "color-scheme: light" in html, (
+        "两套令牌都要声明 color-scheme"
+    )
+
+    # 内联引导脚本：必须在 <body> 之前、且不能靠模块脚本
+    head = html.split("<body", 1)[0]
+    assert 'document.documentElement.setAttribute("data-theme"' in head, (
+        "首屏之前没有定下主题：系统浅色时会先黑一下再变白"
+    )
+    assert "prefers-color-scheme: light" in head, "内联脚本没有读系统偏好"
+
+    # 两份实现不许漂移：模式取值、默认模式、主题色
+    mods = re.search(r"var MODES = \[([^\]]+)\]", head)
+    colors = re.search(r"var COLORS = \{([^}]+)\}", head)
+    assert mods and colors, "内联脚本里找不到 MODES / COLORS（改动请同步更新本测试）"
+    inline_modes = re.findall(r'"([a-z]+)"', mods.group(1))
+    inline_colors = dict(re.findall(r"(\w+):\s*\"(#[0-9a-fA-F]+)\"", colors.group(1)))
+    assert inline_modes == ["auto", "light", "dark"], inline_modes
+    assert 'export const THEME_MODES = ["auto", "light", "dark"];' in theme_js, (
+        "theme.js 的模式全集与 index.html 不一致"
+    )
+    for name, value in inline_colors.items():
+        assert f'{name}: "{value}"' in theme_js, (
+            f"主题色 {name}={value} 在 theme.js 里对不上（状态栏颜色会与页面不符）"
+        )
+
+    # store：默认 auto + 启动时挂监听
+    assert "return normalizeMode(db.getItem(LS_THEME));" in store_js, (
+        "store.theme() 又写死默认值了：应经过 normalizeMode（默认 auto = 跟随系统）"
+    )
+    assert "watchSystemTheme(" in store_js, "没有监听系统深浅色切换（改系统设置后不会实时跟随）"
+    assert "initTheme()" in main_js and "setTheme(store.theme())" not in main_js, (
+        "启动应调用 store.initTheme()（应用 + 挂监听），而不是只应用一次"
+    )
+
+    # 老版本每次启动都会把 "dark" 自动写进偏好（而当时界面上根本没有主题入口），
+    # 不做一次性迁移的话，"跟随系统"对升级用户永远不生效 —— 表现为"新装的人浅色、
+    # 升级的人还是黑的"。内联脚本与 store.js 用的是同一个标记键，必须对齐。
+    assert "migrateTheme(db)" in store_js, "initTheme() 里没有做主题偏好的一次性迁移"
+    marker = "railfan_theme_v2"
+    assert f'LS_THEME_MIGRATED = "{marker}"' in store_js, "store.js 的迁移标记键变了"
+    assert f'"{marker}"' in head, "内联首帧脚本没有用同一个迁移标记键（升级后第一帧会先黑一下）"
+
+    # 设置页要给得出三档，否则"跟随系统"这个默认态无处回去
+    for label in ("跟随系统", "浅色", "深色"):
+        assert label in pages_js, f"设置页缺少「{label}」这一档"
+
+    node = shutil.which("node")
+    if not node:
+        print("[SKIP] 未安装 node，跳过主题逻辑单测")
+        return
+    harness = REPO_ROOT / "frontend" / "tests" / "theme.test.mjs"
+    assert harness.exists(), f"缺少测试脚本：{harness}"
+    proc = subprocess.run(
+        [node, str(harness)], capture_output=True, text=True, timeout=120, cwd=str(REPO_ROOT)
+    )
+    out = (proc.stdout or "") + (proc.stderr or "")
+    for line in out.splitlines():
+        if line.startswith(("[FAIL]", "结果")):
+            print(line)
+    assert proc.returncode == 0, f"主题逻辑测试失败：\n{out}"
+    print("[PASS] 外观：默认跟随系统（首屏内联 + 运行时两处一致），显式选择优先，系统切换实时跟随")
+
+
+def _rel_luminance(hex_color: str) -> float:
+    h = hex_color.lstrip("#")
+    parts = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    chans = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in parts]
+    return 0.2126 * chans[0] + 0.7152 * chans[1] + 0.0722 * chans[2]
+
+
+def _contrast(fg: str, bg: str) -> float:
+    l1, l2 = _rel_luminance(fg), _rel_luminance(bg)
+    hi, lo = max(l1, l2), min(l1, l2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _theme_tokens(block: str) -> dict:
+    return dict(re.findall(r"--([a-z-]+):\s*(#[0-9a-fA-F]{6})", block))
+
+
+def test_theme_tokens_meet_contrast():
+    """两套主题的**文字色**都要达到 WCAG AA（对比度 ≥ 4.5）。
+
+    为什么要测这个：深色那套的令牌直接沿用没问题，但浅色不是把颜色反过来就算完 ——
+    实测发现 `--accent`（原 `#3b82f6`）在浅色底上只有 **3.44**，而它在本项目里是**大量用作
+    文字色**的（`.intent` / `.stats` / `.fold summary` / `.badge`，字号 11–12px）；
+    `--danger`（`#ef4444`）更低到 3.52，于是"出错了"这条提示反而最难读。
+    这类问题肉眼看着"还行"，所以必须用数字卡住，否则以后加令牌时还会重犯。
+    """
+    html = (REPO_ROOT / "frontend/index.html").read_text(encoding="utf-8")
+    dark_block = re.search(r":root \{(.*?)\n    \}", html, re.S)
+    light_block = re.search(r'html\[data-theme="light"\] \{(.*?)\n    \}', html, re.S)
+    assert dark_block and light_block, "两套主题的令牌块没找全"
+
+    # 只查**文字色**。排除项各有理由：
+    #   *-bg / *-line / hover —— 底与描边，不是文字
+    #   accent-dim —— 只用作 .btn.primary:hover 的**背景**（深色下 #2563eb 本身就只有 3.66）
+    #   ok —— .prov-dot.ok 是状态圆点，按非文本标准 3:1 判（3.08 达标）
+    #   panel / on-accent / user-bg —— 底或铺在底上的字，由各自的组合决定
+    text_tokens = ("fg", "mut", "accent", "danger", "warn", "purple", "code-fg")
+    for label, block in (("深色", dark_block.group(1)), ("浅色", light_block.group(1))):
+        tokens = _theme_tokens(block)
+        bg = tokens.get("bg")
+        assert bg, f"{label}主题没有 --bg"
+        for name in text_tokens:
+            color = tokens.get(name)
+            assert color, f"{label}主题没有定义 --{name}（浅色那套必须逐个覆盖，不能靠继承）"
+            ratio = _contrast(color, bg)
+            assert ratio >= 4.5, (
+                f"{label}主题 --{name}={color} 在 --bg={bg} 上对比度只有 {ratio:.2f}（要求 ≥4.5）"
+            )
+        print(f"[PASS] {label}主题文字令牌对比度均 ≥4.5（最低 "
+              f"{min(_contrast(tokens[n], bg) for n in text_tokens):.2f}）")
+
+
 def main():
     test_markdown_tables_render()
     test_renderer_is_a_separate_module()
     test_answer_layout_and_focus()
     test_interrupted_answer_is_visible()
     test_streaming_render_is_throttled()
+    test_theme_follows_system()
+    test_theme_tokens_meet_contrast()
     test_cdp_tool_bypasses_system_proxy()
     test_only_tables_scroll_horizontally()
     print("\n前端渲染测试全部通过 ✔")

@@ -3,23 +3,39 @@
     <!-- 界面完全由 WebView 自己画，所以不要平台自带的 ActionBar。
 
          为什么必须显式写出来：清单里不声明主题时（targetSdk 35），平台会给一个
-         **带 ActionBar 的默认主题**。这条 ActionBar 在这个 app 里看不见（没有标题、
-         透明），但它确实存在，并以 ActionBarOverlayLayout 的叠加模式**盖在 WebView
-         之上**，吃掉顶部约 275px 的全部触摸。
+         带 ActionBar 的默认主题。这条 ActionBar 在这个 app 里看不见（没有标题、
+         透明），但它确实存在，并以 ActionBarOverlayLayout 的叠加模式盖在 WebView
+         之上，吃掉顶部约 275px 的全部触摸。
 
          症状很有欺骗性：界面看起来完全正常，顶栏的「☰」和侧栏的「＋ 新对话」也画在
-         那里，但**怎么点都没反应** —— 用户会说"创建新对话的功能没了"。
+         那里，但怎么点都没反应，用户会说"创建新对话的功能没了"。
          之前给顶栏加 env(safe-area-inset-top) 只解决了"看起来被状态栏压住"的观感，
          并没有解决"摸不到"：那 275px 正好 = 挖孔安全区 128 + ActionBar 高度 147。
 
-         排查依据（`adb shell dumpsys activity top` 的 View Hierarchy）：
+         排查依据（adb shell dumpsys activity top 的 View Hierarchy）：
              ActionBarOverlayLayout 0,0-1080,2400
                FrameLayout(content) ... WebView 0,0-1080,2400
-               ActionBarContainer V.ED..... 0,0-1080,275   ← 就是它
-         -->
-    <style name="AppTheme" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+               ActionBarContainer V.ED..... 0,0-1080,275   ← 就是它 -->
+
+    <!-- 父主题必须是 Light 变体，深色一套放在 values-night/styles.xml。
+         这不是配色偏好，而是 WebView 的硬性要求：prefers-color-scheme 媒体查询由
+         应用主题的 isLightTheme 属性决定（见 WebSettings.setAlgorithmicDarkeningAllowed
+         的官方说明："WebView 始终根据应用主题属性 isLightTheme 设置 prefers-color-scheme"），
+         与系统的夜间模式无关。
+         原来两套都用 Theme.DeviceDefault（AOSP 里那是深色变体，isLightTheme=false），
+         于是页面永远收到 prefers-color-scheme: dark。真机实测：系统切浅色、应用的
+         Configuration 里也没有 night 限定符，WebView 仍然报 dark，前端"跟随系统"
+         因此永远跟随不上（只有写死的深色）。
+         用 values-night 而不是 Theme.DeviceDefault.DayNight：后者要 API 29+，而 minSdk 是 24。 -->
+    <style name="AppTheme" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
         <!-- 启动期那块可见日志面板是黑底浅字（见 MainActivity 里显式设的颜色），
              这里把窗口底色也定成黑，避免冷启动瞬间闪一下白 -->
         <item name="android:windowBackground">@android:color/black</item>
+        <!-- 状态栏与手势条区域露出的是窗口底色（Java 侧把内容按 insets 缩进了，
+             不绘制到系统栏底下），所以那里永远是深的，图标必须用浅色。
+             不写这一条的话，Light 父主题会默认给深色图标（API 23+ 的
+             windowLightStatusBar=true），在黑底上等于看不见。 -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>

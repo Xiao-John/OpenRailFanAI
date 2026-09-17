@@ -145,6 +145,52 @@ bash scripts/android/build.sh -PincludeDict=true assembleDebug assembleRelease
 - 若不需要 HTTPS 校验则去掉 OpenSSL（**不推荐**：12306 与 LLM 均需 TLS）；
 - 按 ABI 出多包（App Bundle）而不是单包。
 
+## 深浅色跟随系统（改主题前必读）
+
+前端是"跟随系统"的三档主题（跟随系统 / 浅色 / 深色，见 `frontend/src/theme.js` 与设置页「外观」）。
+在 Android 上它**不是**靠系统夜间模式就直接生效的，有两个坑都实测踩过：
+
+### 1. `prefers-color-scheme` 由**应用主题的 `isLightTheme`** 决定，与系统夜间模式无关
+
+> WebView 始终根据应用主题属性 `isLightTheme` 设置媒体查询 `prefers-color-scheme`
+> （即 `light`；`isLightTheme` 为 true 或未指定）… 否则为 `dark`。
+> —— [`WebSettings.setAlgorithmicDarkeningAllowed`](https://developer.android.com/reference/android/webkit/WebSettings#setAlgorithmicDarkeningAllowed(boolean))
+
+原来的 `AppTheme` 用的是 `Theme.DeviceDefault.NoActionBar` —— AOSP 里那是**深色**变体
+（`isLightTheme=false`），于是页面**永远**收到 `prefers-color-scheme: dark`。
+真机实测（模拟器 Android 15）：`cmd uimode night no`、`dumpsys activity` 的
+`mCurrentConfig` 里也没有 `night` 限定符，WebView 仍然报 `dark` —— 前端"跟随系统"
+因此永远跟随不上，只有写死的深色。
+
+修法（**两套父主题都要改，改一处不算改**）：
+
+| 文件 | 父主题 | 何时生效 |
+|---|---|---|
+| `res/values/styles.xml` | `Theme.DeviceDefault.Light.NoActionBar` | 浅色 |
+| `res/values-night/styles.xml` | `Theme.DeviceDefault.NoActionBar` | 深色 |
+
+用 `values-night` 而不是 `Theme.DeviceDefault.DayNight`：后者要 API 29+，而本应用 `minSdk` 是 24。
+两个文件里 `windowBackground`（黑）与 `windowLightStatusBar/windowLightNavigationBar`（false）
+**必须一致**：启动日志面板始终是黑底浅字、系统栏区域始终露出窗口底色（Java 侧把内容按
+insets 缩进了，不绘制到系统栏底下），所以那里永远是深的，图标必须用浅色 ——
+不写 `windowLightStatusBar=false` 的话，Light 父主题默认给深色图标，在黑底上等于看不见。
+
+`onCreate` 里不需要做任何"根据夜间模式选颜色"的逻辑：主题换了，WebView 的媒体查询跟着换。
+
+### 2. 系统实时切换是能跟上的（不需要重启应用）
+
+`AndroidManifest.xml` 里 MainActivity 声明了 `configChanges` 含 `uiMode`，Activity 不会重建；
+但实测 Chromium 会随配置变化更新媒体查询，前端 `matchMedia(...).addEventListener("change")`
+（`theme.js` 的 `watchSystemTheme`）因此能实时收到 —— 模拟器上不重启应用切换
+`cmd uimode night yes|no`，`data-theme` 与页面底色都跟着变。
+
+### 3. 老用户的迁移
+
+旧版本每次启动都会把 `"dark"` **自动写进**偏好（而当时界面上根本没有主题入口），
+不清掉的话"跟随系统"对升级用户永远不生效，表现为"新装的人是浅色、升级的人还是黑的"。
+`store.migrateTheme()` 用 `railfan_theme_v2` 标记做一次性清理；`index.html` 的首帧内联脚本
+用同一个标记键做**只读**判断（首帧阶段不落盘），避免升级后第一次启动先黑一下再变白。
+
 ## 原生桥（`window.RailNative`）
 
 WebView 上有三件事纯网页做不好，所以 MainActivity 里挂了一个自己的小桥

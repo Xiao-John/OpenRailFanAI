@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 系统处于深色模式时用这一套：父主题换成深色变体（isLightTheme=false），
+         于是 WebView 的 prefers-color-scheme 报 dark，前端"跟随系统"才跟得上。
+
+         与 values/styles.xml 的差异只有父主题：窗口底色与系统栏图标颜色两套必须一致
+         （启动面板始终是黑底浅字、系统栏区域始终露出窗口底色，见那边的注释）。
+         用 values-night 而不是 Theme.DeviceDefault.DayNight：后者要 API 29+，
+         而本应用的 minSdk 是 24。 -->
+    <style name="AppTheme" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

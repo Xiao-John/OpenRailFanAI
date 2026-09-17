@@ -9,11 +9,14 @@
 //      未勾选时只保留在内存里（刷新即失效），见 setLlm/llmKey。
 
 import { native } from "./native.js";
+import { applyTheme, normalizeMode, watchSystemTheme } from "./theme.js";
 
 const LS_CONVS = "railfan_conversations_v1";
 const LS_CURRENT = "railfan_current_conv_v1";
 const LS_TOTAL = "railfan_total_tokens";
 const LS_THEME = "railfan_theme";
+// 主题偏好的一次性迁移标记（见 migrateTheme）
+const LS_THEME_MIGRATED = "railfan_theme_v2";
 const LS_LLM = "railfan_llm_v1";
 
 const MAX_CONVS = 100;          // 最多保留的对话数（超出丢最旧的、非当前）
@@ -100,6 +103,26 @@ function nativeBackend() {
     /** 供测试用：不经过合并直接落盘。 */
     raw: () => doc,
   };
+}
+
+/**
+ * 一次性迁移：清掉老版本**自动写入**的主题偏好（v0.1.5 起默认跟随系统）。
+ *
+ * 为什么非做不可：老代码每次启动都会执行 `setTheme(theme())`，而 `theme()` 在没存过偏好时
+ * 返回 "dark" —— 于是每个用过旧版的设备都被记下了一个**用户从没选过**的 dark；
+ * 而旧版界面上**根本没有**主题入口（`data-theme` 只能靠手改 localStorage 才动得了）。
+ * 不迁移的话，"跟随系统"对老用户永远不生效，且表现为"新装的人是浅色、升级的人还是黑的"
+ * 这种从现象上根本解释不通的差异。
+ *
+ * 只跑一次（标记位），且只删偏好本身 —— 用户在新界面里重新选一次就会重新落盘。
+ * 返回是否真的迁移过（供测试断言，也可用于埋点）。
+ */
+function migrateTheme(backend) {
+  if (backend.getItem(LS_THEME_MIGRATED) != null) return false;
+  backend.setItem(LS_THEME_MIGRATED, "1");
+  const stale = backend.getItem(LS_THEME);
+  if (stale != null) backend.removeItem(LS_THEME);
+  return stale != null;
 }
 
 function createBackend() {
@@ -368,15 +391,31 @@ export const store = {
     return v;
   },
 
-  // ---------- 主题 ----------
+  // ---------- 外观主题 ----------
+  //
+  // 三个模式：auto（跟随系统，**默认**）/ light / dark。
+  // 默认从"dark"改成"auto"：社区版面向的是普通用户，系统是浅色却给人一个黑界面
+  // 属于"我的应用坏了"级别的观感；显式选过 light/dark 的用户不受影响。
   theme() {
-    return db.getItem(LS_THEME) || "dark";
+    return normalizeMode(db.getItem(LS_THEME));
   },
-  setTheme(t) {
-    db.setItem(LS_THEME, t);
-    document.documentElement.setAttribute("data-theme", t);
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", t === "light" ? "#f6f7fb" : "#0f1115");
+  setTheme(mode) {
+    const m = normalizeMode(mode);
+    db.setItem(LS_THEME, m);
+    return applyTheme(m);
+  },
+  /**
+   * 启动时应用主题，并在系统切换深浅色时实时跟随（不刷新页面）。
+   *
+   * 系统一变就无条件重算：显式 light/dark 模式下 `applyTheme` 的结果与系统无关，
+   * 所以不需要在这里判断"是不是 auto"——少一个分支就少一处装错监听器的机会。
+   */
+  initTheme() {
+    migrateTheme(db);
+    const applied = this.setTheme(this.theme());
+    if (this._themeUnwatch) this._themeUnwatch();      // 防重复挂载（真机上监听器不会自己回收）
+    this._themeUnwatch = watchSystemTheme(() => applyTheme(this.theme()));
+    return applied;
   },
 
   // ---------- LLM 供应商（BYOK）----------

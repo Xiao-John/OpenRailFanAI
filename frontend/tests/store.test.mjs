@@ -5,6 +5,10 @@ globalThis.localStorage = {
   setItem: (k, v) => mem.set(k, String(v)),
   removeItem: (k) => mem.delete(k),
 };
+// 预置一个"老版本自动写入的 dark"：旧代码每次启动都执行 setTheme(theme())，
+// 而 theme() 未设置时返回 "dark"，于是每个用过旧版的设备都躺着一条 dark。
+// 这一条必须在 import store.js **之前**放进去（后端在模块加载时就定型了）。
+mem.set("railfan_theme", "dark");
 // 用法：node frontend/tests/store.test.mjs（也可由 backend/tests/test_frontend_store.py 调用）
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -119,6 +123,21 @@ ok(fresh3.store.activeLlmEntry().model === "old-model", "迁移后模型保留")
 // 清空
 fresh3.store.clearLlm();
 ok(!mem.has(LS_LLM) && fresh3.store.llmEntries().length === 0, "clearLlm 清空全部条目与 Key");
+
+// ---------- 主题：默认跟随系统 + 清掉老版本自动写入的偏好 ----------
+// 这个实例是从"带着 railfan_theme=dark 的旧状态"载入的（见文件开头预置的那一条）。
+ok(store.theme() === "dark", "迁移只发生在 initTheme()，读偏好本身不擅自动它");
+store.initTheme();
+ok(store.theme() === "auto", "initTheme() 清掉老版本自动写入的 dark → 跟随系统");
+ok(!mem.has("railfan_theme") || mem.get("railfan_theme") === "auto",
+   "迁移后的偏好是 auto（不是残留的 dark）");
+ok(mem.get("railfan_theme_v2") === "1", "落下迁移标记，避免每次都清");
+store.setTheme("dark");
+ok(store.theme() === "dark", "用户显式选过之后就按用户的选择来");
+store.initTheme();
+ok(store.theme() === "dark", "再启动一次不会把用户显式选的 dark 又清掉（迁移只跑一次）");
+store.setTheme("auto");
+ok(store.theme() === "auto", "用户也能主动选回「跟随系统」");
 
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);
