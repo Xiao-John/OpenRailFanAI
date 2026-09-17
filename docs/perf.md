@@ -385,6 +385,9 @@ cd backend && PYTHONPATH=. .venv/bin/python -m uvicorn app.main:app --port 8018 
 - 端到端计时仍未做（上文 §5 的"测量纪律"照旧成立）：本文只给出**单项**实测，
   没有"改动前后同批问句"的对照 —— 回环场景下 P0-2/P1-2 的收益本就是**毫秒级**，
   别把"省了一次握手"换算成"快了 300 ms"。
-- **真机（Android/WebView）回归未做**：本轮的浏览器验证在桌面 Chromium 上完成；
-  `/v/<stamp>/` 前缀、`immutable` 缓存在系统 WebView 上的行为需装上 0.1.5 包复测。
+- **真机（Android/WebView）回归已做**（2026-09-17，0.1.5 包）：release 包**清空应用数据后全新安装**，
+  启动日志 `本地字典：可用`、`自检：/ → HTTP 200；/src/main.js → HTTP 200`、`页面自检` 读出完整界面文本；
+  再用 `adb forward` 直接打应用内的后端，确认 `/` 是 `no-cache`、带戳入口 `/v/<stamp>/src/main.js` 是
+  **`public, max-age=31536000, immutable`**、裸路径仍 `no-cache` —— 分级缓存在系统 WebView 上成立。
+  另外 debug 包上跑通两条实网问句（12306 车次 1766ms / 站名+里程 4.4ms），说明共享连接池在 Chaquopy 里同样工作。
 - 第二批（P0-3 / P1-3 / P2-1 / P2-2）与第三批（P2-3 / P2-4）**未动**。
