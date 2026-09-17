@@ -872,9 +872,16 @@ async function runAssistant(convId, userIndex) {
       assistant.meta = { ...assistant.meta, error: "连接中断，回答可能不完整" };
       refs.bubble.appendChild(el("div", "error-box", "⚠️ 连接中断，回答可能不完整"));
     }
-    if (refs.ans.querySelector(".caret")) {
-      refs.ans.innerHTML = renderMarkdown(assistant.content || "") ||
-        (assistant.meta.stopped ? "<em>（未产生内容）</em>" : "");
+    // 收尾做一次**完整**渲染（流式期间渲染是节流的，这里必须补上不带 caret 的最终版本）。
+    // ⚠️ 判据是 `answerRaw`（有没有正文），**不能**是"DOM 里有没有 caret"：
+    //    渲染被节流到下一帧，而一次很快的回答（mock / 命中缓存 / 短问短答）可能在第一帧
+    //    之前就结束 —— 那时 caret 根本没来得及画出来，按 caret 判断就会**整段回答不显示**。
+    //    实测踩过：模拟器 LLM_MOCK 下一次回答只剩意图与流程日志，正文空白（1.2ms 就流完了）。
+    //    （caret 一旦存在就必然有正文，所以改判据不会放过"流到一半中断"的情况。）
+    if (answerRaw) {
+      refs.ans.innerHTML = renderMarkdown(answerRaw);
+    } else if (assistant.meta.stopped) {
+      refs.ans.innerHTML = "<em>（未产生内容）</em>";
     }
     state.controller = null;
     setGenerating(false);

@@ -172,6 +172,14 @@ def test_streaming_render_is_throttled():
         "answer 分支又直接写 innerHTML 了：等于每个 delta 全量渲染一次"
     )
 
+    # 收尾渲染的判据必须是"有没有正文"，不能是"DOM 里有没有 caret"。
+    # 渲染被节流到下一帧，而很快的回答（mock / 命中缓存）可能在第一帧之前就流完，
+    # 那时 caret 没来得及画出来 —— 按 caret 判断就会整段回答不显示（模拟器实测踩过）。
+    assert 'refs.ans.querySelector(".caret")' not in js, (
+        "收尾渲染又用 caret 当判据了：快回答会整段不显示（正文空白，只剩意图与日志）"
+    )
+    assert "if (answerRaw) {" in js, "收尾没有按「有正文就渲染」来兜底"
+
     node = shutil.which("node")
     if not node:
         print("[SKIP] 未安装 node，跳过节流器单测")
