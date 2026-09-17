@@ -13,7 +13,7 @@
 | 项 | 值 |
 |---|---|
 | 后端 | **Python 3.12**（要求 ≥ 3.10）、FastAPI、**pydantic v1**（`from pydantic import BaseSettings`，**刻意不用 v2**：Android 一体化把 Python 运行时随 APK 分发，v2 依赖的 `pydantic-core` 是 Rust 扩展，Chaquopy 上没有可用轮子；见 `backend/app/config.py` 开头） |
-| LLM / 数据源库 | OpenAI 兼容（`AsyncOpenAI`），**多供应商 + 双 API 方言**：默认供应商沿用 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`，另可用 `LLM_PROVIDER` 选 11 家内置目录之一，或用 `LLM_PROVIDERS` / `LLM_PROVIDERS_FILE` 添加自定义供应商；`api=auto` 时先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存结论（两种方言的响应结构与 usage 字段名不同，已在 `app/llm/client.py` 抹平）；用户可在界面「设置」里用自己的 Key（BYOK），随请求下发、服务端不落库。`LLM_MOCK=true` 走确定性本地 mock；依赖 `mcp-server-12306`（12306 实时）、`httpx[http2]`、`brotli`（浏览器级请求头所需）、`pypinyin`（站名同音纠错） |
+| LLM / 数据源库 | OpenAI 兼容（`AsyncOpenAI`），**多供应商 + 双 API 方言**：默认供应商沿用 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`，另可用 `LLM_PROVIDER` 选 11 家内置目录之一，或用 `LLM_PROVIDERS` / `LLM_PROVIDERS_FILE` 添加自定义供应商；`api=auto` 时先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存结论（两种方言的响应结构与 usage 字段名不同，已在 `app/llm/client.py` 抹平）；用户可在界面「设置」里用自己的 Key（BYOK），随请求下发、服务端不落库。`LLM_MOCK=true` 走确定性本地 mock（`app/llm/_mock.py`：解析 prompt 结构后按固定模板排版，**不是**让模型作答）；模型不可用但检索已完成时，同一套渲染器会作为**降级**把已抓到的数据排版出来（`LLM_FALLBACK_RENDER=true`，正文自报非模型输出，`error` 与 `degraded` 如实下发）；依赖 `mcp-server-12306`（12306 实时）、`httpx[http2]`、`brotli`（浏览器级请求头所需）、`pypinyin`（站名同音纠错） |
 | 前端 | 原生 HTML + JS（无构建工具），由 FastAPI 静态托管，SSE 流式；**移动优先三端自适应**，支持多对话并存；**深浅色默认跟随系统**（设置页「外观」可选 跟随系统/浅色/深色；Android 上要配合应用主题的 `isLightTheme`，见 `docs/android.md`） |
 | 网络前提 | **中国境内出口**（12306 与 rail.re 均仅境内可达） |
 
@@ -101,10 +101,10 @@ scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预
 | 基础 / 流水线 | `test_dates` `test_od` `test_context` `test_policy` `test_pipeline` `test_integration_fullchain` `test_api` `test_perf_fastpath` `test_phrasings`：日期归一化（大后天/下周X/非法回落）、起讫站解析、上下文裁剪、作答策略（knowledge 放宽 + **未知回退 realtime**）、三层流水线（假 LLM）+ 降级 + SSE 事件序列、整链 prompt 注入、HTTP 多轮/422/**提前中断**/按类型分流、确定性快路径/合并调用/投机预取 |
 | 工具与数据 | `test_tools` `test_emu_routing` `test_train_stops` `test_station_screen` `test_rail_line_stations` `test_dict_mileage` `test_station_quality`：16 工具逐个调用、rail.re 交路、车次经停（**权威 train_no 纠正离线目录**、D06 红线、余票不可用时仍给经停）、车站大屏（方向判定、`----`→None、空结果三义歧义、车底后缀=**定员**）、按线路名查站序、本地字典、站序排序与 pypinyin 同音纠错（太安→泰安） |
 | 回归 | `test_regressions` `test_product_fixes` `test_r1_fixes` `test_r1_fixes2`：脱敏、非对象 JSON、流关闭、SSRF、体积上限、搜索相关性、交路一致性、日志净化；车迷测试集 17 项；R1 的 9 项 + 第 2 批 10 项（D06 次日值隔离、跨日期/自造印证禁令、完整性契约、反推禁令） |
-| 语义与治理 | `test_routing` `test_orchestrator_semantics` `test_cost_governance` `test_hardening` `test_config_docs` `test_frontend_store`：mock 路由不伪造起讫站、块式/流式故障语义一致与恰好一次 `done`、历史只注入一次 + 工具并发保序、径路多候选/里程口径/缓存 TTL、配置与文档一致性；前端数据层 node 直跑（22 项：多对话 CRUD、消息上限、思考/日志截断、主题持久化） |
+| 语义与治理 | `test_routing` `test_orchestrator_semantics` `test_cost_governance` `test_hardening` `test_config_docs` `test_frontend_store` `test_mock_render`：mock 路由不伪造起讫站、块式/流式故障语义一致与恰好一次 `done`、历史只注入一次 + 工具并发保序、径路多候选/里程口径/缓存 TTL、配置与文档一致性；确定性规则回复（prompt 结构化解析、槽位不丢、只搬运不编造、降级接线与开关）；前端数据层 node 直跑（22 项：多对话 CRUD、消息上限、思考/日志截断、主题持久化） |
 
 - **无网络套件**（断网/CI 可跑，前端套件需 node）：`test_regressions` `test_routing` `test_orchestrator_semantics` `test_cost_governance` `test_hardening` `test_config_docs` `test_product_fixes` `test_r1_fixes` `test_r1_fixes2`
-  `test_station_quality` `test_rail_line_stations` `test_dict_mileage` `test_perf_fastpath` `test_frontend_store`；其余依赖真实 LLM 或境内数据源。
+  `test_station_quality` `test_rail_line_stations` `test_dict_mileage` `test_perf_fastpath` `test_frontend_store` `test_mock_render`；其余依赖真实 LLM 或境内数据源。
 - 真实模型联调通过（SiliconFlow / DeepSeek-V4-Flash）；意图分类 6 用例 × 3 次 = **18 次判定 100% 一致**（单次仍可能漂移，`test_api` 语义断言用有限重试，结构断言仍为硬断言）。
 
 ## 七、代码导读（关键文件入口）

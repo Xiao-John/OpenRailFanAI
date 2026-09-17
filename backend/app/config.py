@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     # LLM_MOCK=true 时：不走真实模型，用确定性本地 mock 跑通整链（无 Key 演示/CI 用）
     llm_mock: bool = False
 
+    # 模型不可用（LLMUnavailable）时，是否用**确定性规则**把已检索到的事实排版成回复。
+    # 为什么默认开：快路径命中的问法（占单轮 74%）本来就 0 次 LLM 调用就能拿到全部数据，
+    # 生成层挂掉不该连带把这批数据一起丢掉。只做排版、不生成事实，且回复首行明确自报
+    # "未使用大语言模型"；error 事件照常下发，不会被静默掩盖。
+    # 关掉即回到"只给错误提示"的旧行为（LLM_FALLBACK_RENDER=false）。
+    llm_fallback_render: bool = True
+
     # ---- 服务器 ----
     host: str = "127.0.0.1"
     port: int = 8000

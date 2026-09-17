@@ -187,6 +187,39 @@ def _emu_model(text: str) -> str:
     return m.group(1).upper() if m else ""
 
 
+async def rule_slots(text: str) -> dict[str, str | None]:
+    """用确定性规则抽取槽位（**供 mock / 兜底复用**，判据与快路径完全一致）。
+
+    为什么把这条单独暴露出来：`llm/_mock.py` 原先自己写了一套弱正则
+    （`[A-Z]{1,2}\\d{2,6}` 连 "G1" 都抽不到，区间与站名完全不认），而 mock 模式下
+    合并调用走的正是这条抽取路径 —— 结果是 **LLM_MOCK=true 时所有交给 LLM 的问题
+    都带着空槽位去检索**，CI 对工具路由零鉴别力（与模块 docstring 里记的
+    "13 个工具的路由逻辑从未被执行" 是同一类病）。这里统一到一套判据上，
+    避免第二份实现再次漂移。
+
+    为什么是 async：站名匹配依赖站点库，而 `all_stations()` 在库未加载时**返回空字典
+    而不是抛异常** —— 调用方一旦忘了先加载，站名会静默变成"没提到站"，比报错危险得多
+    （`_station_in_text` 自己的 docstring 也记着这条）。所以这里自己保证加载；
+    已加载时只是一次布尔判断，无额外开销。
+    """
+    t = text or ""
+    try:
+        await rt.ensure_loaded()
+    except Exception as e:  # noqa: BLE001 —— 站点库不可用时退化为"无站名信号"
+        _log.warning("站点库加载失败（槽位抽取将没有站名）：%s: %s", type(e).__name__, e)
+    try:
+        od = parse_od(t)
+    except Exception:  # noqa: BLE001
+        od = None
+    return {
+        "location": _station_in_text(t) or None,
+        "target": _train_code(t) or _emu_model(t) or None,
+        "time": _time_phrase(t) or None,
+        "direction": (f"{od[0]}→{od[1]}" if od else None)
+        or next((d for d in ("上行", "下行", "方向") if d in t), None),
+    }
+
+
 async def plan(message: str, history: list[dict] | None = None) -> FastPlan | None:
     """兼容入口：只要结论（接管方案或 None）。要"为什么交回 LLM"时用 plan_with_reason。
 

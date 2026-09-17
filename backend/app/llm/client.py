@@ -708,7 +708,7 @@ async def chat_with_reasoning(
     if settings.llm_mock:
         from app.llm import _mock
 
-        return (await _mock.mock_chat(prompt, history=history), "(Mock 思考：基于关键词/正则的确定性分析过程。)")
+        return (await _mock.mock_chat(prompt, history=history), "(Mock 思考：解析 prompt 结构（问题/槽位/事实）后按固定模板排版。)")
 
     provider = current_provider()
     client = get_client(provider)
@@ -763,7 +763,7 @@ async def stream_completion(
     if settings.llm_mock:
         from app.llm import _mock
 
-        yield ("think", "(Mock 思考：确定性关键词/正则流程。)")
+        yield ("think", "(Mock 思考：确定性规则流程——解析 prompt 结构后按模板排版，不做推理。)")
         for piece in await _mock.mock_stream_chunks(prompt, history=history):
             yield ("text", piece)
         return

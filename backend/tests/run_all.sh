@@ -68,6 +68,8 @@ SUITES=(
   test_corpus
   # 前端渲染（Markdown 表格等，需 node）
   test_frontend_render
+  # 确定性规则回复（mock / 模型不可用兜底：prompt 解析 + 规则排版；全部无网络）
+  test_mock_render
 )
 
 FAILED=()

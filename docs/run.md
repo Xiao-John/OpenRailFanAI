@@ -44,6 +44,7 @@ cd backend && python3 -m venv .venv
 |---|---|
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | OpenAI 兼容端点与模型；配 `LLM_MOCK=false` 走真实模型 |
 | `LLM_STRUCTURED_MODEL` / `LLM_MOCK` | 意图·抽取用更强模型（留空沿用 `LLM_MODEL`）/ `true` 走确定性本地 mock（无 Key 演示与 CI） |
+| `LLM_FALLBACK_RENDER` | 默认 `true`：模型不可用（`LLMUnavailable`）但**检索已完成**时，用确定性规则把已抓到的数据排版成回复（快路径命中的问法本就不需要模型决策，不该连带丢掉这批数据）。只做搬运排版、不生成事实，正文首行自报「未使用大语言模型」，`error` 事件与 `degraded` 字段照常下发；设 `false` 可回到"只给错误提示"的旧行为 |
 | 多供应商 | 界面「⚙️ 设置」里点「添加提供方」即可选常用预设（OpenAI / DeepSeek / 硅基流动 / 阿里云百炼 / 智谱 GLM 优先展示，另含 moonshot/openrouter/gemini/ollama/lmstudio/vllm），填 Key 后**自动探测模型**并以下拉列出；也可「添加自定义提供方」。服务端侧 `LLM_PROVIDER` 选内置供应商；`LLM_PROVIDERS`（JSON）或 `LLM_PROVIDERS_FILE`（文件）添加/覆盖自定义供应商（字段级合并，可只写 `{"deepseek":{"model":"deepseek-reasoner"}}`）；`LLM_API_KEY` 作全局兜底 Key、`LLM_MODEL` 只填空不顶替 |
 | API 方言 | `LLM_API_DIALECT=auto`（默认）：先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存；也可显式指定 `chat_completions`/`responses`。不支持的可选参数（`temperature`/`response_format`/`enable_thinking`）会被自动丢弃重试 |
 | 生成预算 | `LLM_MAX_TOKENS=4096`（单次输出上限，**含思考 token**——原值 1200 会让长回答在半句处被截断）、`LLM_CONTEXT_TOKENS=32000`（模型窗口，用于把输出预算收进窗口：实际上限 = min(最大输出, 窗口-输入-512)）、`LLM_CHARS_PER_TOKEN=1.5`（估算系数）。**界面「⚙️ 设置 → 编辑」里可按供应商覆盖前两项**（BYOK 场景下 `.env` 常不可达）。模型因上限停止时会返回 `truncated=true`，前端在气泡里如实提示 |

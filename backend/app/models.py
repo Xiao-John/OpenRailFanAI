@@ -124,6 +124,11 @@ class PipelineResult(BaseModel):
         "llm-legacy",
         description="决策来源：deterministic（确定性快路径）/ llm-merged（合并调用）/ llm-legacy（两次调用）",
     )
+    degraded: bool = Field(
+        False,
+        description="回答是否由**确定性规则排版**降级产出（模型不可用但检索已完成）。"
+                    "为 True 时 answer 不是模型输出、正文首行已自报，客户端必须据此如实标注。",
+    )
     usage: dict = Field(default_factory=lambda: {
         "total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0,
     })                                                    # 本请求累计 token（输入/输出/总）

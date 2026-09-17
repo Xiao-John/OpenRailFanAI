@@ -17,6 +17,7 @@ from typing import AsyncIterator, Any
 
 from app.llm import client as llm_client
 from app.llm.client import LLMUnavailable
+from app.config import get_settings
 from app.models import PipelineResult, SlotValue
 from app.pipeline import generate, planner, prefetch as prefetch_mod, retrieve
 
@@ -42,6 +43,23 @@ def _friendly_llm_message(detail: str) -> str:
         "或用 LLM_PROVIDERS / LLM_PROVIDERS_FILE 添加自定义供应商。"
         "无 Key 时也可设 LLM_MOCK=true 走本地确定性 mock 演示整链。"
     )
+
+
+def _rule_fallback(prompt: str) -> str:
+    """模型不可用时的确定性规则排版；无事实可搬、或该功能被关掉时返回空串。
+
+    刻意**不抛异常**：降级路径自己再出错会把"模型不可用"变成"500 内部异常"，
+    把真正的故障原因埋掉。
+    """
+    if not getattr(get_settings(), "llm_fallback_render", True):
+        return ""
+    try:
+        from app.llm import _mock
+
+        return _mock.render_fallback(prompt)
+    except Exception as e:  # noqa: BLE001
+        _log.warning("规则降级渲染失败（忽略，仅保留错误提示）：%s: %s", type(e).__name__, e)
+        return ""
 
 
 async def run_stream(
@@ -118,6 +136,7 @@ async def run_stream(
             message, slots, retrieval, history=history, question_type=question_type
         )
         generation_failed = False
+        degraded = False          # 是否走了"确定性规则排版"降级（答案非模型产出）
         failure_message = ""
         try:
             # 历史已在 prompt 的 [对话历史] 区块中；不再重复传入 messages（省钱且语义不变）
@@ -134,6 +153,15 @@ async def run_stream(
             # 与块式接口保持同一套降级语义：给出可操作的指引，而不是裸报错
             yield {"type": "error", "message": failure_message}
             logs.append(f"[回答生成] 失败：{e}")
+            # 降级第二段：模型不可用，但**检索已经完成**。快路径命中的问法本来就不需要
+            # 模型决策，数据是真金白银抓到的 —— 用确定性规则把它排版出来，比只丢一句
+            # 错误有用得多。没有事实可搬时不产出任何内容（错误提示仍然独立可见）。
+            fb = _rule_fallback(prompt)
+            if fb:
+                degraded = True
+                gathered_answer.append(fb)
+                yield {"type": "answer", "delta": fb}
+                logs.append("[回答生成] 已降级为确定性规则排版（未使用语言模型，首行已自报）")
         else:
             logs.append(f"[回答生成] 流式输出完成 · {_ms(t0)}ms")
 
@@ -156,6 +184,9 @@ async def run_stream(
             "tool_trace": (retrieval.get("tool_trace") or []),
             "thinking": "".join(gathered_thinking),
             "answer_done": not generation_failed,
+            # 非模型产出的降级回复：answer_done 仍为 False（模型确实没答上），
+            # 用这个字段如实区分"有正文但是规则排版"与"根本没有正文"
+            "degraded": degraded,
             "truncated": llm_client.was_truncated(),
             "planner": planner_used,
             "error": failure_message or None,
@@ -244,9 +275,22 @@ async def run(
 
         # 4 回答生成
         t0 = time.perf_counter()
-        answer, sources, thinking = await generate.generate(
-            message, slots, retrieval, history=history, question_type=question_type
-        )
+        degraded = False
+        try:
+            answer, sources, thinking = await generate.generate(
+                message, slots, retrieval, history=history, question_type=question_type
+            )
+        except LLMUnavailable as e:
+            # 与流式路径同一套降级：模型不可用但检索已完成时，用确定性规则把事实排出来。
+            # 重新构一遍 prompt 只是纯字符串拼接（不发请求）—— 换取的是一份可交付的数据。
+            prompt = generate.build_prompt(
+                message, slots, retrieval, history=history, question_type=question_type
+            )
+            answer = _rule_fallback(prompt)
+            if not answer:
+                raise                      # 没有事实可搬 → 交由外层统一给可操作提示
+            sources, thinking, degraded = retrieval.get("sources") or [], "", True
+            logs.append(f"[回答生成] 模型不可用，已降级为确定性规则排版：{e}")
         logs.append(f"[回答生成] 完成 · {_ms(t0)}ms")
 
         metrics = llm_client.get_run_metrics()
@@ -265,6 +309,8 @@ async def run(
             tool_trace=retrieval.get("tool_trace", []) or [],
             process_logs=logs,
             planner=planner_used,
+            # 非模型产出的降级回复（确定性规则排版）：如实标注，避免被当成模型回答
+            degraded=degraded,
             # 模型若因长度上限停止，必须如实带给前端（此前该字段被完全忽略）
             truncated=llm_client.was_truncated(),
             usage={
