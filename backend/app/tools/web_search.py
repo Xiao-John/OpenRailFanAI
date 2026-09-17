@@ -18,6 +18,7 @@ DuckDuckGo 在中国境内不可达（ConnectTimeout），因此改用境内可�
 """
 from __future__ import annotations
 
+import asyncio
 import re
 from urllib.parse import quote
 
@@ -25,6 +26,7 @@ from urllib.parse import quote
 from app.config import get_settings
 from app.tools._http import BROWSER_HEADERS, format_error, get_client
 from app.tools.base import Tool, ToolResult
+from app.tools.web import fetch_page
 
 # Bing 结果块：<li class="b_algo"> ... </li>
 _BING_BLOCK_RE = re.compile(r'<li class="b_algo".*?</li>', re.S)
@@ -49,6 +51,11 @@ _CJK_SEG_RE = re.compile(r"[\u4e00-\u9fff]+")
 
 # 至少要有这么多条"与查询相关"的结果，才认为该引擎可用
 _MIN_RELEVANT = 2
+
+# 正文候选多试几条，抵掉"前几条恰好抓不动"：实测 baike.baidu.com 对任何请求头都回 403
+# （换 UA / 加 Referer / 先取百度 Cookie 都无效，是风控层拦截），而车迷向关键词的前两条
+# 结果经常正是百度百科 —— 只抓前 N 条会整批落空。只保留前 N 条**成功**的。
+_FETCH_SPARE = 2
 
 
 def _clean(html: str) -> str:
@@ -139,7 +146,10 @@ def _parse_baidu(html: str, limit: int) -> list[dict]:
 
 class WebSearchTool2(Tool):
     name = "web.search"
-    description = "网页搜索（Bing 中国 / 百度兜底，无需 API Key）"
+    description = (
+        "网页搜索（Bing 中国 / 百度兜底，无需 API Key）；命中后会抓取前几条结果的**网页正文**，"
+        "因此返回内容可能包含搜索引擎摘要之外的正文段落（各来源会标明）"
+    )
 
     async def invoke(self, params: dict) -> ToolResult:
         query = (params.get("q") or params.get("query") or params.get("keyword") or "").strip()
@@ -222,6 +232,29 @@ class WebSearchTool2(Tool):
         if freshness in ("day", "week", "month") and best_engine != "bing":
             note += "；注意：时效过滤仅必应支持，本次结果来自百度，未应用时间过滤"
 
+        # 命中后**顺手读正文**：搜索引擎摘要上限只有 300 字，百度那条路实测连摘要都没有
+        # （815KB 的 SERP 里 5 条结果 0 条带摘要），知识型问题等于只有标题可看。
+        # 只读前 N 条、并发抓、按页截断，且失败/截断都写进 note —— 不许把
+        # "没抓到"当成"没有内容"，也不许把截断过的正文当成全文。
+        pages, pages_note = await self._fetch_top_pages(
+            best_results, used_chars=len("\n".join(text_lines))
+        )
+        good = [p for p in pages if p["ok"]]
+        if good:
+            text_lines.append("")
+            text_lines.append(
+                f"【网页正文】以下 {len(good)} 个页面为**服务端实际抓取**（非搜索引擎摘要）："
+            )
+            for i, p in enumerate(pages, 1):
+                if not p["ok"]:
+                    continue          # 失败只进 note，不占正文（原始错误串会污染事实块）
+                head = f"{i}. {p['title']}"
+                if p["truncated"]:
+                    head += "（正文已按字数上限截断）"
+                text_lines.append(f"{head}\n   {p['url']}\n   {p['text']}")
+        note += pages_note
+
+        extra_sources = [p["url"] for p in good]
         return ToolResult(
             ok=True,
             data={
@@ -230,11 +263,80 @@ class WebSearchTool2(Tool):
                 "results": best_results,
                 "relevant_count": len(best_results),
                 "filtered_out": dropped,
+                "pages": [
+                    {"url": p["url"], "title": p["title"], "ok": p["ok"],
+                     "char_count": len(p["text"]), "truncated": p["truncated"],
+                     "error": p["error"]}
+                    for p in pages
+                ],
                 "engine_stats": [
                     {"engine": e, "relevant": s, "parsed": n} for e, s, _, n in attempts
                 ],
             },
             text="\n".join(text_lines),
-            sources=[r["url"] for r in best_results[:3]],
+            sources=_dedup([r["url"] for r in best_results[:3]] + extra_sources),
             note=note,
         )
+
+    async def _fetch_top_pages(self, results: list[dict], *, used_chars: int) -> tuple[list[dict], str]:
+        """抓取前 N 条结果的正文。返回 `(pages, 追加到 note 的说明)`。
+
+        `used_chars` 是"搜索结果列表已经占掉的字符数"，用来算正文还能用多少注入预算。
+
+        配置 `WEB_SEARCH_FETCH_TOP_N` 为 0 时整体关闭（一键回退到"只有标题+摘要"）。
+        抓取**并发**执行且**永不抛异常**：读正文是增强，不能把已经成功的搜索拖垮。
+
+        为什么要多试几条（`_FETCH_SPARE`）：实测 `baike.baidu.com` 对任何请求头都回
+        **403**（换 UA、加 Referer、先取百度 Cookie 都不行，是 IP/风控层面的拦截），
+        而车迷向关键词的前两条结果经常就是百度百科 —— 只抓前 N 条就会"全军覆没"。
+        多试两条、只保留前 N 条**成功**的，代价是多几个并发请求（延迟不变）。
+        """
+        settings = get_settings()
+        top_n = max(0, int(settings.web_search_fetch_top_n or 0))
+        if top_n == 0:
+            return [], "；未抓取正文（WEB_SEARCH_FETCH_TOP_N=0）"
+
+        urls = [r["url"] for r in results if str(r.get("url") or "").startswith("http")]
+        candidates = urls[: top_n + _FETCH_SPARE]
+        if not candidates:
+            return [], ""
+
+        # 别让正文把注入预算吃光：整个 web.search 输出是**一段**事实，生成层按
+        # FACT_TEXT_MAX_CHARS 从**尾部**截断，而正文正好在尾部 —— 不按剩余预算分配的话，
+        # 被切掉的恰好是刚抓回来的正文（只留下"已截断"三个字）。
+        # 预算里要把**每页标题+URL 的开销**扣掉：URL 是 percent-encoded 的，
+        # 一条百度百科链接就能有 150 字符，按"字数"估算会严重低估。
+        limit = int(settings.fact_text_max_chars)
+        overhead = sum(len(u) + 60 for u in candidates[:top_n])
+        budget = max(0, limit - used_chars - 120 - overhead)
+        per_page = max(400, budget // top_n)          # 低于 400 字就没有阅读价值了
+        max_chars = min(max(200, int(settings.web_search_fetch_chars or 1800)), per_page)
+
+        fetched = await asyncio.gather(*(fetch_page(u, max_chars=max_chars) for u in candidates))
+
+        good = [p for p in fetched if p["ok"]][:top_n]
+        kept_urls = {p["url"] for p in good}
+        pages = [p for p in fetched if p["url"] in kept_urls]      # 保持原顺序
+        failed = [p for p in fetched if not p["ok"] and p["url"] not in kept_urls]
+
+        truncated_n = sum(1 for p in pages if p["truncated"])
+        note = f"；已抓取 {len(candidates)} 条的正文（成功 {len(good)} 条"
+        if truncated_n:
+            note += f"，其中 {truncated_n} 条按字数上限截断"
+        if failed:
+            # 失败要如实说且带原因归类 —— 否则模型会把"没读到"当成"页面上没有"
+            reasons = "；".join(f"{p['url'][:32]}…：{p['error']}" for p in failed[:3])
+            note += f"，{len(failed)} 条抓取失败（{reasons}）"
+        note += "）"
+        return pages, note
+
+
+def _dedup(urls: list[str]) -> list[str]:
+    """来源去重并保序（搜索结果与正文抓取会指向同一批 URL）。"""
+    seen: set[str] = set()
+    out: list[str] = []
+    for u in urls:
+        if u and u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out

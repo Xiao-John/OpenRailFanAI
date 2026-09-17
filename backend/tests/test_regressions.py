@@ -407,6 +407,133 @@ def test_log_label_sanitized():
     print(f"[PASS] 日志字段净化 -> {got!r}")
 
 
+def test_web_search_fetches_top_pages():
+    """搜索命中后必须**顺手把前几条的正文读回来**，且失败/截断都如实交代。
+
+    为什么要有这条：搜索引擎摘要上限只有 300 字，而百度那条路实测**连摘要都没有**
+    （815KB 的 SERP 里 5 条结果 0 条带摘要），知识型问题等于只有标题可看。
+    红线同样适用于这里：**抓失败不能静默**（否则模型会把"没读到"当成"页面上没有"），
+    **截断必须声明**（把截断过的正文当全文就是失真）。
+    """
+    from app.tools import web_search
+
+    pages = {
+        "https://ok1.example/a": {"ok": True, "title": "页面甲", "text": "甲" * 40,
+                                  "truncated": False, "error": "", "url": "https://ok1.example/a"},
+        "https://ok2.example/b": {"ok": True, "title": "页面乙", "text": "乙" * 40,
+                                  "truncated": True, "error": "", "url": "https://ok2.example/b"},
+        "https://bad.example/c": {"ok": False, "title": "", "text": "", "truncated": False,
+                                  "error": "http：站点返回 HTTP 403", "url": "https://bad.example/c"},
+    }
+    seen: list[str] = []
+
+    async def _fake_fetch(url, *, max_chars=3000):
+        seen.append(url)
+        return pages[url]
+
+    serp = (
+        '<li class="b_algo"><h2><a href="https://ok1.example/a">动车组甲 介绍</a></h2>'
+        "<p>甲组介绍</p></li>"
+        '<li class="b_algo"><h2><a href="https://bad.example/c">动车组丙 介绍</a></h2>'
+        "<p>丙组介绍</p></li>"
+        '<li class="b_algo"><h2><a href="https://ok2.example/b">动车组乙 介绍</a></h2>'
+        "<p>乙组介绍</p></li>"
+    )
+
+    def _fake_client():
+        async def _get():
+            return _FakeAsyncClient({"cn.bing.com": _FakeResponse(serp)})
+        return _get
+
+    with patch.object(web_search, "get_client", _fake_client()), \
+         patch("app.tools.web_search.fetch_page", _fake_fetch):
+        res = asyncio.run(web_search.WebSearchTool2().invoke({"q": "动车组 介绍"}))
+
+    assert res.ok, res.error
+    assert len(seen) == 3, f"没有按「多试几条」的规则抓正文：{seen}"
+    assert "【网页正文】" in res.text, "正文没有被注入事实块"
+    assert "甲" * 40 in res.text and "乙" * 40 in res.text, "抓到的正文没进 text"
+    assert "站点返回 HTTP 403" not in res.text, "抓取失败的原始错误串污染了正文块"
+    assert "站点返回 HTTP 403" in res.note, "抓取失败没有如实写进 note"
+    assert "1 条抓取失败" in res.note, res.note
+    assert "1 条按字数上限截断" in res.note, "截断没有声明"
+    assert "https://ok1.example/a" in res.sources, "抓到的页面没进 sources"
+    got = {p["url"]: p for p in res.data["pages"]}
+    assert set(got) == {"https://ok1.example/a", "https://ok2.example/b"}, got.keys()
+    assert got["https://ok2.example/b"]["truncated"] is True
+    print(f"[PASS] 搜索后读正文：{len(seen)} 条候选 → 2 条成功（含 1 条截断声明），"
+          f"1 条失败如实入 note；来源已并入 sources")
+
+
+def test_web_search_page_fetch_can_be_disabled():
+    """`WEB_SEARCH_FETCH_TOP_N=0` 必须能一键退回「只有标题+摘要」的旧行为。
+
+    本项目对性能改动的一贯要求：**新行为一律走配置开关**（参照 FASTPATH_ENABLED）。
+    """
+    from app.config import get_settings
+    from app.tools import web_search
+
+    async def _no_fetch(url, *, max_chars=3000):      # pragma: no cover - 不该被调用
+        raise AssertionError("关闭后不应再抓正文")
+
+    serp = ('<li class="b_algo"><h2><a href="https://ok1.example/a">动车组甲 介绍</a></h2>'
+            "<p>甲组介绍</p></li>")
+
+    def _fake_client():
+        async def _get():
+            return _FakeAsyncClient({"cn.bing.com": _FakeResponse(serp)})
+        return _get
+
+    settings = get_settings()
+    original = settings.web_search_fetch_top_n
+    settings.web_search_fetch_top_n = 0          # pydantic v1 允许直接赋值
+    try:
+        with patch.object(web_search, "get_client", _fake_client()), \
+             patch("app.tools.web_search.fetch_page", _no_fetch):
+            res = asyncio.run(web_search.WebSearchTool2().invoke({"q": "动车组 介绍"}))
+    finally:
+        settings.web_search_fetch_top_n = original
+
+    assert res.ok, res.error
+    assert "【网页正文】" not in res.text
+    assert "未抓取正文" in res.note, res.note
+    assert res.data["pages"] == []
+    print("[PASS] WEB_SEARCH_FETCH_TOP_N=0 时退回纯搜索（不抓正文、如实说明）")
+
+
+def test_fetch_page_reports_truncation_and_errors():
+    """`fetch_page` 是 web.fetch 与 web.search 共用的抓取层，两种截断都要认。"""
+    from app.tools import web as web_tool
+
+    async def _ok(url, **kw):
+        return "<html><title>标题甲</title><body>" + "正" * 5000 + "</body></html>", True
+
+    page = asyncio.run(_fetch_page_with(web_tool, _ok, "https://x.example/1"))
+    assert page["ok"] and page["title"] == "标题甲"
+    assert page["truncated"] is True, "响应体被 2MB 上限截断时必须标记 truncated"
+    assert page["text"].endswith("\u2026"), "按字数截断应带省略号（模型能看出没读完）"
+
+    async def _boom(url, **kw):
+        raise RuntimeError("boom")
+
+    bad = asyncio.run(_fetch_page_with(web_tool, _boom, "https://x.example/2"))
+    assert not bad["ok"] and bad["error"], "抓取异常必须如实返回原因，不能静默成功"
+
+    async def _unsafe(url, **kw):
+        from app.tools._http import UnsafeUrlError
+
+        raise UnsafeUrlError("拒绝抓取非公网地址")
+
+    unsafe = asyncio.run(_fetch_page_with(web_tool, _unsafe, "http://127.0.0.1/"))
+    assert not unsafe["ok"] and "安全策略" in unsafe["error"]
+    print("[PASS] fetch_page：两种截断都标注；异常与 SSRF 拒绝都如实返回原因")
+
+
+async def _fetch_page_with(web_tool, fake_get_text_ex, url):
+    with patch.object(web_tool, "get_text_ex", fake_get_text_ex):
+        return await web_tool.fetch_page(url, max_chars=200)
+
+
 def main():
     test_error_diagnostic_does_not_leak_upstream()
     test_structured_non_object_json_raises_llm_unavailable()
@@ -414,6 +541,9 @@ def main():
     test_ssrf_guard_blocks_non_public_targets()
     test_response_size_cap_and_truncation_flag()
     test_web_search_relevance_gate_and_baidu_fallback()
+    test_web_search_fetches_top_pages()
+    test_web_search_page_fetch_can_be_disabled()
+    test_fetch_page_reports_truncation_and_errors()
     test_emu_routing_series_vs_exact_and_input_validation()
     test_log_label_sanitized()
     print("\nM11.1 审计修复回归测试全部通过 ✔")

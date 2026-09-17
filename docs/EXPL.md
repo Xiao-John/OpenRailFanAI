@@ -57,7 +57,7 @@ scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预
 | `rail.line` | 黄河铁路网旅客径路查询 | **两站间最短径路**：线路序列 + 车站序列 + 里程（高铁口径） | 境内网络 |
 | **`rail.line_stations`** | 黄河铁路网「指定径路查询」 | **按线路名查站序 + 指定径路线路口径里程**（如京沪线 57 站 / 北京→上海 1463km） | 境内网络 |
 | **`rail.mileage`** | **本地数据字典**（GTFS 周更快照 + 黄河铁路网客运里程表） | **两站里程 / 线路逐站里程 / 车站档案**（电报码·TMIS 编号·接算站·营业限制）；**毫秒级**（本地缓存，未命中才抓一次） | 无（首次抓取需境内网络） |
-| `web.search` / `web.fetch` / `cnrail.map` | Bing 中国（主）+ 百度（兜底）/ 任意 URL / cnrail.geogv.org | 通用搜索（无需 API Key）/ 抓取标题与正文摘要 / 生成地图外链（**仅拼 URL，不抓数据**） | 无 |
+| `web.search` / `web.fetch` / `cnrail.map` | Bing 中国（主）+ 百度（兜底）/ 任意 URL / cnrail.geogv.org | 通用搜索（无需 API Key）；**命中后还会抓前几条结果的网页正文**（`WEB_SEARCH_FETCH_TOP_N`，因为引擎摘要只有 300 字、百度甚至没有摘要）/ 抓取标题与正文摘要 / 生成地图外链（**仅拼 URL，不抓数据**） | 无 |
 | `railre` / `jprailfan` | rail.re 页面 / 黄河铁路网 | 页面摘要（**已降级**：主站为 SPA，`/{站名}` 恒 404；交路数据请用 `emu.routing`）/ 客里表·电报码 | 站点可达 |
 | `freight.95306` / `kmrail.freight` / `sytlj.ticket` | 95306.cn / kmrail.cn / kyfw.sytlj.com | 货运与路局查询（站点可达性受限，已优雅降级） | 站点可达 |
 

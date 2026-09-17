@@ -149,12 +149,26 @@ async def test_web_fetch_live():
 
 
 async def test_web_search():
-    """境内搜索引擎（Bing CN / 百度）应可用并返回结果。"""
+    """境内搜索引擎（Bing CN / 百度）应可用并返回结果，且命中后会读正文。
+
+    正文抓取**不保证成功**（实测 baike.baidu.com 一律 403、境外站点可能超时），
+    所以这里只断言"字段与口径齐备"，不断言抓到了几条 —— 但那几个口径必须有：
+    `pages` 要如实反映每条的成败，note 里要写明成功/失败条数。
+    """
     r = await registry.invoke_by_name("web.search", {"q": "中国铁路 最新资讯", "limit": 3})
     if r.ok:
         results = (r.data or {}).get("results", [])
         assert results, r.data
-        print(f"[PASS] web.search -> 引擎={r.data.get('engine')}, {len(results)} 条结果")
+        pages = (r.data or {}).get("pages")
+        assert isinstance(pages, list), f"没有 pages 字段（正文抓取未接线）：{r.data.keys()}"
+        for p in pages:
+            assert {"url", "ok", "truncated", "error"} <= set(p), p
+            assert p["ok"] or p["error"], f"抓取失败却没给原因：{p}"
+        ok_n = sum(1 for p in pages if p["ok"])
+        print(f"[PASS] web.search -> 引擎={r.data.get('engine')}, {len(results)} 条结果"
+              f"；正文抓取得到 {ok_n} 条（尝试与失败明细在 note 里）")
+        if ok_n:
+            assert "【网页正文】" in r.text, "抓到了正文却没进事实块"
         print(f"        {results[0]['title'][:50]}")
     else:
         print(f"[SKIP] web.search 搜索引擎均不可达: {r.error}")

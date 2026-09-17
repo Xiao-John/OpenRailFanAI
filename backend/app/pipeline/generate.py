@@ -122,11 +122,26 @@ def _render_fact_text(d: dict, settings) -> str:
         return "\n".join(lines)
 
     if tool == "rail.line" and payload and payload.get("route"):
-        # 径路明细较长：保留工具自渲染文本，但用更高的字符预算
-        return str(d.get("text") or "").strip()[: int(getattr(settings, "fact_text_max_chars", 4000))]
+        # 径路明细较长：保留工具自渲染文本（同样受注入预算约束，且截断要声明）
+        return _cap_fact_text(str(d.get("text") or "").strip(), settings)
 
     text = str(d.get("text") or "").strip()
-    return text[: int(getattr(settings, "fact_text_max_chars", 4000))]
+    return _cap_fact_text(text, settings)
+
+
+def _cap_fact_text(text: str, settings) -> str:
+    """按注入预算截断单条事实，**并声明被截断**。
+
+    为什么必须带声明：prompt 里有一条硬规则是"截断必须声明"，而这里原来是裸切片
+    `text[:4000]` —— 模型看到的是被腰斩的内容，却没有任何线索说明"后面还有"，
+    于是很容易把"我只看到一半"讲成"资料就这么多"。这与项目的完整性契约直接冲突。
+    """
+    limit = int(getattr(settings, "fact_text_max_chars", 4000))
+    if len(text) <= limit:
+        return text
+    # 留出标记本身的长度，避免"截断后仍然超长"这种自欺
+    marker = f"\n…（本条事实超长，已按注入上限截断；原文还有约 {len(text) - limit} 字未注入）"
+    return text[: max(0, limit - len(marker))] + marker
 
 
 def build_prompt(
