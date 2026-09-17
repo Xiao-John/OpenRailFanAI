@@ -232,8 +232,9 @@ async def test_live_screen():
     bad = await registry.invoke_by_name("station.screen", {"station": "阿斯加德"})
     assert not bad.ok and bad.error, bad
     print(f"[PASS] 非车站名优雅失败：{bad.error[:50]}")
+    screen_date = date.today().isoformat()
     try:
-        rows = await rt.query_station_screen(code, date.today().isoformat())
+        rows = await rt.query_station_screen(code, screen_date)
     except rt.Realtime12306Error as e:
         _skips.append(f"station.screen 实时取数（{e}）")
         print(f"[SKIP] 实时取数失败：{e}")
@@ -245,14 +246,36 @@ async def test_live_screen():
 
     dep = [r for r in rows if r["direction"] == "departure"]
     arr = [r for r in rows if r["direction"] == "arrival"]
+
+    # ⚠️ 出发屏只列**尚未发车**的车次，所以"当日出发为空"在深夜是**正常现象**，不是故障：
+    # 实测 2026-09-17 21:17 的北京南 = 出发 0 / 到达 125（当天该站已无待发车次），
+    # 而明天同一站是 260 / 262。把"两向都非空"写成固定断言 → 这套件每天深夜必红。
+    # 处理：当日出发为空时改查明天，**仍在校验同一套解析与方向切分**，且打印原因，
+    # 不静默降级（明天也空的话照旧失败）。
+    if not dep:
+        screen_date = (date.today() + timedelta(days=1)).isoformat()
+        print(f"[INFO] 当日出发屏为空（到达 {len(arr)} 条）—— 大屏只列未发车次，深夜/收车后属正常；"
+              f"改查 {screen_date} 继续校验")
+        rows = await rt.query_station_screen(code, screen_date)
+        dep = [r for r in rows if r["direction"] == "departure"]
+        arr = [r for r in rows if r["direction"] == "arrival"]
+
     assert dep and arr, (len(dep), len(arr))
     dep_with_plat = [r for r in dep if r["platform"]]
     assert dep_with_plat, "出发车次应有站台号（platform_no 非空 = 本站有发车作业）"
     assert all(r["train"] for r in rows), "车次号不应为空"
-    r = await StationScreenTool().invoke({"station": name, "direction": "出发", "limit": 5})
-    assert r.ok and r.shown == 5, (r.error, r.shown)
-    print(f"[PASS] 联调：{name} 当日 {len(rows)} 条（出发 {len(dep)} / 到达 {len(arr)}，"
-          f"有站台 {len(dep_with_plat)}）；工具输出前 5 条")
+    r = await StationScreenTool().invoke({"station": name, "direction": "出发", "limit": 5,
+                                          "date": screen_date})
+    assert r.ok, r.error
+    # 分页契约：`shown` 必须等于 min(limit, total)。**不要**写成 `shown == 5` ——
+    # 那等于断言"该站当日至少有 5 趟待发车次"，收车后（甚至只是车次少）就假红。
+    total = int(r.total or 0)
+    assert r.shown == min(5, total), (r.total, r.shown)
+    assert r.truncated == (total > r.shown), (r.total, r.shown, r.truncated)
+    if total < 5:
+        print(f"[INFO] {name} {screen_date} 出发屏只有 {total} 条（样本小于 limit，属正常）")
+    print(f"[PASS] 联调：{name} {screen_date} {len(rows)} 条（出发 {len(dep)} / 到达 {len(arr)}，"
+          f"有站台 {len(dep_with_plat)}）；工具输出前 {r.shown} 条")
 
 
 # ---------- 车底字段语义：`train_style` 的后缀是【定员】而不是【车组号】----------
