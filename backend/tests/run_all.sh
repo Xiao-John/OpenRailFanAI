@@ -60,6 +60,8 @@ SUITES=(
   test_android
   # 前端数据层（多对话逻辑，需 node）
   test_frontend_store
+  # 「用户说法 → 内部值」探针语料（时间/时段/席别/车种；全部无网络）
+  test_phrasings
   # 前端渲染（Markdown 表格等，需 node）
   test_frontend_render
 )
