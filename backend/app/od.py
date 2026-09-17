@@ -29,10 +29,23 @@ _TAIL_NOISE_RE = re.compile(
     r"要多久|多长时间|呢|吗|吧|啊|的|)[\s？?。！!]*$"
 )
 
-# 站名之后一旦出现这些词，就说明后面不是站名的一部分（防贪婪吞词）
-_STATION_STOP_WORDS = ("怎么", "如何", "走哪", "走", "几点", "多少", "多远", "要多久",
-                       "多长时间", "呢", "吗", "吧", "啊", "的", "都", "有", "还有",
-                       "开", "发车", "到达")
+# 疑问/追问词：几乎不可能出现在站名内部，**两端**都可以安全截断
+_Q_WORDS = ("怎么", "如何", "走哪", "几点", "多少", "多远", "要多久", "多长时间", "请问")
+
+# 尾部残留词：席别/车种/票务词与语气词。
+# ⚠️ **只对终点使用**。这些词出现在站名内部是完全正常的 —— 实测踩过：
+# 旧实现把 "都" 也当停用词用在起点上，「成都东到重庆西卧铺还有吗」的起点被截成 "成"，
+# **起点被截断、终点被拉长，方向直接反了**，比"查不到"更糟。
+_TAIL_JUNK = ("还有", "有票", "有座", "余票", "多少钱", "票价", "车票", "的车",
+              "一等座", "二等座", "商务座", "无座", "硬座", "软座",
+              "硬卧", "软卧", "动卧", "卧铺", "高铁", "动车", "普速",
+              "直达", "特快", "快速", "城际", "发车", "到达",
+              "呢", "吗", "吧", "啊", "的", "都", "有", "开")
+
+# 句首填充语：帮我/我要/查询…（实测「帮我候补一张明天北京到广州的硬卧」→ 起点应为"北京"）
+_LEAD_FILLER_RE = re.compile(
+    r"^(?:请|麻烦|帮我|帮忙|我要|我想|我|要|候补|一张|两张|三张|查一下|查|查询|"
+    r"看下|看看|给我|顺便|了解一下|从|自)[\s,，、]*")
 
 # 时间/时段表述**不是站名**：句子里常出现"明天下午到上海的高铁"，
 # 若不拦，"明天下午"会被当成出发站（实测 D09 回归）。
@@ -57,15 +70,27 @@ _LEAD_TIME_RE = re.compile(
 )
 
 
-def _trim_station(v: str) -> str:
-    """截掉贪婪匹配吞进来的追问短语（如"上海怎么走"→"上海"）。"""
-    v = (v or "").strip()
+def _cut_at_first(v: str, words) -> str:
+    """在 v 中最早出现的词处截断（只截"词前还有内容"的情况）。"""
     cut = len(v)
-    for w in _STATION_STOP_WORDS:
+    for w in words:
         i = v.find(w)
         if 0 < i < cut:
             cut = i
     return v[:cut].strip() or v
+
+
+def _trim_origin(v: str) -> str:
+    """起点：只切疑问词，**绝不**切"都/开/有/的"这类词。
+
+    「成都东」里就有"都" —— 把它们当停用词用在起点上会把站名截断（实测事故）。
+    """
+    return _cut_at_first((v or "").strip(), _Q_WORDS)
+
+
+def _trim_dest(v: str) -> str:
+    """终点：疑问词 + 尾部残留（席别/车种/票务/语气词）都要切。"""
+    return _cut_at_first(_trim_origin(v), _TAIL_JUNK)
 
 
 def _clean_station(v: str) -> str:
@@ -89,6 +114,7 @@ def parse_od(text: str | None) -> tuple[str, str] | None:
     prev = None
     while prev != s:
         prev = s
+        s = _LEAD_FILLER_RE.sub("", s).strip()     # 句首填充语（帮我/我要/候补一张…）
         s = _LEAD_TIME_RE.sub("", s).strip()       # 句首时间词（明天/下周三…）
         s = _TAIL_NOISE_RE.sub("", s).strip()      # 句末追问短语（走哪条线路/怎么走…）
         s = _TAIL_PUNCT_RE.sub("", s).strip()      # 句末标点
@@ -98,8 +124,8 @@ def parse_od(text: str | None) -> tuple[str, str] | None:
     for pat in _OD_PATTERNS:
         m = pat.match(s)
         if m:
-            f = _clean_station(_trim_station(m.group("f")))
-            t = _clean_station(_trim_station(m.group("t")))
+            f = _clean_station(_trim_origin(m.group("f")))
+            t = _clean_station(_trim_dest(m.group("t")))
             # 时间/时段表述不能当站名（"明天下午到上海的高铁" → 出发站不该是"明天下午"）
             if _is_timeish(f) or _is_timeish(t):
                 continue

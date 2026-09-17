@@ -1,0 +1,60 @@
+{"id":"seat-0001","table":"seat","raw":"一等座","expect":{"kind":"value","value":"一等座"},"note":"标准全称，最基础命中","source":"gen:phrasings_seat_type"}
+{"id":"seat-0002","table":"seat","raw":"二等座","expect":{"kind":"value","value":"二等座"},"note":"标准全称，最基础命中","source":"gen:phrasings_seat_type"}
+{"id":"seat-0003","table":"seat","raw":"商务座","expect":{"kind":"value","value":"商务座"},"note":"标准全称","source":"gen:phrasings_seat_type"}
+{"id":"seat-0004","table":"seat","raw":"特等座","expect":{"kind":"value","value":"特等座"},"note":"标准全称，注意与商务座不可混同","source":"gen:phrasings_seat_type"}
+{"id":"seat-0005","table":"seat","raw":"硬座","expect":{"kind":"value","value":"硬座"},"note":"标准全称","source":"gen:phrasings_seat_type"}
+{"id":"seat-0006","table":"seat","raw":"软座","expect":{"kind":"value","value":"软座"},"note":"标准全称","source":"gen:phrasings_seat_type"}
+{"id":"seat-0007","table":"seat","raw":"硬卧","expect":{"kind":"value","value":"硬卧"},"note":"标准全称","source":"gen:phrasings_seat_type"}
+{"id":"seat-0008","table":"seat","raw":"软卧","expect":{"kind":"value","value":"软卧"},"note":"标准全称","source":"gen:phrasings_seat_type"}
+{"id":"seat-0009","table":"seat","raw":"无座","expect":{"kind":"value","value":"无座"},"note":"标准全称，票面席别","source":"gen:phrasings_seat_type"}
+{"id":"seat-0010","table":"seat","raw":"动卧","expect":{"kind":"value","value":"动卧"},"note":"标准简称，动车组卧铺席别","source":"gen:phrasings_seat_type"}
+{"id":"seat-0011","table":"seat","raw":"一等","expect":{"kind":"value","value":"一等座"},"note":"省略「座」字的简称，应补全为一等座","source":"gen:phrasings_seat_type"}
+{"id":"seat-0012","table":"seat","raw":"二等","expect":{"kind":"value","value":"二等座"},"note":"省略「座」字的简称，应补全为二等座","source":"gen:phrasings_seat_type"}
+{"id":"seat-0013","table":"seat","raw":"商务","expect":{"kind":"value","value":"商务座"},"note":"省略「座」字，应补全为商务座","source":"gen:phrasings_seat_type"}
+{"id":"seat-0014","table":"seat","raw":"特等","expect":{"kind":"value","value":"特等座"},"note":"省略「座」字，应补全为特等座","source":"gen:phrasings_seat_type"}
+{"id":"seat-0015","table":"seat","raw":"硬卧上铺","expect":{"kind":"value","value":"硬卧"},"note":"带铺位后缀，席别主体仍是硬卧，后缀不应吞掉主体","source":"gen:phrasings_seat_type"}
+{"id":"seat-0016","table":"seat","raw":"硬卧中铺","expect":{"kind":"value","value":"硬卧"},"note":"带铺位后缀，归一到硬卧","source":"gen:phrasings_seat_type"}
+{"id":"seat-0017","table":"seat","raw":"硬卧下铺","expect":{"kind":"value","value":"硬卧"},"note":"带铺位后缀，归一到硬卧","source":"gen:phrasings_seat_type"}
+{"id":"seat-0018","table":"seat","raw":"软卧上铺","expect":{"kind":"value","value":"软卧"},"note":"带铺位后缀，归一到软卧","source":"gen:phrasings_seat_type"}
+{"id":"seat-0019","table":"seat","raw":"软卧下铺","expect":{"kind":"value","value":"软卧"},"note":"带铺位后缀，归一到软卧","source":"gen:phrasings_seat_type"}
+{"id":"seat-0020","table":"seat","raw":"卧铺","expect":{"kind":"value","value":"卧铺"},"note":"口语泛称，未指明硬/软，不应硬猜成硬卧或软卧","source":"gen:phrasings_seat_type"}
+{"id":"seat-0021","table":"seat","raw":"卧铺票","expect":{"kind":"value","value":"卧铺"},"note":"口语泛称带「票」字尾，仍为卧铺泛称","source":"gen:phrasings_seat_type"}
+{"id":"seat-0022","table":"seat","raw":"坐票","expect":{"kind":"value","value":"坐票"},"note":"口语说法，泛指有座票，不特指硬座或软座","source":"gen:phrasings_seat_type"}
+{"id":"seat-0023","table":"seat","raw":"硬卧票","expect":{"kind":"value","value":"硬卧"},"note":"席别带「票」字尾，应剥离尾缀","source":"gen:phrasings_seat_type"}
+{"id":"seat-0024","table":"seat","raw":"二等座票","expect":{"kind":"value","value":"二等座"},"note":"席别带「票」字尾，应剥离尾缀","source":"gen:phrasings_seat_type"}
+{"id":"seat-0025","table":"seat","raw":"一等座有吗","expect":{"kind":"value","value":"一等座"},"note":"带疑问语气词，席别词仍应被抽出","source":"gen:phrasings_seat_type"}
+{"id":"seat-0026","table":"seat","raw":"想要二等座","expect":{"kind":"value","value":"二等座"},"note":"带口语前缀「想要」，不应干扰席别识别","source":"gen:phrasings_seat_type"}
+{"id":"seat-0027","table":"seat","raw":"买张商务座","expect":{"kind":"value","value":"商务座"},"note":"口语量词结构，席别词仍应命中","source":"gen:phrasings_seat_type"}
+{"id":"seat-0028","table":"seat","raw":"有没有软卧","expect":{"kind":"value","value":"软卧"},"note":"口语问句包裹，席别词应被抽出","source":"gen:phrasings_seat_type"}
+{"id":"seat-0029","table":"seat","raw":"我坐二等座，多少钱","expect":{"kind":"value","value":"二等座"},"note":"含无关内容，仍应定位席别词","source":"gen:phrasings_seat_type"}
+{"id":"seat-0030","table":"seat","raw":"无座票","expect":{"kind":"value","value":"无座"},"note":"「无座」带票字尾，不可因含「无」字被当成否定而丢弃","source":"gen:phrasings_seat_type"}
+{"id":"seat-0031","table":"seat","raw":"上铺","expect":{"kind":"none"},"note":"只有铺位没有席别，缺关键信息，应说不认识而不是猜硬卧","source":"gen:phrasings_seat_type"}
+{"id":"seat-0032","table":"seat","raw":"下铺","expect":{"kind":"none"},"note":"只有铺位没有席别，不应瞎猜","source":"gen:phrasings_seat_type"}
+{"id":"seat-0033","table":"seat","raw":"靠窗","expect":{"kind":"none"},"note":"座位偏好而非席别，属歧义词，期望空串","source":"gen:phrasings_seat_type"}
+{"id":"seat-0034","table":"seat","raw":"座位","expect":{"kind":"none"},"note":"非席别词，期望空串","source":"gen:phrasings_seat_type"}
+{"id":"type-0001","table":"type","raw":"高铁","expect":{"kind":"value","value":"高铁"},"note":"车种标准说法，对应 G 字头","source":"gen:phrasings_seat_type"}
+{"id":"type-0002","table":"type","raw":"动车","expect":{"kind":"value","value":"动车"},"note":"车种标准说法，对应 D 字头","source":"gen:phrasings_seat_type"}
+{"id":"type-0003","table":"type","raw":"城际","expect":{"kind":"value","value":"城际"},"note":"车种标准说法，对应 C 字头","source":"gen:phrasings_seat_type"}
+{"id":"type-0004","table":"type","raw":"直达","expect":{"kind":"value","value":"直达"},"note":"车种标准说法，对应 Z 字头","source":"gen:phrasings_seat_type"}
+{"id":"type-0005","table":"type","raw":"特快","expect":{"kind":"value","value":"特快"},"note":"车种标准说法，对应 T 字头","source":"gen:phrasings_seat_type"}
+{"id":"type-0006","table":"type","raw":"快速","expect":{"kind":"value","value":"快速"},"note":"车种标准说法，对应 K 字头","source":"gen:phrasings_seat_type"}
+{"id":"type-0007","table":"type","raw":"普速","expect":{"kind":"value","value":"普速"},"note":"车种标准说法，泛指非动车组列车","source":"gen:phrasings_seat_type"}
+{"id":"type-0008","table":"type","raw":"普快","expect":{"kind":"value","value":"普快"},"note":"车种标准说法，对应纯数字车次","source":"gen:phrasings_seat_type"}
+{"id":"type-0009","table":"type","raw":"高铁票","expect":{"kind":"value","value":"高铁"},"note":"带「票」字尾，应剥离尾缀","source":"gen:phrasings_seat_type"}
+{"id":"type-0010","table":"type","raw":"动车票","expect":{"kind":"value","value":"动车"},"note":"带「票」字尾，应剥离尾缀","source":"gen:phrasings_seat_type"}
+{"id":"type-0011","table":"type","raw":"城际列车","expect":{"kind":"value","value":"城际"},"note":"带「列车」后缀，车种主体是城际","source":"gen:phrasings_seat_type"}
+{"id":"type-0012","table":"type","raw":"高铁列车","expect":{"kind":"value","value":"高铁"},"note":"带「列车」后缀，归一到高铁","source":"gen:phrasings_seat_type"}
+{"id":"type-0013","table":"type","raw":"动车组","expect":{"kind":"value","value":"动车"},"note":"「动车组」是列车编组形态，语义指向动车车种","source":"gen:phrasings_seat_type"}
+{"id":"type-0014","table":"type","raw":"高速动车","expect":{"kind":"value","value":"高铁"},"note":"口语混用说法，车迷常把高铁叫高速动车，应归高铁","source":"gen:phrasings_seat_type"}
+{"id":"type-0015","table":"type","raw":"Z字头","expect":{"kind":"value","value":"直达"},"note":"字母代称写法，应映射到直达","source":"gen:phrasings_seat_type"}
+{"id":"type-0016","table":"type","raw":"T字头","expect":{"kind":"value","value":"特快"},"note":"字母代称写法，应映射到特快","source":"gen:phrasings_seat_type"}
+{"id":"type-0017","table":"type","raw":"K字头","expect":{"kind":"value","value":"快速"},"note":"字母代称写法，应映射到快速","source":"gen:phrasings_seat_type"}
+{"id":"type-0018","table":"type","raw":"G字头","expect":{"kind":"value","value":"高铁"},"note":"字母代称写法，应映射到高铁","source":"gen:phrasings_seat_type"}
+{"id":"type-0019","table":"type","raw":"D字头","expect":{"kind":"value","value":"动车"},"note":"字母代称写法，应映射到动车","source":"gen:phrasings_seat_type"}
+{"id":"type-0020","table":"type","raw":"C字头","expect":{"kind":"value","value":"城际"},"note":"字母代称写法，应映射到城际","source":"gen:phrasings_seat_type"}
+{"id":"type-0021","table":"type","raw":"直达特快","expect":{"kind":"value","value":"直达"},"note":"两个车种词连写，按前一个车种判定，测优先级不吞并","source":"gen:phrasings_seat_type"}
+{"id":"type-0022","table":"type","raw":"绿皮车","expect":{"kind":"value","value":"普速"},"note":"口语绰号，指非动车组普速列车","source":"gen:phrasings_seat_type"}
+{"id":"type-0023","table":"type","raw":"白皮车","expect":{"kind":"none"},"note":"老式绰号已不通用，指代模糊，属歧义词应说不认识","source":"gen:phrasings_seat_type"}
+{"id":"type-0024","table":"type","raw":"有没有高铁","expect":{"kind":"value","value":"高铁"},"note":"问句包裹，车种词应被抽出","source":"gen:phrasings_seat_type"}
+{"id":"type-0025","table":"type","raw":"我想坐动车","expect":{"kind":"value","value":"动车"},"note":"口语前缀不干扰车种识别","source":"gen:phrasings_seat_type"}
+{"id":"type-0026","table":"type","raw":"和谐号","expect":{"kind":"none"},"note":"这是车型品牌而非车种，属歧义词，期望空串","source":"gen:phrasings_seat_type"}

@@ -106,18 +106,24 @@ _SEAT_KEYWORDS = (
     (("硬卧",), "hard_sleeper"),
     (("软座",), "soft_seat"),
     (("硬座", "坐票"), "hard_seat"),
+    # 简称「一等/二等」。必须用否定预查排掉"一等站/二等站"——那是**车站等级**，
+    # 语料里就有「武汉站是不是特等站？」这类问法（探针也钉了这条）。
+    (("一等座",), "first_class"),
+    (("二等座",), "second_class"),
     (("无座", "站票"), "no_seat"),
 )
 
 _TYPE_KEYWORDS = (
     # "X字头"是最常见的说法之一，原先整张表都没有它 —— 探针一跑就露出来了
-    (("高铁", "G字头", "G 字头"), "G"),
+    # 「高速动车」要排在「动车」前面：子串匹配下后者会先把前者吃掉
+    # （实测「高速动车」被判成 D，而车迷口语里它指的是 G）
+    (("高铁", "高速动车", "G字头", "G 字头"), "G"),
     (("动车", "D字头", "D 字头"), "D"),
     (("城际", "C字头", "C 字头"), "C"),
     (("直达", "Z字头", "Z 字头"), "Z"),
     (("特快", "T字头", "T 字头"), "T"),
     (("快速", "K字头", "K 字头"), "K"),
-    (("普速", "绿皮", "慢车"), "K,T,Z"),
+    (("普速", "普快", "绿皮", "慢车"), "K,T,Z"),
 )
 
 # 问"经停/历时/站序"时才允许下发次日参考时刻（D06 红线修复的检索侧开关）
@@ -155,10 +161,20 @@ def _parse_time_window(*texts: str | None) -> tuple[str, str]:
     return "", ""
 
 
+# 席别简称：不能用子串匹配（"一等" 会命中"一等站"这种**车站等级**说法）
+_SEAT_ABBR_RE = (
+    (re.compile(r"一等(?!站)"), "first_class"),
+    (re.compile(r"二等(?!站)"), "second_class"),
+)
+
+
 def _parse_seat(*texts: str | None) -> str:
     blob = " ".join(t for t in texts if t)
     for words, seat in _SEAT_KEYWORDS:
         if any(w in blob for w in words):
+            return seat
+    for pat, seat in _SEAT_ABBR_RE:
+        if pat.search(blob):
             return seat
     return ""
 

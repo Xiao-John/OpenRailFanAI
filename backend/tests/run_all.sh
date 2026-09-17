@@ -62,6 +62,8 @@ SUITES=(
   test_frontend_store
   # 「用户说法 → 内部值」探针语料（时间/时段/席别/车种；全部无网络）
   test_phrasings
+  # A 类规模化语料回归（读 tests/corpus/*.jsonl，机器生成 + 校验冻结；全部无网络）
+  test_corpus
   # 前端渲染（Markdown 表格等，需 node）
   test_frontend_render
 )

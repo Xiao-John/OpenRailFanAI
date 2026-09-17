@@ -44,6 +44,7 @@ REASON_ZH: dict[str, str] = {
     "EMPTY": "输入为空",
     "KNOWLEDGE_OR_OPEN": "知识型/开放型问题：问题性质需模型判断，规则不猜",
     "NO_SLOT": "问法匹配到了，但缺少关键槽位（车次/站名/区间/车型/线路）",
+    "TRAIN_STATION_ARRIVAL": "车次 + 具体车站的到发时刻：图定/实际到点口径需模型判断",
     "UNKNOWN_FAMILY": "没有匹配到任何已知问法",
 }
 
@@ -79,14 +80,26 @@ class Defer:
 
 # ---- 意图关键词（每个意图都必须"关键词 + 关键槽位"双命中才接管）----
 
-_ROUTING_RE = re.compile(r"(担当|哪组|哪个车组|哪台车|由谁跑|交路|车底)")
+_ROUTING_RE = re.compile(
+    r"(担当|哪组|哪个车组|哪台车|由谁跑|跑哪(?:趟|几趟|些|个)|配属|哪个段|交路|车底)")
 # `经过哪些(?:车)?站`：必须容忍"车"夹在中间 —— 漏写它的话「G1经过哪些车站」匹配不上
 # （原来的字面量是 `经过哪些站`），会白白多一次 LLM 决策。
-_STOPS_RE = re.compile(r"(经停|停靠|经过哪些(?:车)?站|途经|站序|历时|全程多久|要多久|几个小时)")
+# 具体时点词（"几点到/几点开"）：与"车次+车站"同现时属红线段
+_TIME_POINT_RE = re.compile(r"(几点|什么时候到|什么时候开|到点|发车时间|到达时间|始发时间)")
+
+_STOPS_RE = re.compile(
+    r"(经停|停靠|经过哪些(?:车)?站|途经|站序|历时|全程多久|要多久|几个小时"
+    r"|几点|什么时候开|什么时候到|发车时间|到达时间|始发时间)")
 _SCREEN_RE = re.compile(r"(大屏|出发屏|到达屏|车站车次|检票口|正晚点|晚点)")
-_TICKET_RE = re.compile(r"(余票|还有票|有票吗|有没有票|买票|抢票|票价|多少钱|一等座|二等座|卧铺|候补)")
-_LINE_RE = re.compile(r"(多少公里|多少千米|几公里|里程|距离|多远|径路|走哪条|线路)")
-_STATION_RE = re.compile(r"(电报码|车站编号|TMIS|接算站|营业限制|车站|站名|在哪个城市|属于哪个局)")
+# 口语变体要收全：实测「有票么」「还有座位吗」整类漏（只写了"有票吗"）
+_TICKET_RE = re.compile(
+    r"(余票|还有票|有票|有没有票|买票|抢票|票价|多少钱|一等座|二等座|卧铺|候补"
+    r"|有座|座位)")
+_LINE_RE = re.compile(
+    r"(多少公里|多少千米|几公里|里程|距离|多远|径路|走哪条|线路|有多长|多长|全长|长度)")
+_STATION_RE = re.compile(
+    r"(电报码|车站编号|TMIS|接算站|营业限制|车站|站名|在哪个城市|属于哪个局"
+    r"|几个站台|几台|站台规模|面积|特等站|一等站|二等站|三等站|几等站)")
 # 问"一条线路经过/沿线有哪些车站" —— 这是**以线路为口径**的问题，属于 rail_line，
 # 不能因为句子里有"车站"二字就判成 station（station 是问**某一座车站**本身的信息）。
 # 与 _STATION_RE 的区别就在于此：_STATION_RE 必须再配上具体站名才会命中（见规则 6）。
@@ -97,8 +110,13 @@ _LINE_STATIONS_RE = re.compile(
     r"|车站列表|站点列表|站名列表|站序)"
 )
 _PHOTO_RE = re.compile(r"(拍|摄影|机位|蹲守|取景|拍到)")
+# 非铁路交通词：命中即交回 LLM（不许按火车票/车站查）
+_NON_RAIL_RE = re.compile(r"(机票|飞机|航班|机场大巴|大巴|长途汽车|汽车站|客车|打车|网约车|自驾|地铁|公交)")
+
 _KNOWLEDGE_HINT_RE = re.compile(
-    r"(为什么|为何|区别|有什么不同|原理|历史|由来|命名|参数|功率|速度是多少|厂家|品牌|关系|介绍一下|科普|怎么样)")
+    r"(为什么|为何|区别|有什么不同|差别|差在哪|怎么来的|咋来的|由来|原理|历史|命名|"
+    r"参数|功率|速度是多少|厂家|品牌|关系|介绍一下|科普|怎么样"
+    r"|几节|多少节|编组|哪个更)")
 
 
 def _station_in_text(text: str) -> str:
@@ -152,6 +170,12 @@ def _time_phrase(text: str) -> str:
 def _train_code(text: str) -> str:
     for m in re.finditer(r"(0?[GDCTZKYSLBN]\d{1,5}[A-Z]?|\d{1,4})(?:次|列车)?", text or "", re.I):
         cand = m.group(1)
+        # 不能把车型里的数字当车次：实测「CR400AF 这车型都担当哪些交路？」抠出 "400"，
+        # target 变成 "400" 而不是 CR400AF。判据是**词边界**——紧挨着字母的数字属于型号。
+        if m.start() > 0 and text[m.start() - 1].isascii() and text[m.start() - 1].isalpha():
+            continue
+        if m.end() < len(text) and text[m.end()].isascii() and text[m.end()].isalpha():
+            continue
         if rt.is_train_code(cand) and cand.upper() not in ("12306",):
             return cand.upper()
     return ""
@@ -193,13 +217,21 @@ async def plan_with_reason(
     if _KNOWLEDGE_HINT_RE.search(text):    # 知识型/开放型：问题性质需模型判断，不接管
         return None, Defer("KNOWLEDGE_OR_OPEN")
 
+    # 非铁路交通：绝不能按火车票/车站去查。
+    # 实测危害：「明天北京到上海的机票多少钱？」被接管成 ticket（区间还解析得好好的）
+    # —— 用户拿到的是**看起来正常的错答案**，比"查不到"更糟。
+    if _NON_RAIL_RE.search(text):
+        return None, Defer("OUT_OF_SCOPE", f"含非铁路交通词「{_NON_RAIL_RE.search(text).group(0)}」")
+
     # 多轮继承：本次没给车次/站名时，从最近一条用户消息里继承（指代消解）
     ctx_text = " ".join(str(m.get("content") or "") for m in (history or [])
                         if str(m.get("role")) == "user")[-200:]
 
     train = _train_code(text) or _train_code(ctx_text)
     od = parse_od(text) or None
-    station = _station_in_text(text)
+    # 站名槽位同样要支持多轮继承：实测「那上海南呢，经停吗」承接上文后
+    # location 应为 上海南，实际是 None —— 因为 ctx_text 只喂给了车次与时间。
+    station = _station_in_text(text) or _station_in_text(ctx_text)
     line = _line_in_text(text)
     time_phrase = _time_phrase(text) or _time_phrase(ctx_text)
     matched: list[str] = []
@@ -221,6 +253,12 @@ async def plan_with_reason(
 
     # ---- 1) 担当/交路（需要车次或车组号）----
     if _ROUTING_RE.search(text):
+        # 车组号（CR400AF-5054）/车型（CR400AF）优先于从它内部抠出来的"车次号"：
+        # 判据是"这个车次号是不是车型串的一部分"。真的同时给了车次（"G1 由 CR400AF 担当"）
+        # 时，train 不在 emu_model 里，仍然按车次走 —— 车次才是主语。
+        _emu = _emu_model(text)
+        if _emu and (not train or train in _emu):
+            return FastPlan("emu_routing", "realtime", slots(target=_emu), "担当+车型", matched), None
         if train:
             return (FastPlan("emu_routing", "realtime", slots(target=train), "担当+车次", matched), None)
         emu_model = _emu_model(text)
@@ -233,8 +271,18 @@ async def plan_with_reason(
         return None, Defer("NO_SLOT", "命中「担当/交路」问法但缺车次或车型")
 
     # ---- 2) 经停/历时（需要车次）----
+    # 红线段：**车次 + 具体车站**的到发时刻不接管。
+    # 原因是口径而非能力：12306 给的是图定时刻，用户问的可能是实际到点，
+    # 这个区分必须由模型结合上下文判断（R1 D06 红线）。缺车站的"G1今天几点开"不在此列。
+    if _STOPS_RE.search(text) and train and station and _TIME_POINT_RE.search(text):
+        return None, Defer("TRAIN_STATION_ARRIVAL",
+                           f"车次 {train} + 车站「{station}」的到发时刻")
+
     if _STOPS_RE.search(text) and train:
-        return (FastPlan("schedule", "realtime", slots(target=train), "经停+车次", matched), None)
+        # 带上 location：多轮里"那上海南呢，经停吗"要能继承出上海南，
+        # 否则继承到的站名无处安放（实测 location 一直是 None）
+        return (FastPlan("schedule", "realtime", slots(target=train, location=station),
+                         "经停+车次", matched), None)
 
     # ---- 3) 车站大屏 / 检票口 ----
     if _SCREEN_RE.search(text) and station:

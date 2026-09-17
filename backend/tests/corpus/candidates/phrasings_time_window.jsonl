@@ -1,0 +1,60 @@
+{"id": "time-0001", "table": "time", "raw": "十月一日", "expect": {"kind": "date_md", "month": 10, "day": 1}, "note": "中文数字月日，车迷说国庆常用「十月一日」", "source": "gen:phrasings_time_window"}
+{"id": "time-0002", "table": "time", "raw": "十二月三十一号", "expect": {"kind": "date_md", "month": 12, "day": 31}, "note": "中文数字月日，年末跨年口径", "source": "gen:phrasings_time_window"}
+{"id": "time-0003", "table": "time", "raw": "一月一号", "expect": {"kind": "date_md", "month": 1, "day": 1}, "note": "中文数字元旦写法，已过去应顺延到明年", "source": "gen:phrasings_time_window"}
+{"id": "time-0004", "table": "time", "raw": "五月四日", "expect": {"kind": "date_md", "month": 5, "day": 4}, "note": "中文数字月日，非节日也算明确月日", "source": "gen:phrasings_time_window"}
+{"id": "time-0005", "table": "time", "raw": "十一月十一日", "expect": {"kind": "date_md", "month": 11, "day": 11}, "note": "中文数字「十一月」不可误判为「十一」节日", "source": "gen:phrasings_time_window"}
+{"id": "time-0006", "table": "time", "raw": "八月十五", "expect": {"kind": "date_md", "month": 8, "day": 15}, "note": "中文数字月日，中秋口径", "source": "gen:phrasings_time_window"}
+{"id": "time-0007", "table": "time", "raw": "三月八日", "expect": {"kind": "date_md", "month": 3, "day": 8}, "note": "中文数字月日，单数日不用「号」", "source": "gen:phrasings_time_window"}
+{"id": "time-0008", "table": "time", "raw": "7月1号", "expect": {"kind": "date_md", "month": 7, "day": 1}, "note": "阿拉伯数字月日，「号」写法", "source": "gen:phrasings_time_window"}
+{"id": "time-0009", "table": "time", "raw": "09-28", "expect": {"kind": "date_md", "month": 9, "day": 28}, "note": "短横线数字日期，数字前导零", "source": "gen:phrasings_time_window"}
+{"id": "time-0010", "table": "time", "raw": "二月三十", "expect": {"kind": "date_none"}, "note": "红线：2 月无 30 日，必须拒绝而不是顺延到 3 月", "source": "gen:phrasings_time_window"}
+{"id": "time-0011", "table": "time", "raw": "四月三十一号", "expect": {"kind": "date_none"}, "note": "红线：4 月无 31 号，宁可说不认识", "source": "gen:phrasings_time_window"}
+{"id": "time-0012", "table": "time", "raw": "六月三十二", "expect": {"kind": "date_none"}, "note": "红线：6 月无 32 日，超界必须不识别", "source": "gen:phrasings_time_window"}
+{"id": "time-0013", "table": "time", "raw": "第十三月", "expect": {"kind": "date_none"}, "note": "红线：月份 13 不存在，中文序数越界", "source": "gen:phrasings_time_window"}
+{"id": "time-0014", "table": "time", "raw": "0月5日", "expect": {"kind": "date_none"}, "note": "红线：月份 0 不存在", "source": "gen:phrasings_time_window"}
+{"id": "time-0015", "table": "time", "raw": "25点", "expect": {"kind": "date_none"}, "note": "红线：25 点不是合法钟点，属时间解析的非法样本", "source": "gen:phrasings_time_window"}
+{"id": "time-0016", "table": "time", "raw": "二月二十九", "expect": {"kind": "date_none"}, "note": "红线：非闰年 2 月 29 不存在，不可静默顺延", "source": "gen:phrasings_time_window"}
+{"id": "time-0017", "table": "time", "raw": "十一", "expect": {"kind": "date_md", "month": 10, "day": 1}, "note": "节日简称「十一」指国庆 10-01", "source": "gen:phrasings_time_window"}
+{"id": "time-0018", "table": "time", "raw": "十一长假", "expect": {"kind": "date_none"}, "note": "对照红线：「十一长假」是假期段而非某一天，不可解析成 10-01", "source": "gen:phrasings_time_window"}
+{"id": "time-0019", "table": "time", "raw": "五一", "expect": {"kind": "date_md", "month": 5, "day": 1}, "note": "节日简称「五一」指劳动节 05-01", "source": "gen:phrasings_time_window"}
+{"id": "time-0020", "table": "time", "raw": "国庆", "expect": {"kind": "date_md", "month": 10, "day": 1}, "note": "节日名「国庆」应落到 10-01", "source": "gen:phrasings_time_window"}
+{"id": "time-0021", "table": "time", "raw": "元旦", "expect": {"kind": "date_md", "month": 1, "day": 1}, "note": "节日名「元旦」应落到 01-01", "source": "gen:phrasings_time_window"}
+{"id": "time-0022", "table": "time", "raw": "今天", "expect": {"kind": "date_offset", "days": 0}, "note": "相对日期基准点", "source": "gen:phrasings_time_window"}
+{"id": "time-0023", "table": "time", "raw": "明天", "expect": {"kind": "date_offset", "days": 1}, "note": "相对日期 +1", "source": "gen:phrasings_time_window"}
+{"id": "time-0024", "table": "time", "raw": "后天", "expect": {"kind": "date_offset", "days": 2}, "note": "相对日期 +2", "source": "gen:phrasings_time_window"}
+{"id": "time-0025", "table": "time", "raw": "大后天", "expect": {"kind": "date_offset", "days": 3}, "note": "相对日期 +3，口语叠词", "source": "gen:phrasings_time_window"}
+{"id": "time-0026", "table": "time", "raw": "昨天", "expect": {"kind": "date_offset", "days": -1}, "note": "相对日期 -1，查已开行车次用", "source": "gen:phrasings_time_window"}
+{"id": "time-0027", "table": "time", "raw": "前天", "expect": {"kind": "date_offset", "days": -2}, "note": "相对日期 -2", "source": "gen:phrasings_time_window"}
+{"id": "time-0028", "table": "time", "raw": "明天下午", "expect": {"kind": "date_offset", "days": 1}, "note": "相对日期带时段，解析器只取日期部分", "source": "gen:phrasings_time_window"}
+{"id": "time-0029", "table": "time", "raw": "下个月5号", "expect": {"kind": "date_next_month", "day": 5}, "note": "下月某日，用 date_next_month 而非 offset", "source": "gen:phrasings_time_window"}
+{"id": "time-0030", "table": "time", "raw": "下月一号", "expect": {"kind": "date_next_month", "day": 1}, "note": "中文数字「一号」+下月", "source": "gen:phrasings_time_window"}
+{"id": "time-0031", "table": "time", "raw": "周三", "expect": {"kind": "date_weekday", "weekday": 2}, "note": "星期缩写，周一=0", "source": "gen:phrasings_time_window"}
+{"id": "time-0032", "table": "time", "raw": "星期日", "expect": {"kind": "date_weekday", "weekday": 6}, "note": "「星期日」即周日，不得当「星期七」", "source": "gen:phrasings_time_window"}
+{"id": "window-0001", "table": "window", "raw": "早上", "expect": {"kind": "tuple", "value": ["06:00", "09:00"]}, "note": "模糊时段「早上」按中文直觉取晨间区间", "source": "gen:phrasings_time_window"}
+{"id": "window-0002", "table": "window", "raw": "上午", "expect": {"kind": "tuple", "value": ["08:00", "12:00"]}, "note": "「上午」覆盖上班到正午前", "source": "gen:phrasings_time_window"}
+{"id": "window-0003", "table": "window", "raw": "中午", "expect": {"kind": "tuple", "value": ["11:00", "13:00"]}, "note": "「中午」为午间窄区间", "source": "gen:phrasings_time_window"}
+{"id": "window-0004", "table": "window", "raw": "下午", "expect": {"kind": "tuple", "value": ["12:00", "18:00"]}, "note": "「下午」从正午到傍晚", "source": "gen:phrasings_time_window"}
+{"id": "window-0005", "table": "window", "raw": "晚上", "expect": {"kind": "tuple", "value": ["18:00", "23:00"]}, "note": "「晚上」为入夜到就寝前", "source": "gen:phrasings_time_window"}
+{"id": "window-0006", "table": "window", "raw": "凌晨", "expect": {"kind": "tuple", "value": ["00:00", "05:00"]}, "note": "「凌晨」为午夜后到天亮前", "source": "gen:phrasings_time_window"}
+{"id": "window-0007", "table": "window", "raw": "夜里", "expect": {"kind": "tuple", "value": ["20:00", "23:59"]}, "note": "「夜里」偏深夜晚间，非凌晨", "source": "gen:phrasings_time_window"}
+{"id": "window-0008", "table": "window", "raw": "一大早", "expect": {"kind": "tuple", "value": ["05:00", "08:00"]}, "note": "口语「一大早」比「早上」更早", "source": "gen:phrasings_time_window"}
+{"id": "window-0009", "table": "window", "raw": "傍晚", "expect": {"kind": "tuple", "value": ["17:00", "19:00"]}, "note": "「傍晚」为黄昏窄区间，与「下午」「晚上」区分", "source": "gen:phrasings_time_window"}
+{"id": "window-0010", "table": "window", "raw": "深夜", "expect": {"kind": "tuple", "value": ["23:00", "02:00"]}, "note": "「深夜」跨零点，跨夜区间", "source": "gen:phrasings_time_window"}
+{"id": "window-0011", "table": "window", "raw": "半夜", "expect": {"kind": "tuple", "value": ["23:00", "01:00"]}, "note": "「半夜」指零点前后，跨夜区间", "source": "gen:phrasings_time_window"}
+{"id": "window-0012", "table": "window", "raw": "清晨", "expect": {"kind": "tuple", "value": ["05:00", "07:00"]}, "note": "「清晨」为天亮前后窄区间", "source": "gen:phrasings_time_window"}
+{"id": "window-0013", "table": "window", "raw": "8点以后", "expect": {"kind": "tuple", "value": ["08:00", ""]}, "note": "单侧开放：只给起点，按语义止端应为空串", "source": "gen:phrasings_time_window"}
+{"id": "window-0014", "table": "window", "raw": "10点前", "expect": {"kind": "tuple", "value": ["", "10:00"]}, "note": "单侧开放：只给终点，按语义起端应为空串", "source": "gen:phrasings_time_window"}
+{"id": "window-0015", "table": "window", "raw": "下午3点以后", "expect": {"kind": "tuple", "value": ["15:00", ""]}, "note": "带时段前缀的单侧开放起点", "source": "gen:phrasings_time_window"}
+{"id": "window-0016", "table": "window", "raw": "晚上8点以后", "expect": {"kind": "tuple", "value": ["20:00", ""]}, "note": "晚间钟点单侧开放起点", "source": "gen:phrasings_time_window"}
+{"id": "window-0017", "table": "window", "raw": "7点半以前", "expect": {"kind": "tuple", "value": ["", "07:30"]}, "note": "含「半」的钟点单侧开放终点", "source": "gen:phrasings_time_window"}
+{"id": "window-0018", "table": "window", "raw": "9点到11点", "expect": {"kind": "tuple", "value": ["09:00", "11:00"]}, "note": "钟点显式区间，起止都要", "source": "gen:phrasings_time_window"}
+{"id": "window-0019", "table": "window", "raw": "14:30", "expect": {"kind": "tuple", "value": ["14:30", ""]}, "note": "纯钟点单点，语义上等价于该时刻起", "source": "gen:phrasings_time_window"}
+{"id": "window-0020", "table": "window", "raw": "06:15", "expect": {"kind": "tuple", "value": ["06:15", ""]}, "note": "带前导零的纯钟点", "source": "gen:phrasings_time_window"}
+{"id": "window-0021", "table": "window", "raw": "晚上10点半", "expect": {"kind": "tuple", "value": ["22:30", ""]}, "note": "「半」需解析成 30 分，且晚间映射到 22 时", "source": "gen:phrasings_time_window"}
+{"id": "window-0022", "table": "window", "raw": "下午4点20", "expect": {"kind": "tuple", "value": ["16:20", ""]}, "note": "时段前缀与分钟写法「4点20」", "source": "gen:phrasings_time_window"}
+{"id": "window-0023", "table": "window", "raw": "凌晨1点", "expect": {"kind": "tuple", "value": ["01:00", ""]}, "note": "「凌晨1点」不得被当成 13 点", "source": "gen:phrasings_time_window"}
+{"id": "window-0024", "table": "window", "raw": "中午12点", "expect": {"kind": "tuple", "value": ["12:00", ""]}, "note": "「中午12点」边界：12 点属中午不属上午", "source": "gen:phrasings_time_window"}
+{"id": "window-0025", "table": "window", "raw": "夜里12点", "expect": {"kind": "tuple", "value": ["00:00", ""]}, "note": "口语「夜里12点」实为次日零点，考验跨日归一", "source": "gen:phrasings_time_window"}
+{"id": "window-0026", "table": "window", "raw": "上午10点前", "expect": {"kind": "tuple", "value": ["", "10:00"]}, "note": "时段前缀 + 单侧开放终点", "source": "gen:phrasings_time_window"}
+{"id": "window-0027", "table": "window", "raw": "下午1点到3点", "expect": {"kind": "tuple", "value": ["13:00", "15:00"]}, "note": "下午时段内的显式闭区间，需整体后移 12 小时", "source": "gen:phrasings_time_window"}
+{"id": "window-0028", "table": "window", "raw": "傍晚六点", "expect": {"kind": "tuple", "value": ["18:00", ""]}, "note": "中文数字钟点「六点」+ 傍晚前缀", "source": "gen:phrasings_time_window"}

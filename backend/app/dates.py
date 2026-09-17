@@ -15,6 +15,15 @@ from __future__ import annotations
 import re
 from datetime import date, timedelta
 
+# 公历固定的节日俗称 → (月, 日)。**不含农历节日**（春节/清明/端午/中秋会逐年变动，
+# 需要农历换算表；不猜，交给 date_note 如实说明"没听懂，已按今天处理"）。
+# "十一"既是国庆简称、也是"十一"这个数 —— 在日期解析的语境里按节日处理是安全的。
+_FIXED_HOLIDAYS = (
+    ("国庆节", 10, 1), ("国庆", 10, 1), ("十一", 10, 1),
+    ("劳动节", 5, 1), ("五一", 5, 1),
+    ("元旦", 1, 1), ("新年", 1, 1),
+)
+
 # 相对日期：**按 key 长度倒序匹配**（"大后天" 必须先于 "后天"）
 # 2026-09-14 修复：原表缺 "昨天"（只有"前天 -2"），导致"G1 昨天是哪组车"解析为空串
 # → 工具回落"今天" → 模型如实答"查不到昨天"，而 rail.re 其实返回了 09-13 的记录。
@@ -130,6 +139,16 @@ def resolve_date(value: str | None, *, default_today: bool = True) -> tuple[str,
         if kw in v:
             return (today + timedelta(days=_RELATIVE[kw])).isoformat(), True
 
+    # 裸 MM-DD（"09-28"）：完整 ISO（2026-09-28）走上面的分支，这里只处理两位年月
+    m = re.search(r"(?<!\d)(\d{1,2})[-/](\d{1,2})(?!\d)", v)
+    if m:
+        d = _safe_date(today.year, int(m.group(1)), int(m.group(2)))
+        if d is not None:
+            if d < today:                    # 已过 → 顺延到明年（与月日同规则）
+                d = _safe_date(today.year + 1, int(m.group(1)), int(m.group(2)))
+            if d is not None:
+                return d.isoformat(), True
+
     m = _MD_RE.search(v)
     if m:
         month, day = _cn_num(m.group(1)), _cn_num(m.group(2))
@@ -181,6 +200,22 @@ def resolve_date(value: str | None, *, default_today: bool = True) -> tuple[str,
             # 裸"周三"：最近一次（含今天），已过则下周
             d = today + timedelta(days=(target - today.weekday()) % 7)
         return d.isoformat(), True
+
+    # 固定日期的节日俗称。**只收公历固定的**：国庆/十一 = 10-01、五一 = 05-01、元旦 = 01-01。
+    # 春节/清明/端午/中秋是农历、逐年变动，不在这里猜（见 date_note 的如实说明）。
+    #
+    # ⚠️ 必须放在**所有显式/相对日期之后**：子串匹配下"十二**月三十一**日"里也能找到"十一"，
+    # 放前面会把 12-31 判成 10-01（实测踩过）。放最后则只有"光秃秃一个节日词"才会走到这里。
+    for kw, mm, dd in _FIXED_HOLIDAYS:
+        # 否定预查：后面跟着"长假/假期/期间"时是**假期段**而非某一天，
+        # 不能解析成具体日期（语料里的红线：「十一长假」≠ 10-01）。
+        if re.search(kw + r"(?!长假|假期|放假|期间|黄金周|出游|出行)", v):
+            d = _safe_date(today.year, mm, dd)
+            if d is not None:
+                if d < today:
+                    d = _safe_date(today.year + 1, mm, dd)
+                if d is not None:
+                    return d.isoformat(), True
 
     return fallback, False
 

@@ -1,0 +1,86 @@
+{"id": "seat-0001", "table": "seat", "raw": "一等座", "expect": {"kind": "value", "value": "一等座"}, "note": "标准全称，最基础命中", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0002", "table": "seat", "raw": "二等座", "expect": {"kind": "value", "value": "二等座"}, "note": "标准全称，最基础命中", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0003", "table": "seat", "raw": "商务座", "expect": {"kind": "value", "value": "商务座"}, "note": "标准全称", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0005", "table": "seat", "raw": "硬座", "expect": {"kind": "value", "value": "硬座"}, "note": "标准全称", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0006", "table": "seat", "raw": "软座", "expect": {"kind": "value", "value": "软座"}, "note": "标准全称", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0007", "table": "seat", "raw": "硬卧", "expect": {"kind": "value", "value": "硬卧"}, "note": "标准全称", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0008", "table": "seat", "raw": "软卧", "expect": {"kind": "value", "value": "软卧"}, "note": "标准全称", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0009", "table": "seat", "raw": "无座", "expect": {"kind": "value", "value": "无座"}, "note": "标准全称，票面席别", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0010", "table": "seat", "raw": "动卧", "expect": {"kind": "value", "value": "动卧"}, "note": "标准简称，动车组卧铺席别", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0013", "table": "seat", "raw": "商务", "expect": {"kind": "value", "value": "商务座"}, "note": "省略「座」字，应补全为商务座", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0015", "table": "seat", "raw": "硬卧上铺", "expect": {"kind": "value", "value": "硬卧"}, "note": "带铺位后缀，席别主体仍是硬卧，后缀不应吞掉主体", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0016", "table": "seat", "raw": "硬卧中铺", "expect": {"kind": "value", "value": "硬卧"}, "note": "带铺位后缀，归一到硬卧", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0017", "table": "seat", "raw": "硬卧下铺", "expect": {"kind": "value", "value": "硬卧"}, "note": "带铺位后缀，归一到硬卧", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0018", "table": "seat", "raw": "软卧上铺", "expect": {"kind": "value", "value": "软卧"}, "note": "带铺位后缀，归一到软卧", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0019", "table": "seat", "raw": "软卧下铺", "expect": {"kind": "value", "value": "软卧"}, "note": "带铺位后缀，归一到软卧", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0020", "table": "seat", "raw": "卧铺", "expect": {"kind": "value", "value": "卧铺"}, "note": "口语泛称，未指明硬/软，不应硬猜成硬卧或软卧", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0021", "table": "seat", "raw": "卧铺票", "expect": {"kind": "value", "value": "卧铺"}, "note": "口语泛称带「票」字尾，仍为卧铺泛称", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0022", "table": "seat", "raw": "坐票", "expect": {"kind": "value", "value": "坐票"}, "note": "口语说法，泛指有座票，不特指硬座或软座", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0023", "table": "seat", "raw": "硬卧票", "expect": {"kind": "value", "value": "硬卧"}, "note": "席别带「票」字尾，应剥离尾缀", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0024", "table": "seat", "raw": "二等座票", "expect": {"kind": "value", "value": "二等座"}, "note": "席别带「票」字尾，应剥离尾缀", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0025", "table": "seat", "raw": "一等座有吗", "expect": {"kind": "value", "value": "一等座"}, "note": "带疑问语气词，席别词仍应被抽出", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0026", "table": "seat", "raw": "想要二等座", "expect": {"kind": "value", "value": "二等座"}, "note": "带口语前缀「想要」，不应干扰席别识别", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0027", "table": "seat", "raw": "买张商务座", "expect": {"kind": "value", "value": "商务座"}, "note": "口语量词结构，席别词仍应命中", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0028", "table": "seat", "raw": "有没有软卧", "expect": {"kind": "value", "value": "软卧"}, "note": "口语问句包裹，席别词应被抽出", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0029", "table": "seat", "raw": "我坐二等座，多少钱", "expect": {"kind": "value", "value": "二等座"}, "note": "含无关内容，仍应定位席别词", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0030", "table": "seat", "raw": "无座票", "expect": {"kind": "value", "value": "无座"}, "note": "「无座」带票字尾，不可因含「无」字被当成否定而丢弃", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0031", "table": "seat", "raw": "上铺", "expect": {"kind": "none"}, "note": "只有铺位没有席别，缺关键信息，应说不认识而不是猜硬卧", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0032", "table": "seat", "raw": "下铺", "expect": {"kind": "none"}, "note": "只有铺位没有席别，不应瞎猜", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0033", "table": "seat", "raw": "靠窗", "expect": {"kind": "none"}, "note": "座位偏好而非席别，属歧义词，期望空串", "source": "gen:phrasings_seat_type"}
+{"id": "seat-0034", "table": "seat", "raw": "座位", "expect": {"kind": "none"}, "note": "非席别词，期望空串", "source": "gen:phrasings_seat_type"}
+{"id": "time-0001", "table": "time", "raw": "十月一日", "expect": {"kind": "date_md", "month": 10, "day": 1}, "note": "中文数字月日，车迷说国庆常用「十月一日」", "source": "gen:phrasings_time_window"}
+{"id": "time-0002", "table": "time", "raw": "十二月三十一号", "expect": {"kind": "date_md", "month": 12, "day": 31}, "note": "中文数字月日，年末跨年口径", "source": "gen:phrasings_time_window"}
+{"id": "time-0003", "table": "time", "raw": "一月一号", "expect": {"kind": "date_md", "month": 1, "day": 1}, "note": "中文数字元旦写法，已过去应顺延到明年", "source": "gen:phrasings_time_window"}
+{"id": "time-0004", "table": "time", "raw": "五月四日", "expect": {"kind": "date_md", "month": 5, "day": 4}, "note": "中文数字月日，非节日也算明确月日", "source": "gen:phrasings_time_window"}
+{"id": "time-0005", "table": "time", "raw": "十一月十一日", "expect": {"kind": "date_md", "month": 11, "day": 11}, "note": "中文数字「十一月」不可误判为「十一」节日", "source": "gen:phrasings_time_window"}
+{"id": "time-0007", "table": "time", "raw": "三月八日", "expect": {"kind": "date_md", "month": 3, "day": 8}, "note": "中文数字月日，单数日不用「号」", "source": "gen:phrasings_time_window"}
+{"id": "time-0008", "table": "time", "raw": "7月1号", "expect": {"kind": "date_md", "month": 7, "day": 1}, "note": "阿拉伯数字月日，「号」写法", "source": "gen:phrasings_time_window"}
+{"id": "time-0010", "table": "time", "raw": "二月三十", "expect": {"kind": "date_none"}, "note": "红线：2 月无 30 日，必须拒绝而不是顺延到 3 月", "source": "gen:phrasings_time_window"}
+{"id": "time-0011", "table": "time", "raw": "四月三十一号", "expect": {"kind": "date_none"}, "note": "红线：4 月无 31 号，宁可说不认识", "source": "gen:phrasings_time_window"}
+{"id": "time-0012", "table": "time", "raw": "六月三十二", "expect": {"kind": "date_none"}, "note": "红线：6 月无 32 日，超界必须不识别", "source": "gen:phrasings_time_window"}
+{"id": "time-0013", "table": "time", "raw": "第十三月", "expect": {"kind": "date_none"}, "note": "红线：月份 13 不存在，中文序数越界", "source": "gen:phrasings_time_window"}
+{"id": "time-0014", "table": "time", "raw": "0月5日", "expect": {"kind": "date_none"}, "note": "红线：月份 0 不存在", "source": "gen:phrasings_time_window"}
+{"id": "time-0015", "table": "time", "raw": "25点", "expect": {"kind": "date_none"}, "note": "红线：25 点不是合法钟点，属时间解析的非法样本", "source": "gen:phrasings_time_window"}
+{"id": "time-0016", "table": "time", "raw": "二月二十九", "expect": {"kind": "date_none"}, "note": "红线：非闰年 2 月 29 不存在，不可静默顺延", "source": "gen:phrasings_time_window"}
+{"id": "time-0018", "table": "time", "raw": "十一长假", "expect": {"kind": "date_none"}, "note": "对照红线：「十一长假」是假期段而非某一天，不可解析成 10-01", "source": "gen:phrasings_time_window"}
+{"id": "time-0022", "table": "time", "raw": "今天", "expect": {"kind": "date_offset", "days": 0}, "note": "相对日期基准点", "source": "gen:phrasings_time_window"}
+{"id": "time-0023", "table": "time", "raw": "明天", "expect": {"kind": "date_offset", "days": 1}, "note": "相对日期 +1", "source": "gen:phrasings_time_window"}
+{"id": "time-0024", "table": "time", "raw": "后天", "expect": {"kind": "date_offset", "days": 2}, "note": "相对日期 +2", "source": "gen:phrasings_time_window"}
+{"id": "time-0025", "table": "time", "raw": "大后天", "expect": {"kind": "date_offset", "days": 3}, "note": "相对日期 +3，口语叠词", "source": "gen:phrasings_time_window"}
+{"id": "time-0026", "table": "time", "raw": "昨天", "expect": {"kind": "date_offset", "days": -1}, "note": "相对日期 -1，查已开行车次用", "source": "gen:phrasings_time_window"}
+{"id": "time-0027", "table": "time", "raw": "前天", "expect": {"kind": "date_offset", "days": -2}, "note": "相对日期 -2", "source": "gen:phrasings_time_window"}
+{"id": "time-0028", "table": "time", "raw": "明天下午", "expect": {"kind": "date_offset", "days": 1}, "note": "相对日期带时段，解析器只取日期部分", "source": "gen:phrasings_time_window"}
+{"id": "time-0029", "table": "time", "raw": "下个月5号", "expect": {"kind": "date_next_month", "day": 5}, "note": "下月某日，用 date_next_month 而非 offset", "source": "gen:phrasings_time_window"}
+{"id": "time-0030", "table": "time", "raw": "下月一号", "expect": {"kind": "date_next_month", "day": 1}, "note": "中文数字「一号」+下月", "source": "gen:phrasings_time_window"}
+{"id": "time-0031", "table": "time", "raw": "周三", "expect": {"kind": "date_weekday", "weekday": 2}, "note": "星期缩写，周一=0", "source": "gen:phrasings_time_window"}
+{"id": "time-0032", "table": "time", "raw": "星期日", "expect": {"kind": "date_weekday", "weekday": 6}, "note": "「星期日」即周日，不得当「星期七」", "source": "gen:phrasings_time_window"}
+{"id": "type-0001", "table": "type", "raw": "高铁", "expect": {"kind": "value", "value": "高铁"}, "note": "车种标准说法，对应 G 字头", "source": "gen:phrasings_seat_type"}
+{"id": "type-0002", "table": "type", "raw": "动车", "expect": {"kind": "value", "value": "动车"}, "note": "车种标准说法，对应 D 字头", "source": "gen:phrasings_seat_type"}
+{"id": "type-0003", "table": "type", "raw": "城际", "expect": {"kind": "value", "value": "城际"}, "note": "车种标准说法，对应 C 字头", "source": "gen:phrasings_seat_type"}
+{"id": "type-0004", "table": "type", "raw": "直达", "expect": {"kind": "value", "value": "直达"}, "note": "车种标准说法，对应 Z 字头", "source": "gen:phrasings_seat_type"}
+{"id": "type-0005", "table": "type", "raw": "特快", "expect": {"kind": "value", "value": "特快"}, "note": "车种标准说法，对应 T 字头", "source": "gen:phrasings_seat_type"}
+{"id": "type-0006", "table": "type", "raw": "快速", "expect": {"kind": "value", "value": "快速"}, "note": "车种标准说法，对应 K 字头", "source": "gen:phrasings_seat_type"}
+{"id": "type-0007", "table": "type", "raw": "普速", "expect": {"kind": "value", "value": "普速"}, "note": "车种标准说法，泛指非动车组列车", "source": "gen:phrasings_seat_type"}
+{"id": "type-0009", "table": "type", "raw": "高铁票", "expect": {"kind": "value", "value": "高铁"}, "note": "带「票」字尾，应剥离尾缀", "source": "gen:phrasings_seat_type"}
+{"id": "type-0010", "table": "type", "raw": "动车票", "expect": {"kind": "value", "value": "动车"}, "note": "带「票」字尾，应剥离尾缀", "source": "gen:phrasings_seat_type"}
+{"id": "type-0011", "table": "type", "raw": "城际列车", "expect": {"kind": "value", "value": "城际"}, "note": "带「列车」后缀，车种主体是城际", "source": "gen:phrasings_seat_type"}
+{"id": "type-0012", "table": "type", "raw": "高铁列车", "expect": {"kind": "value", "value": "高铁"}, "note": "带「列车」后缀，归一到高铁", "source": "gen:phrasings_seat_type"}
+{"id": "type-0013", "table": "type", "raw": "动车组", "expect": {"kind": "value", "value": "动车"}, "note": "「动车组」是列车编组形态，语义指向动车车种", "source": "gen:phrasings_seat_type"}
+{"id": "type-0015", "table": "type", "raw": "Z字头", "expect": {"kind": "value", "value": "直达"}, "note": "字母代称写法，应映射到直达", "source": "gen:phrasings_seat_type"}
+{"id": "type-0016", "table": "type", "raw": "T字头", "expect": {"kind": "value", "value": "特快"}, "note": "字母代称写法，应映射到特快", "source": "gen:phrasings_seat_type"}
+{"id": "type-0017", "table": "type", "raw": "K字头", "expect": {"kind": "value", "value": "快速"}, "note": "字母代称写法，应映射到快速", "source": "gen:phrasings_seat_type"}
+{"id": "type-0018", "table": "type", "raw": "G字头", "expect": {"kind": "value", "value": "高铁"}, "note": "字母代称写法，应映射到高铁", "source": "gen:phrasings_seat_type"}
+{"id": "type-0019", "table": "type", "raw": "D字头", "expect": {"kind": "value", "value": "动车"}, "note": "字母代称写法，应映射到动车", "source": "gen:phrasings_seat_type"}
+{"id": "type-0020", "table": "type", "raw": "C字头", "expect": {"kind": "value", "value": "城际"}, "note": "字母代称写法，应映射到城际", "source": "gen:phrasings_seat_type"}
+{"id": "type-0021", "table": "type", "raw": "直达特快", "expect": {"kind": "value", "value": "直达"}, "note": "两个车种词连写，按前一个车种判定，测优先级不吞并", "source": "gen:phrasings_seat_type"}
+{"id": "type-0022", "table": "type", "raw": "绿皮车", "expect": {"kind": "value", "value": "普速"}, "note": "口语绰号，指非动车组普速列车", "source": "gen:phrasings_seat_type"}
+{"id": "type-0023", "table": "type", "raw": "白皮车", "expect": {"kind": "none"}, "note": "老式绰号已不通用，指代模糊，属歧义词应说不认识", "source": "gen:phrasings_seat_type"}
+{"id": "type-0024", "table": "type", "raw": "有没有高铁", "expect": {"kind": "value", "value": "高铁"}, "note": "问句包裹，车种词应被抽出", "source": "gen:phrasings_seat_type"}
+{"id": "type-0025", "table": "type", "raw": "我想坐动车", "expect": {"kind": "value", "value": "动车"}, "note": "口语前缀不干扰车种识别", "source": "gen:phrasings_seat_type"}
+{"id": "type-0026", "table": "type", "raw": "和谐号", "expect": {"kind": "none"}, "note": "这是车型品牌而非车种，属歧义词，期望空串", "source": "gen:phrasings_seat_type"}
+{"id": "window-0004", "table": "window", "raw": "下午", "expect": {"kind": "tuple", "value": ["12:00", "18:00"]}, "note": "「下午」从正午到傍晚", "source": "gen:phrasings_time_window"}
+{"id": "window-0013", "table": "window", "raw": "8点以后", "expect": {"kind": "tuple", "value": ["08:00", ""]}, "note": "单侧开放：只给起点，按语义止端应为空串", "source": "gen:phrasings_time_window"}
+{"id": "window-0014", "table": "window", "raw": "10点前", "expect": {"kind": "tuple", "value": ["", "10:00"]}, "note": "单侧开放：只给终点，按语义起端应为空串", "source": "gen:phrasings_time_window"}
+{"id": "window-0015", "table": "window", "raw": "下午3点以后", "expect": {"kind": "tuple", "value": ["15:00", ""]}, "note": "带时段前缀的单侧开放起点", "source": "gen:phrasings_time_window"}
+{"id": "window-0016", "table": "window", "raw": "晚上8点以后", "expect": {"kind": "tuple", "value": ["20:00", ""]}, "note": "晚间钟点单侧开放起点", "source": "gen:phrasings_time_window"}
+{"id": "window-0026", "table": "window", "raw": "上午10点前", "expect": {"kind": "tuple", "value": ["", "10:00"]}, "note": "时段前缀 + 单侧开放终点", "source": "gen:phrasings_time_window"}

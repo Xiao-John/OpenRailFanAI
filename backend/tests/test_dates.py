@@ -61,7 +61,9 @@ def main():
     print("[PASS] 无法识别 + default_today=False -> 空串")
 
     # ★ 识别状态可观测：date_note 只在"给了时间却听不懂"时出声
-    assert date_note("国庆", TODAY.isoformat()) != "", "未识别表述应给出如实说明"
+    # 用"春节"当样例：它是农历节日、本项目**有意不支持**（会逐年变动，不是常量表能表达的）；
+    # 「国庆」现在已按公历固定日期识别（10-01），不能再拿来当"听不懂"的例子
+    assert date_note("春节", TODAY.isoformat()) != "", "未识别表述应给出如实说明"
     assert date_note("明天", _rel(1)) == "", "识别成功时不应产生噪声说明"
     assert date_note(None, TODAY.isoformat()) == "", "用户没说时间时不应产生说明"
     print(f"[PASS] date_note 如实说明 -> {date_note('国庆', TODAY.isoformat())[:40]}…")
