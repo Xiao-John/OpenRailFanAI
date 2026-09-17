@@ -244,31 +244,28 @@ async def query_ticket_rows(
     if hit and now - hit[0] < _RAW_ROWS_TTL_S:
         return hit[1]
 
-    import httpx
-
-    from app.tools._http import BROWSER_HEADERS
+    from app.tools._http import BROWSER_HEADERS, get_client
 
     headers = dict(BROWSER_HEADERS)
     headers["Referer"] = _LEFT_TICKET_INIT
     rows: list[dict] = []
     try:
-        async with httpx.AsyncClient(
-            http2=True, timeout=15, follow_redirects=True
-        ) as client:
-            # 余票接口需要 init 种下的会话（Cookie），缺了会 302/空结果
-            await client.get(_LEFT_TICKET_INIT, headers=headers)
-            resp = await client.get(
-                _LEFT_TICKET_QUERY,
-                headers=headers,
-                params={
-                    "leftTicketDTO.train_date": date_str,
-                    "leftTicketDTO.from_station": code_a,
-                    "leftTicketDTO.to_station": code_b,
-                    "purpose_codes": "ADULT",
-                },
-            )
-            resp.raise_for_status()
-            result = (resp.json().get("data") or {}).get("result") or []
+        client = await get_client()
+        # 余票接口需要 init 种下的会话（Cookie），缺了会 302/空结果
+        await client.get(_LEFT_TICKET_INIT, headers=headers, timeout=15)
+        resp = await client.get(
+            _LEFT_TICKET_QUERY,
+            headers=headers,
+            params={
+                "leftTicketDTO.train_date": date_str,
+                "leftTicketDTO.from_station": code_a,
+                "leftTicketDTO.to_station": code_b,
+                "purpose_codes": "ADULT",
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        result = (resp.json().get("data") or {}).get("result") or []
     except Exception:  # noqa: BLE001 —— 增强路径失败不得影响主流程
         return []
 
@@ -364,9 +361,7 @@ async def search_train_identity(train_code: str, train_date: str) -> tuple[str, 
     if hit and now - hit[0] < _TRAIN_ID_TTL_S:
         return hit[1]
 
-    import httpx
-
-    from app.tools._http import BROWSER_HEADERS
+    from app.tools._http import BROWSER_HEADERS, get_client
 
     headers = dict(BROWSER_HEADERS)
     headers.update({
@@ -374,14 +369,15 @@ async def search_train_identity(train_code: str, train_date: str) -> tuple[str, 
         "Referer": "https://www.12306.cn/index/",
     })
     try:
-        async with httpx.AsyncClient(http2=True, timeout=10) as client:
-            resp = await client.get(
-                _SEARCH_URL,
-                headers=headers,
-                params={"keyword": code, "date": _search_date(date_str)},
-            )
-            resp.raise_for_status()
-            payload = resp.json()
+        client = await get_client()
+        resp = await client.get(
+            _SEARCH_URL,
+            headers=headers,
+            params={"keyword": code, "date": _search_date(date_str)},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
     except Exception:
         return None
 
@@ -601,25 +597,24 @@ def normalize_screen_row(row: dict, station_code: str) -> dict:
 
 async def _fetch_station_screen(station_code: str, date_str: str) -> list[dict]:
     """POST 车站大屏接口，返回原始行列表；失败抛 Realtime12306Error。"""
-    import httpx
-
-    from app.tools._http import BROWSER_HEADERS
+    from app.tools._http import BROWSER_HEADERS, get_client
 
     headers = dict(BROWSER_HEADERS)
     headers["Content-Type"] = "application/x-www-form-urlencoded"
     try:
-        async with httpx.AsyncClient(http2=True, timeout=15) as client:
-            resp = await client.post(
-                SCREEN_URL,
-                headers=headers,
-                # ⚠️ 必须 POST：改成 GET 会稳定返回 (M0003)"系统忙"
-                data={
-                    "train_start_date": _search_date(date_str),
-                    "train_station_code": station_code,
-                },
-            )
-            resp.raise_for_status()
-            payload = resp.json()
+        client = await get_client()
+        resp = await client.post(
+            SCREEN_URL,
+            headers=headers,
+            # ⚠️ 必须 POST：改成 GET 会稳定返回 (M0003)"系统忙"
+            data={
+                "train_start_date": _search_date(date_str),
+                "train_station_code": station_code,
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
     except Exception as e:  # noqa: BLE001 —— 统一归一化为可读错误
         raise Realtime12306Error(
             f"12306 车站大屏接口不可达（{type(e).__name__}）"
@@ -707,8 +702,6 @@ async def get_car_detail(train_code: str, train_date: str) -> dict | None:
     """
     import time as _time
 
-    import httpx
-
     code = str(train_code or "").strip().upper()
     day = normalize_date(train_date or "")
     if not code or not day:
@@ -719,20 +712,20 @@ async def get_car_detail(train_code: str, train_date: str) -> dict | None:
     if hit and now - hit[0] < _CAR_DETAIL_TTL_S:
         return hit[1] or None
 
-    from app.tools._http import BROWSER_HEADERS
+    from app.tools._http import BROWSER_HEADERS, get_client
 
     headers = dict(BROWSER_HEADERS)
     headers["Accept"] = "application/json, text/plain, */*"
     headers["Referer"] = "https://mobile.12306.cn/"
 
     async def _once() -> dict | None:
-        async with httpx.AsyncClient(http2=False, timeout=12) as client:
-            resp = await client.get(CAR_DETAIL_URL, headers=headers, params={
-                "carCode": "", "trainCode": code,
-                "runningDay": day.replace("-", ""), "reqType": "form",
-            })
-            resp.raise_for_status()
-            payload = resp.json()
+        client = await get_client()
+        resp = await client.get(CAR_DETAIL_URL, headers=headers, params={
+            "carCode": "", "trainCode": code,
+            "runningDay": day.replace("-", ""), "reqType": "form",
+        }, timeout=12)
+        resp.raise_for_status()
+        payload = resp.json()
         # ⚠️ 判据看 content.data，而不是外层 status（见上方注释 2）
         data = ((payload.get("content") or {}).get("data") or {})
         car_code = str(data.get("carCode") or "").strip()

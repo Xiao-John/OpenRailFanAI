@@ -15,6 +15,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import sqlite3
 import time
@@ -149,16 +150,51 @@ def distance_between(from_station: str, to_station: str) -> dict | None:
 
 # ---------- jprailfan：线路汇总 / 逐站里程 / 车站档案 ----------
 
-def _polite_get(params: dict) -> str:
-    global _last_call
-    import httpx
+_polite_lock: "asyncio.Lock | None" = None
+_polite_lock_loop = None
 
-    wait = float(_settings().dict_site_min_interval_s or 2.0) - (time.time() - _last_call)
-    if wait > 0:
-        time.sleep(wait)
-    _last_call = time.time()
-    with httpx.Client(headers={"User-Agent": _UA}, timeout=120, follow_redirects=True) as c:
-        r = c.get("https://www.jprailfan.com/tools/stat/index.php", params=params)
+
+def _polite_lock_for_loop() -> "asyncio.Lock":
+    """取当前事件循环的"礼貌间隔"锁。
+
+    锁**按事件循环惰性创建**：模块级 `asyncio.Lock()` 会把自身绑定到首次使用它的循环，
+    而测试/脚本会反复 `asyncio.run()`（每次都是新循环），复用同一个锁会直接报
+    "is bound to a different event loop"。
+    """
+    global _polite_lock, _polite_lock_loop
+    loop = asyncio.get_running_loop()
+    if _polite_lock is None or _polite_lock_loop is not loop:
+        _polite_lock = asyncio.Lock()
+        _polite_lock_loop = loop
+    return _polite_lock
+
+
+async def _polite_get(params: dict) -> str:
+    """对 jprailfan 发一次请求，并保证两次请求**起点**间隔 ≥ `dict_site_min_interval_s`。
+
+    ⚠️ 必须是 async，且必须持有锁：这里原来是同步 `httpx.Client(timeout=120)` + `time.sleep`，
+    被 async 工具 `rail_mileage` 直接调用 → **阻塞整个事件循环最长约 120 秒**。
+    期间该 worker 上所有并发请求、所有进行中的 SSE 流全部停摆，且日志里没有任何异常
+    （表现是"服务莫名其妙卡死"，不是"某个请求慢"）。
+    锁把"礼貌间隔"变成并发调用之间的**排队**，而不是各自 sleep 完一起打过去。
+    """
+    global _last_call
+    interval = float(_settings().dict_site_min_interval_s or 2.0)
+    async with _polite_lock_for_loop():
+        wait = interval - (time.time() - _last_call)
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _last_call = time.time()
+        from app.tools._http import get_client
+
+        client = await get_client()
+        r = await client.get(
+            "https://www.jprailfan.com/tools/stat/index.php",
+            params=params,
+            # 个人站点：可识别 UA + 长超时（页面大、站点慢），覆盖共享 client 的默认超时
+            headers={"User-Agent": _UA},
+            timeout=120.0,
+        )
         r.raise_for_status()
         return r.text
 
@@ -197,11 +233,14 @@ def search_lines(keyword: str, limit: int = 8) -> list[dict]:
              "mileage_km": r["mileage_km"]} for r in rows]
 
 
-def line_stations(line: str, *, force: bool = False) -> list[dict]:
+async def line_stations(line: str, *, force: bool = False) -> list[dict]:
     """线路逐站里程表（本地优先；未命中则抓一次并回填缓存）。
 
     含 12306 没有的字段：电报码 / TMIS 车站编号 / 是否接算站 / 营业限制，
     以及 `京津所` 这类**线路连接点**（页面注明"不是铁路车站"）。
+
+    ⚠️ async：未命中本地缓存时会联网抓 jprailfan（最长 120 s），调用方必须 `await`，
+    否则会把这个**同步阻塞**重新引回事件循环（见 `_polite_get` 的说明）。
     """
     name = str(line or "").strip()
     if not name:
@@ -212,7 +251,7 @@ def line_stations(line: str, *, force: bool = False) -> list[dict]:
     import datetime as _dt
     import re
 
-    html = _polite_get({"linename": name})
+    html = await _polite_get({"linename": name})
     now = _dt.datetime.now(_dt.timezone.utc).isoformat()
     records = []
     for cells in _rows(html):
@@ -240,8 +279,11 @@ def line_stations(line: str, *, force: bool = False) -> list[dict]:
     return [dict(r) for r in _read("SELECT * FROM line_station WHERE line = ? ORDER BY seq", (name,))]
 
 
-def station_profile(station: str, *, force: bool = False) -> dict | None:
-    """车站档案（本地优先；未命中抓一次并回填）。含 12306 没有的编号/接算站/营业限制。"""
+async def station_profile(station: str, *, force: bool = False) -> dict | None:
+    """车站档案（本地优先；未命中抓一次并回填）。含 12306 没有的编号/接算站/营业限制。
+
+    ⚠️ async：未命中本地缓存时会联网抓 jprailfan，调用方必须 `await`。
+    """
     name = str(station or "").strip()
     if not name:
         return None
@@ -250,7 +292,7 @@ def station_profile(station: str, *, force: bool = False) -> dict | None:
         return dict(cached[0])
     import datetime as _dt
 
-    html = _polite_get({"statinfo": name})
+    html = await _polite_get({"statinfo": name})
     rows = _rows(html)
     now = _dt.datetime.now(_dt.timezone.utc).isoformat()
     for cells in rows:

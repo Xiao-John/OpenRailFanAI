@@ -15,6 +15,7 @@
 //   6) 无需登录：对话匿名可用，不存任何凭据
 import { store } from "./store.js";
 import { renderMarkdown } from "./markdown.js";
+import { rafThrottle } from "./throttle.js";
 import { native } from "./native.js";
 import { renderDocPage, renderSettingsPage, versionLabel, loadAppVersion,
          ROOT_KEY_ID } from "./pages.js";
@@ -246,6 +247,7 @@ async function shareText(msg) {
 }
 
 function scrollBottom() { chatEl.scrollTop = chatEl.scrollHeight; }
+
 function relTime(ts) {
   const d = Date.now() - (ts || 0);
   if (d < 60e3) return "刚刚";
@@ -711,6 +713,16 @@ async function runAssistant(convId, userIndex) {
     persist();
   };
 
+  // 流式正文渲染节流。原先每个 delta 都 `renderMarkdown(整篇) + innerHTML`：
+  // 一次回答上百个 delta 就把整篇 Markdown 重新解析、整棵 DOM 重新排版上百次，
+  // 长回答（逐站列表、表格）在移动 WebView 上表现为滚动卡顿、键盘跟随迟滞。
+  // 现在 delta 只累加到字符串，渲染合并成"每帧最多一次、且间隔 ≥ 50 ms"，
+  // 结束时的收尾渲染仍是一次完整渲染（见 finally）。
+  const renderAnswer = rafThrottle(() => {
+    refs.ans.innerHTML = renderMarkdown(answerRaw) + '<span class="caret"></span>';
+    scrollBottom();
+  }, 50);
+
   try {
     const resp = await fetch(API_BASE + "/api/chat/stream", {
       method: "POST",
@@ -776,8 +788,7 @@ async function runAssistant(convId, userIndex) {
           case "answer":
             answerRaw += ev.delta || "";
             assistant.content = answerRaw;
-            refs.ans.innerHTML = renderMarkdown(answerRaw) + '<span class="caret"></span>';
-            scrollBottom();
+            renderAnswer();
             persistThrottled();
             break;
           case "billing":            // M11.3 起下发：先记录，暂不展示
@@ -854,6 +865,9 @@ async function runAssistant(convId, userIndex) {
       refs.bubble.appendChild(el("div", "error-box", "⚠️ " + assistant.meta.error));
     }
   } finally {
+    // 先取消可能还挂着的节流渲染：否则它会在收尾渲染之后重画一次，
+    // 把已经摘掉的 caret 又贴回去（表现为回答写完了光标还在闪）。
+    renderAnswer.cancel();
     if (!finished && !assistant.meta.stopped && !assistant.meta.error) {
       assistant.meta = { ...assistant.meta, error: "连接中断，回答可能不完整" };
       refs.bubble.appendChild(el("div", "error-box", "⚠️ 连接中断，回答可能不完整"));

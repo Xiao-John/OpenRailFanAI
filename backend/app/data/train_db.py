@@ -19,9 +19,9 @@ import re
 import time
 from pathlib import Path
 
-import httpx
 
 from app.config import get_settings
+from app.tools._http import get_client
 
 _log = logging.getLogger("railfan.data")
 
@@ -30,15 +30,12 @@ _TRAIN_URL = "https://kyfw.12306.cn/otn/resources/js/query/train_list.js"
 
 
 async def _download_raw(url: str, timeout: float = 15) -> str:
-    settings = get_settings()
-    async with httpx.AsyncClient(
-        timeout=timeout,
-        follow_redirects=True,
-        headers={"User-Agent": "RailFanAI/0.3"},
-    ) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.text
+    client = await get_client()
+    resp = await client.get(
+        url, headers={"User-Agent": "RailFanAI/0.3"}, timeout=timeout
+    )
+    resp.raise_for_status()
+    return resp.text
 
 
 def _parse_train_list(text: str) -> dict[str, dict]:

@@ -127,7 +127,50 @@ def test_tool_station_profile_and_missing():
     print("[PASS] rail.mileage 车站档案 + 非法站名/缺参优雅失败")
 
 
-# ---------- 3. 检索层路由（性能相关）----------
+# ---------- 字典层抓取：不得阻塞事件循环（perf P0-1）----------
+
+def test_polite_fetch_never_blocks_the_event_loop():
+    """P0-1：抓 jprailfan 必须走 async，**绝不能有同步阻塞**。
+
+    为什么单列一条：这里曾经是同步 `httpx.Client(timeout=120)` + `time.sleep(2)`，
+    而被 async 工具 `rail_mileage` 直接调用 —— 本地字典未命中时（按线路名查逐站里程 /
+    查车站档案），**整个事件循环会被占住最长约 120 秒**：同一 worker 上所有并发请求、
+    所有进行中的 SSE 流一起停摆，日志里却没有任何异常（表现是"服务莫名卡死"）。
+    所以这里钉的不是"快不快"，而是"会不会把服务打停"。
+
+    断言分两层：调用面必须是协程（否则调用方漏 `await` 也发现不了）；
+    模块里不许再出现同步 client / 同步 sleep。
+    """
+    import ast
+    import inspect
+    from pathlib import Path
+
+    from app.data import dict as D
+
+    for fn in (D._polite_get, D.line_stations, D.station_profile):
+        assert inspect.iscoroutinefunction(fn), f"{fn.__name__} 必须是 async（否则会阻塞事件循环）"
+
+    # 用 AST 找**实际调用**，不匹配注释/文档字符串里的同名字样
+    src = Path(D.__file__).read_text(encoding="utf-8")
+    banned = {("httpx", "Client"), ("httpx", "get"), ("time", "sleep")}
+    found = []
+    for node in ast.walk(ast.parse(src)):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        owner = node.func.value
+        if isinstance(owner, ast.Name) and (owner.id, node.func.attr) in banned:
+            found.append(f"{owner.id}.{node.func.attr}() @ line {node.lineno}")
+    assert not found, f"字典层又出现了同步阻塞调用：{found}"
+
+    # 礼貌间隔必须是"排队"而不是"各自 sleep 完一起打过去"
+    async def _same_lock() -> bool:
+        return D._polite_lock_for_loop() is D._polite_lock_for_loop()
+
+    assert asyncio.run(_same_lock()), "礼貌锁不是同一把（并发时形同虚设）"
+    print("[PASS] 字典层抓取为 async，无同步阻塞，且礼貌间隔由锁串行化")
+
+
+# ---------- 检索层路由（性能相关）----------
 
 class _Recorder:
     def __init__(self) -> None:
@@ -203,6 +246,7 @@ def main():
     test_tool_two_stations()
     test_tool_line_table_marks_connectors()
     test_tool_station_profile_and_missing()
+    test_polite_fetch_never_blocks_the_event_loop()
     test_pure_mileage_question_skips_slow_tools()
     test_stops_question_still_uses_line_tool()
     test_station_profile_routing_uses_authoritative_index()

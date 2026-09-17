@@ -151,7 +151,7 @@ class RailMileageTool(Tool):
                 fetched_at=fetched,
             )
 
-        rows = D.line_stations(line)
+        rows = await D.line_stations(line)
         head = (f"{master['line']}：{master['from_station']} → {master['to_station']}，"
                 f"**全程 {master['mileage_km']} km**")
         if not rows:
@@ -199,7 +199,7 @@ class RailMileageTool(Tool):
 
     async def _station_profile(self, station: str) -> ToolResult:
         fetched = _now_iso()
-        prof = D.station_profile(station)
+        prof = await D.station_profile(station)
         if not prof:
             return ToolResult(
                 ok=False,

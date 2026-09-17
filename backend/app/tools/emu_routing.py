@@ -28,7 +28,7 @@ import httpx
 
 from app.config import get_settings
 from app.dates import normalize_date
-from app.tools._http import BROWSER_HEADERS, format_error
+from app.tools._http import BROWSER_HEADERS, format_error, get_client
 from app.tools import _rt12306 as rt
 from app.tools.base import Tool, ToolResult
 
@@ -136,14 +136,12 @@ class EmuRoutingTool(Tool):
             kind_label = "车组"
 
         try:
-            async with httpx.AsyncClient(
-                timeout=settings.http_timeout,
-                follow_redirects=True,
-                headers=BROWSER_HEADERS,
-            ) as client:
-                resp = await client.get(url)
-                resp.raise_for_status()
-                payload = resp.json()
+            client = await get_client()
+            resp = await client.get(
+                url, headers=BROWSER_HEADERS, timeout=settings.http_timeout
+            )
+            resp.raise_for_status()
+            payload = resp.json()
         except httpx.HTTPStatusError as e:
             status = getattr(getattr(e, "response", None), "status_code", None)
             if status == 404:

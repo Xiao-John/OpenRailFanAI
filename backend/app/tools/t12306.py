@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import date
 
 from app.config import get_settings
-from app.tools._http import format_error
+from app.tools._http import format_error, get_client
 from app.tools.base import Tool, ToolResult
 
 
@@ -48,16 +48,15 @@ class T12306Tool(Tool):
             q["leftTicketDTO"]["to_station_code"] = params["to_station"]
 
         try:
-            import httpx
-
-            async with httpx.AsyncClient(timeout=settings.http_timeout) as client:
-                resp = await client.get(
-                    f"{base}/leftTicket/query",
-                    params=q,
-                    headers={"User-Agent": "RailFanAI/0.3"},
-                )
-                resp.raise_for_status()
-                payload = resp.json()
+            client = await get_client()
+            resp = await client.get(
+                f"{base}/leftTicket/query",
+                params=q,
+                headers={"User-Agent": "RailFanAI/0.3"},
+                timeout=settings.http_timeout,
+            )
+            resp.raise_for_status()
+            payload = resp.json()
         except Exception as e:  # noqa: BLE001
             return ToolResult(
                 ok=False,

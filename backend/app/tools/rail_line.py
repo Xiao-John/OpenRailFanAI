@@ -19,10 +19,9 @@ import re
 import time
 from urllib.parse import quote
 
-import httpx
 
 from app.config import get_settings
-from app.tools._http import BROWSER_HEADERS, format_error, post_text
+from app.tools._http import BROWSER_HEADERS, format_error, get_client, post_text
 from app.tools.base import Tool, ToolResult
 
 _log = logging.getLogger("railfan.tools")
@@ -365,14 +364,14 @@ class RailLineTool(Tool):
 
     async def _fetch(self, from_st: str, to_st: str, settings) -> str:
         url = f"{_BASE}?action=shrtroute&startstat={quote(from_st)}&endstat={quote(to_st)}"
-        async with httpx.AsyncClient(
-            timeout=max(settings.http_timeout, 30.0),   # 页面约 800KB
-            follow_redirects=True,
+        client = await get_client()
+        resp = await client.get(
+            url,
             headers=BROWSER_HEADERS,
-        ) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            return resp.text
+            timeout=max(settings.http_timeout, 30.0),   # 页面约 800KB
+        )
+        resp.raise_for_status()
+        return resp.text
 
     async def invoke(self, params: dict) -> ToolResult:
         settings = get_settings()

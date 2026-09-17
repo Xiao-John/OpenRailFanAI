@@ -12,7 +12,7 @@
 
 | 项 | 值 |
 |---|---|
-| 后端 | **Python 3.12**（要求 ≥ 3.10）、FastAPI、pydantic v2、pydantic-settings |
+| 后端 | **Python 3.12**（要求 ≥ 3.10）、FastAPI、**pydantic v1**（`from pydantic import BaseSettings`，**刻意不用 v2**：Android 一体化把 Python 运行时随 APK 分发，v2 依赖的 `pydantic-core` 是 Rust 扩展，Chaquopy 上没有可用轮子；见 `backend/app/config.py` 开头） |
 | LLM / 数据源库 | OpenAI 兼容（`AsyncOpenAI`），**多供应商 + 双 API 方言**：默认供应商沿用 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`，另可用 `LLM_PROVIDER` 选 11 家内置目录之一，或用 `LLM_PROVIDERS` / `LLM_PROVIDERS_FILE` 添加自定义供应商；`api=auto` 时先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存结论（两种方言的响应结构与 usage 字段名不同，已在 `app/llm/client.py` 抹平）；用户可在界面「设置」里用自己的 Key（BYOK），随请求下发、服务端不落库。`LLM_MOCK=true` 走确定性本地 mock；依赖 `mcp-server-12306`（12306 实时）、`httpx[http2]`、`brotli`（浏览器级请求头所需）、`pypinyin`（站名同音纠错） |
 | 前端 | 原生 HTML + JS（无构建工具），由 FastAPI 静态托管，SSE 流式；**移动优先三端自适应**，支持多对话并存 |
 | 网络前提 | **中国境内出口**（12306 与 rail.re 均仅境内可达） |
@@ -31,7 +31,7 @@ cd backend && PYTHONPATH=. .venv/bin/uvicorn app.main:app --host 127.0.0.1 --por
 
 ```
 backend/app/
-  main.py / config.py      # 入口（/health、挂 /api、静态托管前端）/ pydantic-settings 读根目录 .env
+  main.py / config.py      # 入口（/health、挂 /api、静态托管前端）/ pydantic v1 读根目录 .env
   dates.py / od.py         # 日期归一化（今天/明天/9月14日 → YYYY-MM-DD）/ 起讫站解析（"北京到上海"）
   context.py / models.py   # 多轮上下文裁剪（最近 6 条 · 单条 800 字 · 合计 3000 字）/ ChatRequest·PipelineResult
   api/chat.py              # POST /api/chat + /api/chat/stream(SSE) + GET /api/sessions

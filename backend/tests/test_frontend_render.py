@@ -150,11 +150,51 @@ def test_only_tables_scroll_horizontally():
     print("[PASS] 页面禁止横向滚动，只有表格自带滚动容器，代码块折行")
 
 
+def test_streaming_render_is_throttled():
+    """流式正文渲染必须**合并 + 限频**，并且收尾时要能取消。
+
+    为什么：原先每个 delta 都 `renderMarkdown(整篇) + innerHTML`，一次回答上百个 delta
+    就把整篇 Markdown 重新解析、整棵子树重新排版上百次（代价随回答长度增长，O(n²)）——
+    桌面端看不出来，移动 WebView 上就是滚动卡顿、键盘跟随迟滞。
+
+    最后那条断言同样是回归项：若收尾渲染之后还有一次排队中的渲染，它会把已经摘掉的
+    流式光标重新贴回去（回答写完了光标还在闪）。所以 `finally` 里必须先 `.cancel()`。
+    """
+    js = (REPO_ROOT / "frontend/src/main.js").read_text(encoding="utf-8")
+    assert 'from "./throttle.js"' in js, "main.js 没有引入节流器"
+    assert "renderAnswer()" in js and "renderAnswer.cancel()" in js, (
+        "delta 没有走节流渲染，或收尾时没有取消挂起的那一次"
+    )
+    assert "function rafThrottle" not in js, "节流器应留在 throttle.js 才可脱离浏览器测试"
+    branch = js.split('case "answer":', 1)[1].split("break;", 1)[0]
+    assert "renderAnswer()" in branch, "answer 分支没有走节流渲染"
+    assert "innerHTML" not in branch, (
+        "answer 分支又直接写 innerHTML 了：等于每个 delta 全量渲染一次"
+    )
+
+    node = shutil.which("node")
+    if not node:
+        print("[SKIP] 未安装 node，跳过节流器单测")
+        return
+    harness = REPO_ROOT / "frontend" / "tests" / "throttle.test.mjs"
+    assert harness.exists(), f"缺少测试脚本：{harness}"
+    proc = subprocess.run(
+        [node, str(harness)], capture_output=True, text=True, timeout=120, cwd=str(REPO_ROOT)
+    )
+    out = (proc.stdout or "") + (proc.stderr or "")
+    for line in out.splitlines():
+        if line.startswith(("[PASS]", "[FAIL]", "结果")):
+            print(line)
+    assert proc.returncode == 0, f"节流器测试失败：\n{out}"
+    print("[PASS] 流式渲染已合并限频，且收尾 cancel() 不会重贴光标")
+
+
 def main():
     test_markdown_tables_render()
     test_renderer_is_a_separate_module()
     test_answer_layout_and_focus()
     test_interrupted_answer_is_visible()
+    test_streaming_render_is_throttled()
     test_cdp_tool_bypasses_system_proxy()
     test_only_tables_scroll_horizontally()
     print("\n前端渲染测试全部通过 ✔")

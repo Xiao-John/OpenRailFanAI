@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import asyncio
+from unittest.mock import patch
 
 from app.pipeline import retrieve as retrieve_mod
 from app.pipeline.extract import Slots
@@ -128,12 +129,13 @@ class _Recorder:
 
 
 class _FakeHttpx:
-    """把 emu_routing 的 httpx.AsyncClient 换成固定响应（离线）。"""
+    """把 emu_routing 的共享 client 入口换成固定响应（离线）。"""
 
     def __init__(self, payload_by_code: dict[str, list[dict]]):
         self._payload = payload_by_code
 
-    def AsyncClient(self, **_kw):  # noqa: N802
+    async def __call__(self):
+        """P0-2 起工具层调的是 `get_client()`（async），不是一个 httpx 模块属性。"""
         return _FakeClient(self._payload)
 
 
@@ -380,12 +382,8 @@ def test_emu_routing_labels_record_time_not_train_time():
     from app.tools import emu_routing as er
 
     payload = [{"date": "2026-09-14 11:24", "emu_no": "CR400BFA5159", "train_no": "G1"}]
-    original = er.httpx
-    er.httpx = _FakeHttpx({"G1": payload})          # type: ignore[assignment]
-    try:
+    with patch.object(er, "get_client", _FakeHttpx({"G1": payload})):
         res = asyncio.run(er.EmuRoutingTool().invoke({"train": "G1"}))
-    finally:
-        er.httpx = original                          # type: ignore[assignment]
     assert res.ok, res.error
     assert "交路记录时刻" in res.text, res.text
     assert "非列车到发时刻" in res.text, res.text

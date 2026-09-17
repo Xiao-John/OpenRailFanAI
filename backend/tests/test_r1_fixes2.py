@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+from unittest.mock import patch
 
 from app.pipeline import retrieve as retrieve_mod
 from app.pipeline.extract import Slots
@@ -109,35 +110,18 @@ def test_railre_404_means_not_found_not_failure():
     import httpx
 
     class _Client:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *_exc):
-            return False
-
         async def get(self, url, **_kw):
             req = httpx.Request("GET", url)
             resp = httpx.Response(404, request=req)
             raise httpx.HTTPStatusError("404 Not Found", request=req, response=resp)
 
-    class _FakeModule:
-        """只替换 AsyncClient，其余属性（HTTPStatusError 等）转发给真实 httpx。"""
+    async def _fake_get_client():
+        return _Client()
 
-        def __init__(self, real):
-            self._real = real
-
-        def __getattr__(self, name):
-            return getattr(self._real, name)
-
-        def AsyncClient(self, **_kw):  # noqa: N802
-            return _Client()
-
-    original = er.httpx
-    er.httpx = _FakeModule(httpx)           # type: ignore[assignment]
-    try:
+    # P0-2 起工具层不再各自 `httpx.AsyncClient(...)`，而是向共享入口取 client，
+    # 所以假实现挂在 `get_client` 上（`httpx.HTTPStatusError` 仍是真实类，无需替换）。
+    with patch.object(er, "get_client", _fake_get_client):
         res = asyncio.run(er.EmuRoutingTool().invoke({"train": "G99999"}))
-    finally:
-        er.httpx = original                 # type: ignore[assignment]
     assert res.ok is False, res
     assert "不存在" in res.error and "404" in res.error, res.error
     print(f"[PASS] K01 404 -> {res.error}")
@@ -217,14 +201,13 @@ def test_web_search_freshness_note():
     """时效过滤必须体现在 note 里（Bing 支持、百度不支持时也要说明）。"""
     from app.tools import web_search as ws
 
-    original = ws.httpx
-    try:
-        ws.httpx = _FakeHttpx({                              # type: ignore[assignment]
+    async def _fake_get_client():
+        return _FakeHttpx({                                  # type: ignore[arg-type]
             "cn.bing.com": _FakeResp(_BING_OK),
         })
+
+    with patch.object(ws, "get_client", _fake_get_client):
         res = asyncio.run(ws.WebSearchTool2().invoke({"q": "沪苏湖高铁 开通", "freshness": "month"}))
-    finally:
-        ws.httpx = original                                  # type: ignore[assignment]
     assert res.ok, res.error
     assert "时效过滤" in res.note, res.note
     print(f"[PASS] 时效过滤标注 -> {res.note[:60]}…")

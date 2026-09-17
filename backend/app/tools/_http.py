@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import logging
 import re
@@ -17,6 +18,11 @@ from app.config import get_settings
 _log = logging.getLogger("railfan.http")
 
 _ALLOWED_SCHEMES = ("http", "https")
+
+# 进程内共享的抓取 client（懒建，见 `get_client`）。
+# `_client_loop` 记录创建它的事件循环：连接池的锁绑定在循环上，跨循环复用会直接报错。
+_client: httpx.AsyncClient | None = None
+_client_loop = None
 
 
 class UnsafeUrlError(ValueError):
@@ -88,6 +94,65 @@ BROWSER_HEADERS = {
 }
 
 
+async def aclose_client() -> None:
+    """关闭共享 client（FastAPI lifespan 结束时调用，避免"未关闭的 client"告警）。"""
+    global _client, _client_loop
+    if _client is not None and not _client.is_closed:
+        try:
+            await _client.aclose()
+        except Exception:  # noqa: BLE001 —— 关闭失败不该影响进程退出
+            pass
+    _client = None
+    _client_loop = None
+
+
+async def get_client() -> httpx.AsyncClient:
+    """进程内**共享**的 `httpx.AsyncClient`（懒建）。
+
+    为什么共享：此前 11 处各自 `async with httpx.AsyncClient(...)`，每次工具调用都要重付
+    TCP 三次握手 + TLS 握手（境内站点约 100–300 ms）；并发下几个工具各开各的池子，
+    谁也复用不了谁 —— `photo_spot` 那种 4 工具计划里，省的是"最慢那条"的墙钟时间。
+
+    语义约定（改这里之前先读 `docs/run.md:153`）：
+    - `trust_env=False`：**不继承环境/系统代理**。这既是 `assert_public_url` 的 SSRF 校验不被绕过
+      的前提，也是让抓取行为可预期（macOS 开着系统代理时环回请求会被塞进代理，报莫名的 502）。
+      这是全项目抓取层的既有约定，改成按调用点区分做不到（http2/代理是 client 级选项）；
+    - **不设 client 默认 headers**：各调用点历史 UA / Referer 差异很大（浏览器 UA、`RailFanAI/0.3`、
+      12306 专用 Referer），一律由调用方显式 `headers=` 传入，避免"共享后悄悄多出几个头"；
+    - `http2=True`：原本 12306 的 kyfw 通道就是 h2，其余站点走 ALPN 协商，
+      服务端不支持时 httpx 自动回落 http/1.1；
+    - 超时用 client 默认值，**调用点可按需覆盖**（`client.get(..., timeout=10)`），
+      这样各站点原有的 10/12/15/30/120 s 分级保持原样。
+    """
+    global _client, _client_loop
+    loop = asyncio.get_running_loop()
+    if _client is not None and _client_loop is not loop:
+        # 连接池内部锁绑定在创建它的事件循环上，**不能跨循环复用**。
+        # 测试与脚本会反复 asyncio.run()（每次新循环）→ 这里直接丢弃旧 client 重建。
+        # 旧循环已死，无法 await aclose()，交给 GC 回收即可。
+        _client = None
+    if _client is None or _client.is_closed:
+        kwargs: dict = {
+            "timeout": get_settings().http_timeout,
+            "follow_redirects": True,
+            "trust_env": False,
+            "limits": httpx.Limits(
+                max_connections=20, max_keepalive_connections=10, keepalive_expiry=90.0
+            ),
+        }
+        try:
+            _client = httpx.AsyncClient(http2=True, **kwargs)
+        except ImportError:
+            # 缺 `h2` 包时 http2=True 会直接抛 ImportError。这条路径一旦被漏掉，
+            # 表现是"所有工具都连不上"——比慢一点严重得多，所以这里兜住并**留日志**：
+            # 静默降级会变成"只是慢一点"，没人查得出来（Android 是 --no-deps 安装，
+            # 最容易漏依赖，见 android/requirements.txt 与 tests/test_android.py）。
+            _log.warning("缺少 h2 包，抓取层退回 HTTP/1.1（检查 android/requirements.txt 是否锁定 h2）")
+            _client = httpx.AsyncClient(http2=False, **kwargs)
+        _client_loop = loop
+    return _client
+
+
 async def get_text(
     url: str,
     *,
@@ -126,32 +191,29 @@ async def get_text_ex(
     if headers:
         merged.update(headers)
     truncated = False
-    # ⚠️ trust_env=False：**本函数带 SSRF 防护，绝不能走环境/系统代理**。
+    # ⚠️ 共享 client 上 trust_env=False：**本函数带 SSRF 防护，绝不能走环境/系统代理**。
     # 原因有二：
     #   1) 走代理后 `assert_public_url` 的校验形同虚设 —— 真正发起连接的是代理，
     #      它完全可以访问我们刚拦下的内网地址（防护被绕过）；
     #   2) macOS 系统代理一旦开启（含本机代理软件），环回地址请求也会被塞进代理，
     #      本地服务返回 502，表现为"莫名其妙的抓取失败"（实测踩过）。
     # 需要代理时应显式配置，而不是隐式继承环境。
-    async with httpx.AsyncClient(
-        timeout=settings.http_timeout,
-        follow_redirects=True,
-        headers=merged,
-        trust_env=False,
-    ) as client:
-        async with client.stream("GET", url, params=params) as resp:
-            resp.raise_for_status()
-            chunks: list[bytes] = []
-            total = 0
-            async for chunk in resp.aiter_bytes():
-                if total + len(chunk) > limit:
-                    chunks.append(chunk[: max(0, limit - total)])
-                    truncated = True
-                    break
-                chunks.append(chunk)
-                total += len(chunk)
-            raw = b"".join(chunks)
-            encoding = resp.encoding or "utf-8"
+    client = await get_client()
+    async with client.stream(
+        "GET", url, params=params, headers=merged, timeout=settings.http_timeout
+    ) as resp:
+        resp.raise_for_status()
+        chunks: list[bytes] = []
+        total = 0
+        async for chunk in resp.aiter_bytes():
+            if total + len(chunk) > limit:
+                chunks.append(chunk[: max(0, limit - total)])
+                truncated = True
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        raw = b"".join(chunks)
+        encoding = resp.encoding or "utf-8"
     if truncated:
         _log.warning("响应体超过 %d 字节上限，已截断：%s", limit, url)
     return raw.decode(encoding, errors="replace"), truncated
@@ -247,29 +309,22 @@ async def post_text(
     merged["Content-Type"] = "application/x-www-form-urlencoded"
     if headers:
         merged.update(headers)
-    # ⚠️ trust_env=False：**本函数带 SSRF 防护，绝不能走环境/系统代理**。
-    # 原因有二：
-    #   1) 走代理后 `assert_public_url` 的校验形同虚设 —— 真正发起连接的是代理，
-    #      它完全可以访问我们刚拦下的内网地址（防护被绕过）；
-    #   2) macOS 系统代理一旦开启（含本机代理软件），环回地址请求也会被塞进代理，
-    #      本地服务返回 502，表现为"莫名其妙的抓取失败"（实测踩过）。
-    # 需要代理时应显式配置，而不是隐式继承环境。
-    async with httpx.AsyncClient(
-        timeout=timeout or max(settings.http_timeout, 30.0),
-        follow_redirects=True,
-        headers=merged,
-        trust_env=False,
-    ) as client:
-        async with client.stream("POST", url, data=data) as resp:
-            resp.raise_for_status()
-            chunks: list[bytes] = []
-            total = 0
-            async for chunk in resp.aiter_bytes():
-                if total + len(chunk) > limit:
-                    chunks.append(chunk[: max(0, limit - total)])
-                    break
-                chunks.append(chunk)
-                total += len(chunk)
-            raw = b"".join(chunks)
-            encoding = resp.encoding or "utf-8"
+    # ⚠️ 共享 client 上 trust_env=False：**本函数带 SSRF 防护，绝不能走环境/系统代理**。
+    # 原因见 `get_text_ex` 里的同一段说明。
+    timeout_s = timeout or max(settings.http_timeout, 30.0)
+    client = await get_client()
+    async with client.stream(
+        "POST", url, data=data, headers=merged, timeout=timeout_s
+    ) as resp:
+        resp.raise_for_status()
+        chunks: list[bytes] = []
+        total = 0
+        async for chunk in resp.aiter_bytes():
+            if total + len(chunk) > limit:
+                chunks.append(chunk[: max(0, limit - total)])
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        raw = b"".join(chunks)
+        encoding = resp.encoding or "utf-8"
     return raw.decode(encoding, errors="replace")

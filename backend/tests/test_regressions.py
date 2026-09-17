@@ -18,6 +18,7 @@ import asyncio
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest.mock import patch
 
 # ---------- 测试替身（Fake） ----------
 
@@ -53,16 +54,6 @@ class _FakeAsyncClient:
             if key in url:
                 return resp
         raise RuntimeError(f"未预置的 URL：{url}")
-
-
-class _FakeHttpxModule:
-    """替换模块内的 httpx，避免污染全局 httpx。"""
-
-    def __init__(self, mapping: dict[str, _FakeResponse]):
-        self._mapping = mapping
-
-    def AsyncClient(self, **_kw):  # noqa: N802 —— 模拟 httpx.AsyncClient
-        return _FakeAsyncClient(self._mapping)
 
 
 class _Chunk:
@@ -298,41 +289,43 @@ _BAIDU_RELEVANT = """
 def test_web_search_relevance_gate_and_baidu_fallback():
     from app.tools import web_search
 
-    original = web_search.httpx
-    try:
-        # 场景 A：Bing 有结果但全部无关 → 必须回退到百度（修复前永不回退）
-        web_search.httpx = _FakeHttpxModule({  # type: ignore[assignment]
-            "cn.bing.com": _FakeResponse(_BING_IRRELEVANT),
-            "www.baidu.com": _FakeResponse(_BAIDU_RELEVANT),
-        })
+    def _fake_get_client(mapping):
+        """P0-2 起工具层不再各自 `httpx.AsyncClient(...)`，改从共享入口取 client。"""
+        async def _get_client():
+            return _FakeAsyncClient(mapping)
+        return _get_client
+
+    # 场景 A：Bing 有结果但全部无关 → 必须回退到百度（修复前永不回退）
+    with patch.object(web_search, "get_client", _fake_get_client({
+        "cn.bing.com": _FakeResponse(_BING_IRRELEVANT),
+        "www.baidu.com": _FakeResponse(_BAIDU_RELEVANT),
+    })):
         res = asyncio.run(web_search.WebSearchTool2().invoke({"q": "CR400AF 动车组 交路"}))
-        assert res.ok, res.error
-        assert res.data["engine"] == "baidu", f"未回退到百度：{res.data}"
-        assert res.data["relevant_count"] >= 2, res.data
-        assert res.data["filtered_out"] >= 0
-        print(f"[PASS] 搜索引擎相关性闸门 -> 采用 {res.data['engine']}，"
-              f"相关 {res.data['relevant_count']} 条（统计={res.data['engine_stats']}）")
+    assert res.ok, res.error
+    assert res.data["engine"] == "baidu", f"未回退到百度：{res.data}"
+    assert res.data["relevant_count"] >= 2, res.data
+    assert res.data["filtered_out"] >= 0
+    print(f"[PASS] 搜索引擎相关性闸门 -> 采用 {res.data['engine']}，"
+          f"相关 {res.data['relevant_count']} 条（统计={res.data['engine_stats']}）")
 
-        # 场景 B：Bing 相关 → 直接用 Bing，并过滤无关条目
-        web_search.httpx = _FakeHttpxModule({  # type: ignore[assignment]
-            "cn.bing.com": _FakeResponse(_BING_RELEVANT),
-        })
+    # 场景 B：Bing 相关 → 直接用 Bing，并过滤无关条目
+    with patch.object(web_search, "get_client", _fake_get_client({
+        "cn.bing.com": _FakeResponse(_BING_RELEVANT),
+    })):
         res2 = asyncio.run(web_search.WebSearchTool2().invoke({"q": "CR400AF 动车组 交路"}))
-        assert res2.ok and res2.data["engine"] == "bing", res2.data
-        titles = [r["title"] for r in res2.data["results"]]
-        assert not any("无关广告页面" in t for t in titles), f"无关结果未被过滤：{titles}"
-        print(f"[PASS] 相关结果被保留、无关结果被过滤 -> {titles}")
+    assert res2.ok and res2.data["engine"] == "bing", res2.data
+    titles = [r["title"] for r in res2.data["results"]]
+    assert not any("无关广告页面" in t for t in titles), f"无关结果未被过滤：{titles}"
+    print(f"[PASS] 相关结果被保留、无关结果被过滤 -> {titles}")
 
-        # 场景 C：两个引擎都无关 → 如实失败，绝不把无关内容当答案
-        web_search.httpx = _FakeHttpxModule({  # type: ignore[assignment]
-            "cn.bing.com": _FakeResponse(_BING_IRRELEVANT),
-            "www.baidu.com": _FakeResponse(_BING_IRRELEVANT),
-        })
+    # 场景 C：两个引擎都无关 → 如实失败，绝不把无关内容当答案
+    with patch.object(web_search, "get_client", _fake_get_client({
+        "cn.bing.com": _FakeResponse(_BING_IRRELEVANT),
+        "www.baidu.com": _FakeResponse(_BING_IRRELEVANT),
+    })):
         res3 = asyncio.run(web_search.WebSearchTool2().invoke({"q": "CR400AF 动车组 交路"}))
-        assert res3.ok is False, "全无关时仍返回成功（宁缺毋滥被破坏）"
-        print(f"[PASS] 全部引擎均无关 -> ok=False 且如实说明 -> {res3.error[:40]}…")
-    finally:
-        web_search.httpx = original  # type: ignore[assignment]
+    assert res3.ok is False, "全无关时仍返回成功（宁缺毋滥被破坏）"
+    print(f"[PASS] 全部引擎均无关 -> ok=False 且如实说明 -> {res3.error[:40]}…")
 
 
 # ---------- 7. emu.routing 车型前缀 vs 单台车组 ----------
@@ -352,50 +345,52 @@ _TRAIN_PAYLOAD = [
 def test_emu_routing_series_vs_exact_and_input_validation():
     from app.tools import emu_routing
 
-    original = emu_routing.httpx
-    try:
-        # 场景 A：车型前缀匹配到多台 —— 必须如实说明"不是单台车组"
-        emu_routing.httpx = _FakeHttpxModule(  # type: ignore[assignment]
-            {"/emu/CR400AF": _FakeResponse(payload=_EMU_SERIES_PAYLOAD)}
-        )
+    def _fake_get_client(mapping):
+        """P0-2 起工具层改从共享入口取 client（见 `_http.get_client`）。"""
+        async def _get_client():
+            return _FakeAsyncClient(mapping)
+        return _get_client
+
+    # 场景 A：车型前缀匹配到多台 —— 必须如实说明"不是单台车组"
+    with patch.object(emu_routing, "get_client", _fake_get_client(
+        {"/emu/CR400AF": _FakeResponse(payload=_EMU_SERIES_PAYLOAD)}
+    )):
         res = asyncio.run(emu_routing.EmuRoutingTool().invoke({"emu_no": "CR400AF"}))
-        assert res.ok, res.error
-        assert res.data["match_mode"] == "series", res.data
-        assert res.data["unit_count"] == 3, res.data
-        # 只断言**不随当天时点漂移**的部分：车型前缀必须被识别为"多台车组"而非单台。
-        # （原先断言的是分支特有字样"不是单台车组"，而 rail.re 当天有无记录会走不同分支 → 时对时错）
-        assert "是车型/系列前缀" in res.text, res.text
-        assert "3 台车组" in res.text, res.text
-        print(f"[PASS] 车型前缀 -> series 模式，如实给出 {res.data['unit_count']} 台车组")
+    assert res.ok, res.error
+    assert res.data["match_mode"] == "series", res.data
+    assert res.data["unit_count"] == 3, res.data
+    # 只断言**不随当天时点漂移**的部分：车型前缀必须被识别为"多台车组"而非单台。
+    # （原先断言的是分支特有字样"不是单台车组"，而 rail.re 当天有无记录会走不同分支 → 时对时错）
+    assert "是车型/系列前缀" in res.text, res.text
+    assert "3 台车组" in res.text, res.text
+    print(f"[PASS] 车型前缀 -> series 模式，如实给出 {res.data['unit_count']} 台车组")
 
-        # 场景 B：具体车组号（带连字符也接受）→ 只保留该车组
-        emu_routing.httpx = _FakeHttpxModule(  # type: ignore[assignment]
-            {"/emu/CR400AF2001": _FakeResponse(payload=_EMU_SERIES_PAYLOAD)}
-        )
+    # 场景 B：具体车组号（带连字符也接受）→ 只保留该车组
+    with patch.object(emu_routing, "get_client", _fake_get_client(
+        {"/emu/CR400AF2001": _FakeResponse(payload=_EMU_SERIES_PAYLOAD)}
+    )):
         res2 = asyncio.run(emu_routing.EmuRoutingTool().invoke({"emu_no": "CR400AF-2001"}))
-        assert res2.ok, res2.error
-        assert res2.data["match_mode"] == "exact", res2.data
-        assert res2.data["count"] == 1, res2.data
-        print(f"[PASS] 单台车组 -> exact 模式，记录数={res2.data['count']}")
+    assert res2.ok, res2.error
+    assert res2.data["match_mode"] == "exact", res2.data
+    assert res2.data["count"] == 1, res2.data
+    print(f"[PASS] 单台车组 -> exact 模式，记录数={res2.data['count']}")
 
-        # 场景 C：接口顺手返回的其它车次必须被过滤掉
-        emu_routing.httpx = _FakeHttpxModule(  # type: ignore[assignment]
-            {"/train/G1": _FakeResponse(payload=_TRAIN_PAYLOAD)}
-        )
+    # 场景 C：接口顺手返回的其它车次必须被过滤掉
+    with patch.object(emu_routing, "get_client", _fake_get_client(
+        {"/train/G1": _FakeResponse(payload=_TRAIN_PAYLOAD)}
+    )):
         res3 = asyncio.run(emu_routing.EmuRoutingTool().invoke({"train": "G1"}))
-        assert res3.ok, res3.error
-        assert res3.data["count"] == 1, f"未过滤其它车次：{res3.data}"
-        assert all(r["train_code"] == "G1" for r in res3.data["records"]), res3.data
-        print("[PASS] 车次查询 -> 其它车次记录被过滤")
+    assert res3.ok, res3.error
+    assert res3.data["count"] == 1, f"未过滤其它车次：{res3.data}"
+    assert all(r["train_code"] == "G1" for r in res3.data["records"]), res3.data
+    print("[PASS] 车次查询 -> 其它车次记录被过滤")
 
-        # 场景 D：把车次号塞进车组槽位 → 直接拒绝（不再发出无意义请求）
-        res4 = asyncio.run(emu_routing.EmuRoutingTool().invoke({"emu_no": "G1"}))
-        assert res4.ok is False and "格式不正确" in res4.error, res4.error
-        res5 = asyncio.run(emu_routing.EmuRoutingTool().invoke({"train": "北京南"}))
-        assert res5.ok is False and "格式不正确" in res5.error, res5.error
-        print("[PASS] 车次/车组串槽位 -> 输入形态校验直接拒绝")
-    finally:
-        emu_routing.httpx = original  # type: ignore[assignment]
+    # 场景 D：把车次号塞进车组槽位 → 直接拒绝（不再发出无意义请求）
+    res4 = asyncio.run(emu_routing.EmuRoutingTool().invoke({"emu_no": "G1"}))
+    assert res4.ok is False and "格式不正确" in res4.error, res4.error
+    res5 = asyncio.run(emu_routing.EmuRoutingTool().invoke({"train": "北京南"}))
+    assert res5.ok is False and "格式不正确" in res5.error, res5.error
+    print("[PASS] 车次/车组串槽位 -> 输入形态校验直接拒绝")
 
 
 # ---------- 8. 日志净化 ----------

@@ -54,6 +54,8 @@ SUITES=(
   test_dict_mileage
   # 决策层性能优化（确定性快路径 / 合并调用 / 投机预取）
   test_perf_fastpath
+  # 静态资源交付（gzip 压缩 + 版本戳分级缓存；全部无网络）
+  test_static_assets
   # LLM 多供应商 / 双 API 方言（chat.completions 与 responses，含自动探测与参数降级；全部无网络）
   test_llm_providers
   # Android 一体化约束（依赖版本锁定 / 兼容层 / 工程接线；全部无网络）

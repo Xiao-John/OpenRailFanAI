@@ -21,10 +21,9 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
-import httpx
 
 from app.config import get_settings
-from app.tools._http import BROWSER_HEADERS, format_error
+from app.tools._http import BROWSER_HEADERS, format_error, get_client
 from app.tools.base import Tool, ToolResult
 
 # Bing 结果块：<li class="b_algo"> ... </li>
@@ -164,35 +163,31 @@ class WebSearchTool2(Tool):
 
         errors: list[str] = []
         attempts: list[tuple[str, int, list[dict], int]] = []   # engine, 相关数, 相关结果, 原始数
-        async with httpx.AsyncClient(
-            timeout=settings.http_timeout,
-            follow_redirects=True,
-            headers=BROWSER_HEADERS,
-        ) as client:
-            for engine, url, parser in engines:
-                try:
-                    resp = await client.get(url)
-                    resp.raise_for_status()
-                except Exception as e:
-                    errors.append(f"{engine}: {format_error(e)}")
-                    continue
+        client = await get_client()
+        for engine, url, parser in engines:
+            try:
+                resp = await client.get(url, headers=BROWSER_HEADERS)
+                resp.raise_for_status()
+            except Exception as e:
+                errors.append(f"{engine}: {format_error(e)}")
+                continue
 
-                parsed = parser(resp.text, limit)
-                if not parsed:
-                    errors.append(f"{engine}: 未解析出结果（页面结构可能变化）")
-                    attempts.append((engine, 0, [], 0))
-                    continue
+            parsed = parser(resp.text, limit)
+            if not parsed:
+                errors.append(f"{engine}: 未解析出结果（页面结构可能变化）")
+                attempts.append((engine, 0, [], 0))
+                continue
 
-                scored = sorted(
-                    ((_relevance(tokens, r), r) for r in parsed),
-                    key=lambda x: x[0],
-                    reverse=True,
-                )
-                relevant = [r for s, r in scored if s > 0]
-                attempts.append((engine, len(relevant), relevant, len(parsed)))
+            scored = sorted(
+                ((_relevance(tokens, r), r) for r in parsed),
+                key=lambda x: x[0],
+                reverse=True,
+            )
+            relevant = [r for s, r in scored if s > 0]
+            attempts.append((engine, len(relevant), relevant, len(parsed)))
 
-                if len(relevant) >= min(_MIN_RELEVANT, limit):
-                    break                      # 该引擎结果可信，无需再打下一个引擎
+            if len(relevant) >= min(_MIN_RELEVANT, limit):
+                break                      # 该引擎结果可信，无需再打下一个引擎
 
         if not attempts:
             return ToolResult(
