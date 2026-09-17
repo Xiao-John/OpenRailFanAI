@@ -46,8 +46,44 @@ _RELATIVE_KEYS = sorted(_RELATIVE, key=len, reverse=True)
 _ISO_RE = re.compile(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})")
 _COMPACT_RE = re.compile(r"\b(\d{4})(\d{2})(\d{2})\b")
 
-# 中文月份日期：9月14日
-_MD_RE = re.compile(r"(\d{1,2})月(\d{1,2})[日号]")
+# 日期里的数字：既认阿拉伯数字，也认中文数字。
+# 为什么必须认中文：**用户实测**问「十月一日西安到北京的火车」，`_MD_RE` 只写 \d 时
+# 完全匹配不上 → resolve_date 返回"未识别、按今天" → 工具查的是**当天**余票 →
+# 模型看到 date_note 的提示后只能让用户再问一遍。而"十月一日"是完全正常的说法。
+_CN_DIGITS = {"零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
+              "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+_NUM = r"(?:\d{1,2}|[一二三四五六七八九十]{1,3})"
+
+
+def _cn_num(s: str) -> int | None:
+    """把日期里的数字转成整数（只覆盖 1..31 这个量级，够用且不会误判）。
+
+    认识的写法：1 / 十一 / 二十 / 二十一 / 三十一。其余一律返回 None，
+    让调用方走"未识别"分支如实说明 —— 宁可说不认识，也不要猜一个日期去查。
+    """
+    s = (s or "").strip()
+    if not s:
+        return None
+    if s.isdigit():
+        return int(s)
+    if s == "十":
+        return 10
+    if s.startswith("十"):                       # 十一..十九
+        rest = s[1:]
+        return 10 + _CN_DIGITS[rest] if len(rest) == 1 and rest in _CN_DIGITS else None
+    if len(s) >= 2 and s[0] in _CN_DIGITS and s[1] == "十":   # 二十 / 二十一 / 三十一
+        tens = _CN_DIGITS[s[0]] * 10
+        rest = s[2:]
+        if not rest:
+            return tens
+        return tens + _CN_DIGITS[rest] if len(rest) == 1 and rest in _CN_DIGITS else None
+    if len(s) == 1 and s in _CN_DIGITS:          # 单字：一..九
+        return _CN_DIGITS[s]
+    return None
+
+
+# 月份日期：9月14日 / 十月一日 / 10月1号
+_MD_RE = re.compile(rf"({_NUM})月({_NUM})[日号]")
 
 # 星期：上周三 / 本周三 / 这周三 / 下周三 / 周三 / 星期三 / 周末
 _WEEKDAY_CHARS = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6, "天": 6}
@@ -55,7 +91,7 @@ _WEEKDAY_RE = re.compile(r"(上|下|本|这)?(?:个)?(?:周|星期)([一二三�
 _WEEKEND_RE = re.compile(r"周末")
 
 # 相对月份：上个月15号 / 下月3日 / 本月20号
-_MONTH_RE = re.compile(r"(上|下|本|这)?(?:个)?月(\d{1,2})[日号]")
+_MONTH_RE = re.compile(rf"(上|下|本|这)?(?:个)?月({_NUM})[日号]")
 
 
 def _safe_date(year: int, month: int, day: int) -> date | None:
@@ -96,7 +132,9 @@ def resolve_date(value: str | None, *, default_today: bool = True) -> tuple[str,
 
     m = _MD_RE.search(v)
     if m:
-        month, day = int(m.group(1)), int(m.group(2))
+        month, day = _cn_num(m.group(1)), _cn_num(m.group(2))
+        if month is None or day is None:      # 认不全就不猜，走"未识别"如实说明
+            return fallback, False
         d = _safe_date(today.year, month, day)
         if d is None:
             return fallback, False
@@ -110,7 +148,9 @@ def resolve_date(value: str | None, *, default_today: bool = True) -> tuple[str,
     m = _MONTH_RE.search(v)
     if m:
         prefix = m.group(1)
-        day = int(m.group(2))
+        day = _cn_num(m.group(2))
+        if day is None:
+            return fallback, False
         offset = {"上": -1, "下": 1}.get(prefix or "", 0)
         total = (today.year * 12 + (today.month - 1)) + offset
         year, month = divmod(total, 12)

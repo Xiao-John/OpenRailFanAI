@@ -66,6 +66,40 @@ def main():
     assert date_note(None, TODAY.isoformat()) == "", "用户没说时间时不应产生说明"
     print(f"[PASS] date_note 如实说明 -> {date_note('国庆', TODAY.isoformat())[:40]}…")
 
+    # ★ 中文数字月日（用户实测：问「十月一日西安到北京的火车」，解析器只认 \d，
+    #   于是整条链退化成"查今天" → 模型只能让用户再问一遍）。
+    #   期望值按"已过则顺延到明年"的既有规则算，任何日期运行都成立。
+    def _md(month: int, day: int) -> str:
+        d = date(TODAY.year, month, day)
+        if d < TODAY:
+            d = date(TODAY.year + 1, month, day)
+        return d.isoformat()
+
+    for raw, month, day in [
+        ("十月一日", 10, 1),
+        ("十月一号", 10, 1),
+        ("十二月三十一日", 12, 31),
+        ("十一月十一日", 11, 11),
+        ("一月一日", 1, 1),
+        ("10月1日", 10, 1),          # 阿拉伯数字仍要照旧
+    ]:
+        got, matched = resolve_date(raw)
+        assert matched is True, f"{raw!r} 应被识别，实际 matched={matched}"
+        assert got == _md(month, day), f"resolve_date({raw!r}) = {got}, 期望 {_md(month, day)}"
+        print(f"[PASS] 中文数字月日 {raw!r} -> {got}")
+
+    # 相对月份里的中文数字（"下个月三号"）也要认
+    got, matched = resolve_date("下个月三号")
+    assert matched is True, got
+    print(f"[PASS] resolve_date('下个月三号') -> {got}")
+
+    # ★ 认不全或不合法时**宁可说不认识**，绝不猜一个日期去查
+    for bad in ("二月三十日", "十三月一日", "二十三日", "十月"):
+        got, matched = resolve_date(bad)
+        assert matched is False, f"{bad!r} 被误判为识别成功 -> {got}"
+        assert got == TODAY.isoformat(), got
+        print(f"[PASS] {bad!r} -> 不识别（如实说明，不猜日期）")
+
     print("\n日期归一化测试全部通过 ✔")
 
 
