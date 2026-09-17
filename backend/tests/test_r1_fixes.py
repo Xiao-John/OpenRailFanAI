@@ -239,15 +239,32 @@ def retrieve_mod_retrieve(message: str, **slots) -> dict:
 
 
 def test_cross_date_and_cross_check_rules_in_prompt():
-    """prompt 必须含跨日期禁令与"禁止自造印证"规则。"""
+    """prompt 必须含跨日期规则、同车不同号规则、禁止自造印证与截断声明。
+
+    2026-09-17 用户报障（变更）：旧规则写成「跨日期**绝对**禁止」，模型据此连
+    「已发车次的经停/用时」也一并拒绝回答（"该日数据不可得"），表现成"不懂变通"。
+    现改为**分两档**：① 当日运行事实（发车/到达/晚点/余票/担当）仍绝对禁止跨日期；
+    ② 结构性事实（经停/站序/历时/席别/车型）属图定属性，**只要有数据就必须用**，
+    并交代日期与"图定"性质。红线没有放松，只是不再一刀切。
+    """
     prompt = build_prompt(
         "G1 今天几点到上海虹桥？", Slots(target="G1"),
         {"data": [], "sources": [], "tool_trace": ["train.schedule: ok"], "note": ""},
     )
-    assert "跨日期绝对禁止" in prompt, "缺少跨日期禁令"
+    # ① 当日运行事实的禁令仍在（红线 D06 没放松）
+    assert "当日运行事实" in prompt, "缺少①当日运行事实的跨日期禁令"
+    assert "该日数据不可得" in prompt, "缺少拿不到当日数据时的如实说明要求"
+    # ② 结构性事实允许/要求使用带标注的非今日图定数据
+    assert "结构性事实" in prompt, "缺少②结构性事实这一档"
+    assert "图定属性" in prompt and "哪怕" in prompt, "未要求「有数据就必须用」"
+    assert "查不到" in prompt, "未禁止「因为不是今天就说查不到」"
+    # ③ 同车不同号
+    assert "同车不同号" in prompt, "缺少同车不同号规则"
+    assert "G2365/G2368" in prompt, "同车不同号规则未给实例"
+    # ④ 原有两条硬规则
     assert "禁止自造印证" in prompt, "缺少禁止自造印证规则"
     assert "截断必须声明" in prompt, "缺少截断声明规则"
-    print("[PASS] prompt 含跨日期/自造印证/截断 三条硬规则")
+    print("[PASS] prompt 含跨日期分档(①事实/②结构)/同车不同号/自造印证/截断 五条硬规则")
 
 
 # ---------- 2. 截断治理 ----------

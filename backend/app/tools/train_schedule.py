@@ -92,47 +92,6 @@ class TrainScheduleTool(Tool):
     description = "查询列车实时时刻/余票/经停站（12306，支持仅给车次自动定位起止站）"
 
 
-    async def _reference_schedule(
-        self, train_code: str, from_code: str, to_code: str, date_str: str
-    ) -> dict | None:
-        """已发车时的**参考时刻**：查次日同车次的站序与历时。
-
-        12306 对已发车次不再列出时刻/经停，导致"这趟车经停哪儿/全程多久"这类
-        最常用的问法反而答不上来（2026-09-14 修复 D02/D03）。次日同车次通常同图，
-        作为参考并明确标注"次日 / 调图可能不同"。
-        """
-        from datetime import date as _date, timedelta as _timedelta
-
-        try:
-            ref_date = (_date.fromisoformat(date_str) + _timedelta(days=1)).isoformat()
-        except Exception:  # noqa: BLE001
-            return None
-        try:
-            trains = await rt.query_tickets(from_code, to_code, ref_date)
-        except Exception:  # noqa: BLE001
-            return None
-        matched = [t for t in trains if str(t.get("train_no", "")).upper() == train_code]
-        if not matched:
-            return None
-        t = matched[0]
-        stops: list = []
-        try:
-            stops = await rt.query_route_stations(
-                t.get("train_no", ""), from_code, to_code, ref_date
-            )
-        except Exception:  # noqa: BLE001
-            stops = []
-        return {
-            "date": ref_date,
-            "start_time": t.get("start_time", ""),
-            "arrive_time": t.get("arrive_time", ""),
-            "duration": t.get("duration", ""),
-            "seats": t.get("seats", {}),
-            "stops": stops,
-            "stop_count": len(stops),
-        }
-
-
     async def _train_identity(self, train_code: str, date_str: str) -> dict | None:
         """取权威车次身份（train_no + 起讫站）。
 
@@ -183,6 +142,45 @@ class TrainScheduleTool(Tool):
         return stops
 
 
+    async def _find_same_train_code(
+        self,
+        train_code: str,
+        ident_train_no: str,
+        from_code: str,
+        to_code: str,
+        date_str: str,
+    ) -> str:
+        """同一次车的**别名车次号**（内部编号相同、车次号不同）；找不到返回 ""。
+
+        背景（用户报障）：12306 的内部编号 `train_no` 是**车底/交路**级别的键。同一次车在
+        交路不同分段、上行/下行会挂不同车次号（G2365↔G2368、D2238↔D2235、G1486↔G1487、
+        D6565↔D6564、K1117↔K1116、K896↔K897、Z184↔Z181 —— 实测内部编号两两完全相同），
+        而 12306 的余票列表**只列当日实际开行的那个号**。
+
+        用户记住的是其中一个号，于是问 A 号查不到、问 B 号却查得到，实际是同一次车。
+        不认别名就会把"同一次车的另一个号"误答成"该日数据不可得/车次不存在"。
+
+        用内部编号判定，而不是靠"站名相同"或"时刻接近"猜：同一区间一天几十趟车，
+        只有内部编号相同才是同一次车。
+        """
+        code = (train_code or "").strip().upper()
+        if not ident_train_no or not code:
+            return ""
+        fn = getattr(rt, "query_ticket_rows", None)
+        if fn is None:
+            return ""
+        try:
+            rows = await fn(from_code, to_code, date_str) or []
+        except Exception:  # noqa: BLE001 —— 增强路径失败不得影响主流程
+            return ""
+        for row in rows:
+            if str(row.get("train_no") or "").strip() != ident_train_no:
+                continue
+            alias = str(row.get("train_code") or "").strip().upper()
+            if alias and alias != code:
+                return alias
+        return ""
+
     async def _probe_endpoints(self, train_code: str, date_str: str) -> tuple[str, str] | None:
         """离线目录未命中时，用枢纽区间实时查询"探"出该车次的起止站。
 
@@ -223,6 +221,11 @@ class TrainScheduleTool(Tool):
         date_warn = date_note(raw_date, date_str)
         # 是否允许下发"次日参考时刻"（仅当用户在问经停/历时站序时；由检索层按原话判断）
         include_reference = bool(params.get("include_reference"))
+        # 同车不同号（别名命中时记录）：用户问的号 vs 12306 当日实际开行的号
+        same_train_from = ""
+        same_train_no = ""
+        # 别名存在、但同一次车当日**也已发车**（余票列表里两个号都没有）→ 仅用于说明
+        departed_alias = ""
 
         # ---- 1) 权威车次身份（search.12306.cn）：train_no + 真实起讫站 ----
         # 这一步替代"用 2022 离线目录猜起讫站"：G1 的正确终点是【上海虹桥】，
@@ -283,6 +286,28 @@ class TrainScheduleTool(Tool):
                         f"{t.get('train_no','')} {t.get('start_time','')}-{t.get('arrive_time','')}"
                         for t in trains[:15]
                     ]
+                    # ---- 同车不同号（用户报障）：先认"同一次车的另一个车次号" ----
+                    # 12306 余票列表只列当日实际开行的车次号；同一次车在交路不同分段会换号，
+                    # 只按用户给的字面号匹配，会把"同一次车"误报成"该日查不到"。
+                    alias_code = await self._find_same_train_code(
+                        train_code, ident_train_no, from_code, to_code, date_str
+                    )
+                    if alias_code:
+                        matched = [
+                            t for t in trains
+                            if str(t.get("train_no", "")).upper() == alias_code
+                        ]
+                        if matched:
+                            same_train_from = train_code
+                            same_train_no = ident_train_no
+                            train_code = alias_code
+                        else:
+                            # 别名也查不到（同一次车当日已发车）→ 记下来，让答案点明
+                            # "这趟车今天挂的是另一个号"，而不是让用户以为没有这趟车
+                            departed_alias = alias_code
+                # 别名命中 → `matched` 非空：直接走下面的正常成功路径（余票、经停照常给），
+                # 不再做"已发车 / 不属于本区间"的判定。
+                if not matched:
                     # 判断该车次是否本就属于该区间（属于但未列出 → 多为当日已过发车时间）
                     # 优先用**权威身份**（search.12306.cn 的起讫站）；离线目录仅在没有它时兜底。
                     # 2026-09-15 修正：此前一律用离线目录，导致"目录里没有的车次"（如 D2）
@@ -291,7 +316,9 @@ class TrainScheduleTool(Tool):
                         known = (identity["from_station"], identity.get("to_station") or "")
                     else:
                         known = rt.infer_endpoints_from_offline(train_code) or ("", "")
-                    same_route = known[0] in (from_name, from_st) or known[1] in (to_name, to_st)
+                    same_route = (
+                        known[0] in (from_name, from_st) or known[1] in (to_name, to_st)
+                    )
                     if same_route:
                         # 查询本身成功：结论是"该车次今日已发车"，属有效发现而非工具失败
                         #
@@ -357,6 +384,8 @@ class TrainScheduleTool(Tool):
                                 "stops_with_times": bool(ref),
                                 "stop_count": len(stops),
                                 "reference": ref,
+                                "same_train_code": departed_alias,
+                                "same_train_no": ident_train_no if departed_alias else "",
                                 "_hint": (
                                     "如用户问经停/历时，可再次调用并带 include_reference=true"
                                     if not include_reference else ""
@@ -369,6 +398,12 @@ class TrainScheduleTool(Tool):
                                 f"因此 **{date_str} 的发车/到达时刻与余票均不可得**（不是数据缺失，"
                                 "是 12306 对已发车次不再提供）。"
                                 + (
+                                    f"\n⚠️ 同一次车不同车次号：{train_code} 与 {departed_alias} "
+                                    f"是同一次车（12306 内部编号同为 {ident_train_no}）；"
+                                    f"本日 12306 列表里挂的是 {departed_alias}，同样已过发车时间。"
+                                    if departed_alias else ""
+                                )
+                                + (
                                     "如需该车次的经停站与历时，可明确说明后重新查询。"
                                     if not include_reference else ""
                                 )
@@ -378,6 +413,11 @@ class TrainScheduleTool(Tool):
                             note=(
                                 f"12306 实时查询成功（{date_str}）：车次已发车，"
                                 f"{date_str} 的时刻/余票不可得"
+                                + (
+                                    f"；同一次车不同车次号：{train_code} 与 {departed_alias} "
+                                    f"内部编号同为 {ident_train_no}"
+                                    if departed_alias else ""
+                                )
                                 + ref_note
                                 + "。"
                             ),
@@ -407,6 +447,13 @@ class TrainScheduleTool(Tool):
                     from_name=from_name, to_name=to_name,
                 )
                 note = f"12306 实时数据（{date_str}）"
+                if same_train_from:
+                    note += (
+                        f"；⚠️ 同一次车不同车次号：用户问的 {same_train_from} 与本次实际开行的 "
+                        f"{train_code} 是**同一次车**（12306 内部编号同为 {same_train_no}，"
+                        "同一车底/交路，车次号随运行方向或交路分段变化），"
+                        f"以下按 12306 当日实际开行的 {train_code} 给出"
+                    )
                 if identity:
                     note += "；车次起讫站按 12306 官方车次搜索校正"
                 if inferred:
@@ -436,8 +483,17 @@ class TrainScheduleTool(Tool):
                         "source": "12306-realtime",
                         "inferred_endpoints": inferred,
                         "train_date": date_str,
+                        "same_train_from": same_train_from,
+                        "same_train_no": same_train_no,
                     },
-                    text=_format_train(t, routes)
+                    text=(
+                        (
+                            f"⚠️ 同一次车不同车次号：你问的 {same_train_from} 与 12306 当日实际"
+                            f"开行的 {train_code} 是**同一次车**（内部编号同为 {same_train_no}，"
+                            "车次号随运行方向/交路分段变化）。以下为实际开行号的数据：\n"
+                        ) if same_train_from else ""
+                    )
+                    + _format_train(t, routes)
                     + (f"\n\n经停站全表（{len(routes)} 站）：\n{stops_text}" if stops_text else ""),
                     sources=["https://kyfw.12306.cn/otn/leftTicket/queryI"],
                     note=note,
@@ -605,5 +661,9 @@ class TrainScheduleTool(Tool):
         return ToolResult(
             ok=False,
             error=f"未能查询车次 {train_code}：{rt_err}",
-            note="请确认网络可达 12306（需境内网络 + Python ≥ 3.10）",
+            note="请确认网络可达 12306（需境内网络 + Python ≥ 3.10）。"
+                 "另：同一次车在交路不同分段会挂**不同车次号**（如 G2365/G2368、"
+                 "D2238/D2235、Z184/Z181），12306 只列当日实际开行的那个号；"
+                 "若你记的是其中一个，可换另一个号再问，"
+                 "或用「汉口到上海虹桥今天有哪些车」按区间找。",
         )

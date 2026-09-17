@@ -202,6 +202,107 @@ async def query_tickets(from_code: str, to_code: str, train_date: str) -> list[d
     return data.get("trains", []) or []
 
 
+# 余票列表**原始行**缓存：(from, to, date) → (取数时刻, 行表)
+# 只有原始行才带 12306 的**内部编号**（`train_no`，形如 39000G236801）；
+# MCP 的归一化层只留下车次号，把内部编号丢了 —— 而"同一次车在交路不同分段用不同车次号"
+# （G2365/G2368、D2238/D2235、Z184/Z181…）唯一可靠的判据就是这个内部编号。
+_RAW_ROWS_CACHE: dict[tuple[str, str, str], tuple[float, list[dict]]] = {}
+_RAW_ROWS_TTL_S = 300
+_RAW_ROWS_CACHE_MAX = 200
+
+_LEFT_TICKET_INIT = "https://kyfw.12306.cn/otn/leftTicket/init"
+_LEFT_TICKET_QUERY = "https://kyfw.12306.cn/otn/leftTicket/queryI"
+# 车次号形态（用于在原始行里认列，防止 12306 改字段顺序后静默取错）
+_TRAIN_CODE_FIELD_RE = re.compile(r"^0?[A-Z]?\d{1,4}[A-Z]?$", re.I)
+
+
+async def query_ticket_rows(
+    from_code: str, to_code: str, train_date: str
+) -> list[dict]:
+    """直连 12306 余票接口，返回**保留内部编号**的行列表。
+
+    每行：`{train_no(内部编号), train_code(车次号), from_code, to_code, start_time, arrive_time}`。
+
+    与 `query_tickets` 的区别只有一个：内部编号 `train_no`。它是"车底/交路"级别的唯一键 ——
+    同一次车在交路不同分段挂不同车次号（上行/下行、分段开行），内部编号却**完全相同**；
+    实测 G2365/G2368 同为 `39000G236801`、D2238/D2235 同为 `77000D223802`、
+    Z184/Z181 同为 `330000Z1840X`。因此这是"同车不同号"判定的权威依据。
+
+    失败一律返回 `[]`（调用方按"拿不到别名信息"降级），**不抛异常**。
+    """
+    import time as _time
+
+    code_a = str(from_code or "").strip().upper()
+    code_b = str(to_code or "").strip().upper()
+    date_str = normalize_date(train_date)
+    if not code_a or not code_b or not date_str:
+        return []
+
+    key = (code_a, code_b, date_str)
+    now = _time.time()
+    hit = _RAW_ROWS_CACHE.get(key)
+    if hit and now - hit[0] < _RAW_ROWS_TTL_S:
+        return hit[1]
+
+    import httpx
+
+    from app.tools._http import BROWSER_HEADERS
+
+    headers = dict(BROWSER_HEADERS)
+    headers["Referer"] = _LEFT_TICKET_INIT
+    rows: list[dict] = []
+    try:
+        async with httpx.AsyncClient(
+            http2=True, timeout=15, follow_redirects=True
+        ) as client:
+            # 余票接口需要 init 种下的会话（Cookie），缺了会 302/空结果
+            await client.get(_LEFT_TICKET_INIT, headers=headers)
+            resp = await client.get(
+                _LEFT_TICKET_QUERY,
+                headers=headers,
+                params={
+                    "leftTicketDTO.train_date": date_str,
+                    "leftTicketDTO.from_station": code_a,
+                    "leftTicketDTO.to_station": code_b,
+                    "purpose_codes": "ADULT",
+                },
+            )
+            resp.raise_for_status()
+            result = (resp.json().get("data") or {}).get("result") or []
+    except Exception:  # noqa: BLE001 —— 增强路径失败不得影响主流程
+        return []
+
+    for raw in result:
+        parts = str(raw).split("|")
+        if len(parts) < 10:
+            continue
+        # 12306 原始行里"预订"标记紧跟内部编号与车次号；字段顺序变过，
+        # 因此先在 "预订" 之后确认车次号形态，认不出再退回固定列（实测 2/3 列）。
+        idx = None
+        for i, cell in enumerate(parts):
+            if cell.strip() == "预订" and i + 2 < len(parts):
+                if _TRAIN_CODE_FIELD_RE.match(parts[i + 2].strip()):
+                    idx = i + 1
+                break
+        if idx is None:
+            if not _TRAIN_CODE_FIELD_RE.match(parts[3].strip()):
+                continue
+            idx = 2
+        rows.append({
+            "train_no": parts[idx].strip(),
+            "train_code": parts[idx + 1].strip().upper(),
+            "from_code": parts[6].strip(),
+            "to_code": parts[7].strip(),
+            "start_time": parts[8].strip(),
+            "arrive_time": parts[9].strip(),
+        })
+
+    if len(_RAW_ROWS_CACHE) >= _RAW_ROWS_CACHE_MAX:
+        _RAW_ROWS_CACHE.clear()
+    _RAW_ROWS_CACHE[key] = (now, rows)
+    return rows
+
+
 async def query_route_stations(
     train_no: str, from_code: str, to_code: str, train_date: str
 ) -> list[dict]:
