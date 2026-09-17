@@ -130,6 +130,32 @@ _TYPE_KEYWORDS = (
 _STOPS_QUESTION_RE = re.compile(r"(经停|停靠|经过哪些站|途经|站序|全程|历时|多长时间|要多久|几个小时)")
 
 
+# 粗时段词：口径**刻意不拆细**（早上/上午/傍晚 都按宽口径处理）。
+# 但必须把"我们按什么筛的"抛回给用户 —— 实测光看 filters 里的
+# "发车时刻≥05:00 / <12:00"，用户根本看不出"上午"被理解成了这么宽。
+_COARSE_TIME_WORDS = ("凌晨", "早上", "早晨", "早班", "上午", "中午", "午间",
+                      "午后", "下午", "晚上", "晚间", "晚班", "夜里", "夜间", "傍晚")
+_EXPLICIT_HOUR_RE = re.compile(r"\d{1,2}\s*[点:：时]")
+
+
+def _coarse_time_note(*texts: str | None) -> str:
+    """粗时段的口径说明：告诉用户按什么筛的、以及怎么收窄。
+
+    用户给了具体钟点时不产生（口径已明确，别加噪声）。
+    """
+    blob = " ".join(t for t in texts if t)
+    if _EXPLICIT_HOUR_RE.search(blob):
+        return ""
+    for w in _COARSE_TIME_WORDS:
+        if w in blob:
+            after, before = _parse_time_window(blob)
+            if after or before:
+                return (f"「{w}」按 {after or '00:00'}–{before or '24:00'} 这一宽口径筛选"
+                        f"（早上/上午这类**不细拆**）；若要别的时段，直接给具体钟点"
+                        f"（如「9点以后」）就能收窄")
+    return ""
+
+
 def _parse_time_window(*texts: str | None) -> tuple[str, str]:
     """'明天晚上' → ('17:00', '24:00')；'8点以后' → ('08:00', '')；无时段词返回 ('', '')。
 
@@ -369,6 +395,11 @@ async def retrieve(
     # 计划层面的说明（如"为何没发起某个查询"）：会并入最终 note，
     # 让生成层如实说明"缺少什么"，而不是把"没查"说成"查询失败"（修复 C06/C08/L03/D09）
     plan_notes: list[str] = []
+    # 粗时段口径一次性挂在这里（声明之后、意图分派之前）：凡是按时段筛选的意图都会带上，
+    # 避免在 ticket/schedule/screen 三处各插一遍（重复且容易漏）。
+    _ct_note = _coarse_time_note(message, time_, slots.extra)
+    if _ct_note:
+        plan_notes.append(_ct_note)
 
     def _plan(intent: str) -> list[tuple[str, dict]]:
         if intent == "ticket":

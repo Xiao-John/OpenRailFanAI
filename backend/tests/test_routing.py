@@ -231,7 +231,31 @@ def test_mock_drives_real_intent_prompt():
         settings.llm_mock = old
 
 
+def test_coarse_time_window_is_disclosed_not_refined():
+    """粗时段口径**刻意不拆细**，但必须把"按什么筛的 + 怎么收窄"抛回给用户。
+
+    实测：用户说"上午从合肥南到南京南有票吗"，工具里筛的是 05:00–12:00，
+    而 filters 只写"发车时刻≥05:00 / <12:00" —— 用户看不出"上午"被理解成了这么宽，
+    也没人告诉他"给具体钟点就能收窄"。这是**口径问题**，不是缺陷，所以选择
+    如实告知而不是去猜更细的边界。
+    """
+    with _Recorder():
+        n1 = _retrieve("ticket", question_type="realtime",
+                       message="上午从合肥南到南京南有票吗", direction="合肥南→南京南").get("note") or ""
+        n2 = _retrieve("ticket", question_type="realtime",
+                       message="9点以后从合肥南到南京南有票吗", direction="合肥南→南京南").get("note") or ""
+        n3 = _retrieve("ticket", question_type="realtime",
+                       message="明天北京到上海还有票吗", direction="北京→上海").get("note") or ""
+
+    assert "上午" in n1 and "05:00" in n1, f"粗时段口径没抛回给用户：{n1}"
+    assert "具体钟点" in n1, f"没告诉用户怎么收窄：{n1}"
+    assert "宽口径" not in n2, f"用户给了具体钟点，不该再报粗时段口径：{n2}"
+    assert "宽口径" not in n3, f"用户压根没提时段，不该产生口径说明：{n3}"
+    print("[PASS] 粗时段不拆细，而是把「按什么筛的 + 怎么收窄」告知用户")
+
+
 def main():
+    test_coarse_time_window_is_disclosed_not_refined()
     test_station_like_heuristics()
     test_no_fabricated_od_from_location_and_target()
     test_station_screen_keyword_routing()
