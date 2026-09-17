@@ -124,12 +124,39 @@ def test_cdp_tool_bypasses_system_proxy():
     print("[PASS] cdp.py 两处都绕开了系统代理，回环调试不会被代理劫持")
 
 
+def test_only_tables_scroll_horizontally():
+    """页面不许横向滚动，**只有表格**可以（用户明确要求）。
+
+    理由：横拖会把内容拽出安全区，而竖排阅读本来就不需要它；
+    车次表天然六七列，是唯一真正需要横向滚动的场景，所以给它单独一个滚动容器。
+    """
+    html = (REPO_ROOT / "frontend/index.html").read_text(encoding="utf-8")
+    assert "html, body { height:100%; overflow-x:hidden" in html, (
+        "页面级横向滚动没有被禁止（html/body 缺 overflow-x:hidden）"
+    )
+    assert "overflow-x:auto" in html, "表格的横向滚动容器丢了"
+    # 表格之外不该再有横向滚动容器
+    import re
+    scrolls = re.findall(r"([.#][\w-]+[^{]*)\{[^}]*overflow-x:\s*(?:auto|scroll)", html)
+    for sel in scrolls:
+        assert "table-wrap" in sel, f"{sel.strip()} 也开了横向滚动：除表格之外都不该有"
+    # 代码块要折行，不能横向滚
+    m = re.search(r"\.md pre\.code \{([^}]*)\}", html)
+    assert m and "pre-wrap" in m.group(1) and "overflow-x:hidden" in m.group(1), (
+        "代码块还在横向滚动/不折行：规矩是只有表格可以横拖"
+    )
+    # 气泡要能收缩，否则内部不可断行内容会把整页撑宽
+    assert ".bubble { min-width:0;" in html, "气泡缺 min-width:0，会被内容撑得比容器宽"
+    print("[PASS] 页面禁止横向滚动，只有表格自带滚动容器，代码块折行")
+
+
 def main():
     test_markdown_tables_render()
     test_renderer_is_a_separate_module()
     test_answer_layout_and_focus()
     test_interrupted_answer_is_visible()
     test_cdp_tool_bypasses_system_proxy()
+    test_only_tables_scroll_horizontally()
     print("\n前端渲染测试全部通过 ✔")
 
 

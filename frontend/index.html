@@ -15,14 +15,22 @@
       --accent:#3b82f6; --accent-dim:#2563eb; --danger:#ef4444; --line:#2a2e39;
       --user-bg:#2b5fd9; --radius:14px;
       --sidebar-w:272px; --header-h:52px;
+      /* 四个方向的显示安全区：刘海/挖孔、横屏缺口、手势条都不占用。
+         Java 侧已按 window insets 缩进根视图（见 MainActivity），Android 上这些通常是 0 ——
+         保留是给 API 24–29 老机型兜底，两套机制不会叠加。 */
+      --safe-t:env(safe-area-inset-top, 0px);
+      --safe-r:env(safe-area-inset-right, 0px);
       --safe-b:env(safe-area-inset-bottom, 0px);
+      --safe-l:env(safe-area-inset-left, 0px);
     }
     html[data-theme="light"] {
       --bg:#f6f7fb; --panel:#ffffff; --panel-2:#eef1f6; --fg:#1a1d24; --mut:#5b6478;
       --line:#dde2ea; --user-bg:#2b5fd9;
     }
     * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-    html, body { height:100%; }
+    /* 页面**不允许横向滚动**：横拖会把内容拽出安全区，竖排阅读也不需要它。
+       需要横向滚动的只有表格（.table-wrap 自建滚动容器）。 */
+    html, body { height:100%; overflow-x:hidden; max-width:100%; }
     body {
       margin:0; background:var(--bg); color:var(--fg);
       font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
@@ -80,13 +88,16 @@
                      color:var(--fg); font-size:12px; line-height:1.6; }
 
     /* ============ 布局：移动优先（≤1023px 抽屉式侧栏） ============ */
-    .app { display:flex; height:100dvh; height:100vh; }
+    /* 横向安全区：横屏时缺口在左右，内容不能压进去 */
+    .app { display:flex; height:100dvh; height:100vh;
+           padding-left:var(--safe-l); padding-right:var(--safe-r); }
     .sidebar {
       position:fixed; top:0; bottom:0; left:0; z-index:40;
       width:84%; max-width:320px; background:var(--panel-2);
       border-right:1px solid var(--line);
       display:flex; flex-direction:column;
       transform:translateX(-102%); transition:transform .22s ease;
+      padding-top:var(--safe-t); padding-left:var(--safe-l);
       padding-bottom:var(--safe-b);
     }
     .sidebar.open { transform:none; box-shadow:0 12px 40px rgba(0,0,0,.45); }
@@ -195,7 +206,15 @@
     .row.user { align-self:flex-end; align-items:flex-end; }
     .row.assistant { align-self:flex-start; align-items:flex-start; }
 
-    .bubble { padding:11px 14px; border-radius:var(--radius); line-height:1.68; font-size:14px;
+    /* 超长且无空格的串（URL、连写车次）必须能断开换行，否则会把整页撑出横向溢出 */
+
+    .bubble, .md { overflow-wrap:anywhere; }
+
+    /* min-width:0：flex 项默认 min-width:auto，会被内部不可断行的内容撑得比容器还宽
+
+       （实测气泡比 .row 宽 7px，配合 overflow-x:hidden 就成了右侧被裁掉一截） */
+
+    .bubble { min-width:0; max-width:100%; padding:11px 14px; border-radius:var(--radius); line-height:1.68; font-size:14px;
               word-break:break-word; }
     .row.user .bubble { background:var(--user-bg); color:#fff; white-space:pre-wrap; }
     .row.assistant .bubble { background:var(--panel); }
@@ -215,12 +234,15 @@
     .md h3 { font-size:14px; margin:8px 0 3px; }
     .md code { background:var(--panel-2); color:#7fd0ff; padding:1px 5px; border-radius:4px;
                font-size:12px; }
+    /* 代码块**不横向滚动**（规矩：只有表格可以横拖）—— 改成折行 */
     .md pre.code { background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
-                   padding:8px 10px; margin:5px 0; overflow:auto; white-space:pre; font-size:12px; }
+                   padding:8px 10px; margin:5px 0; white-space:pre-wrap;
+                   overflow-wrap:anywhere; overflow-x:hidden; font-size:12px; }
     /* 表格（车次/余票这类回答基本都是表格）。
        必须能横向滚动：车次表天然六七列，窄屏铺开会把整个对话区撑到变形。
        nowrap 是刻意的 —— 宁可滚动，也不要把"06:18—12:11"折成两行。 */
-    .md .table-wrap { overflow-x:auto; margin:8px 0; padding-bottom:2px;
+    /* **唯一允许横向滚动的地方**：车次表天然六七列，窄屏铺开会把对话区撑变形 */
+    .md .table-wrap { max-width:100%; overflow-x:auto; margin:8px 0; padding-bottom:2px;
                       -webkit-overflow-scrolling:touch; }
     .md table { border-collapse:collapse; font-size:12px; white-space:nowrap; }
     .md th, .md td { border:1px solid var(--line); padding:4px 9px; vertical-align:top; }
