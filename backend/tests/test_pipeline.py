@@ -22,7 +22,7 @@ def _disable_fastpath():
     快路径会给出等价但字面不同的槽位（location="吉林"），两套断言会互相打架。
     快路径本身的正确性由 `test_perf_fastpath.py` 专门覆盖。
     """
-    return mock.patch("app.pipeline.fastpath.plan", new=mock.AsyncMock(return_value=None))
+    return mock.patch("app.pipeline.fastpath.plan_with_reason", new=mock.AsyncMock(return_value=(None, None)))
 
 
 def _patch_llm():
@@ -86,7 +86,7 @@ async def test_degradation_without_llm():
     # 决策已合并为一次调用：让**合并调用**抛 LLMUnavailable（快路径也关掉，
     # 否则这条问句仍可能被快路径接管 → 测不到降级）
     with mock.patch.object(planner_mod, "chat_structured", side_effect=_boom), \
-         mock.patch("app.pipeline.fastpath.plan", new=mock.AsyncMock(return_value=None)):
+         mock.patch("app.pipeline.fastpath.plan_with_reason", new=mock.AsyncMock(return_value=(None, None))):
         result = await orchestrator.run("帮我查车次")
 
     assert "general" in result.intent, result.intent

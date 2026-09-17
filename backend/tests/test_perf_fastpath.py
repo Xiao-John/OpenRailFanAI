@@ -113,7 +113,7 @@ def test_planner_deterministic_is_zero_llm():
     with patch("app.pipeline.planner.chat_structured", _boom), \
          patch("app.pipeline.planner.intent.classify", _boom), \
          patch("app.pipeline.planner.extract.fill", _boom):
-        i, qt, slots, pl = asyncio.run(planner.decide("G1经停哪些站？"))
+        i, qt, slots, pl, _defer = asyncio.run(planner.decide("G1经停哪些站？"))
     assert pl == "deterministic" and i.value == "schedule", (pl, i)
     assert slots.non_empty() == {"target": "G1"}, slots.non_empty()
     assert not called, called
@@ -180,11 +180,42 @@ def test_orchestrator_reports_planner():
     print(f"[PASS] 编排透出 planner={res.planner}；日志：{res.process_logs[0][:56]}…")
 
 
+def test_defer_reasons_are_structured():
+    """快路径没接管时必须给出**结构化原因**（只移植决策树里的这一部分）。
+
+    为什么值得：以前日志里只有一句"交回 LLM"，看不出是"压根没匹配到问法"
+    还是"问法对上了但缺关键槽位"。用户实测过的那几个坑（"十月一日"退化成今天、
+    "京沪线的所有车站"被判成 station）当时若能看到缺哪个槽位，定位会快得多。
+    """
+    cases = [
+        ("", "EMPTY"),
+        ("CR400AF用的哪个品牌的动力系统？", "KNOWLEDGE_OR_OPEN"),
+        ("换乘车站的编号怎么看？", "NO_SLOT"),     # 命中"车站"问法但拿不到站名
+        ("还有票吗", "NO_SLOT"),                  # 命中"余票"问法但没有区间
+        ("沿线车站", "NO_SLOT"),                  # 命中"沿线车站"但没线路名
+        ("随便说点什么", "UNKNOWN_FAMILY"),
+    ]
+    for msg, want in cases:
+        fp, defer = asyncio.run(fastpath.plan_with_reason(msg))
+        assert fp is None, f"{msg!r} 不该被接管"
+        assert defer is not None and defer.reason == want, f"{msg!r} → {defer}"
+        assert "（" in defer.text and defer.text.startswith(want), defer.text
+
+    # 接管时不该产生降级原因（否则日志会自相矛盾）
+    fp, defer = asyncio.run(fastpath.plan_with_reason("G1经停哪些站？"))
+    assert fp is not None and defer is None, (fp, defer)
+
+    # 兼容入口仍然只返回结论
+    assert asyncio.run(fastpath.plan("随便说点什么")) is None
+    print(f"[PASS] 降级原因结构化：{len(cases)} 种情形的原因码与中文说明都正确")
+
+
 def main():
     test_golden_fastpath_cases()
     test_no_station_no_fastpath()
     test_knowledge_questions_defer_to_llm()
     test_planner_deterministic_is_zero_llm()
+    test_defer_reasons_are_structured()
     test_combined_schema_matches_sources()
     test_prefetch_picks_one_strong_signal()
     test_prefetch_failure_is_silent()

@@ -33,6 +33,21 @@ from app.tools import _rt12306 as rt
 _log = logging.getLogger("railfan.fastpath")
 
 
+# ---- 交回 LLM 的结构化原因（只移植决策树里的这一部分）----
+#
+# 为什么值得单独做：快路径接管时日志里有"命中了哪条规则"，而**没接管时什么都没有**
+# —— 只知道"交回 LLM"，不知道是"压根没匹配到问法"还是"问法对上了但缺关键槽位"。
+# 用户实测过的那些坑（"十月一日"退化成今天、"京沪线的所有车站"被判成 station）
+# 若当时能看到"缺哪个槽位"，定位会快得多。
+# 词表与说明沿用那份决策树包的 REASON_ZH，口径保持一致。
+REASON_ZH: dict[str, str] = {
+    "EMPTY": "输入为空",
+    "KNOWLEDGE_OR_OPEN": "知识型/开放型问题：问题性质需模型判断，规则不猜",
+    "NO_SLOT": "问法匹配到了，但缺少关键槽位（车次/站名/区间/车型/线路）",
+    "UNKNOWN_FAMILY": "没有匹配到任何已知问法",
+}
+
+
 @dataclass
 class FastPlan:
     """快路径结论。"""
@@ -42,6 +57,24 @@ class FastPlan:
     slots: Slots
     reason: str                       # 命中的规则说明（日志/回归用）
     matched: list[str] = field(default_factory=list)
+
+
+@dataclass
+class Defer:
+    """**为什么**把这一句交回 LLM。
+
+    只在快路径没接管时产生，reason 取 REASON_ZH 的键，detail 是人可读的补充说明。
+    有了它，日志里"交回 LLM"才是一条可诊断的信息，而不是一句无从下手的结论。
+    """
+
+    reason: str
+    detail: str = ""
+
+    @property
+    def text(self) -> str:
+        """日志用的一行文本。"""
+        zh = REASON_ZH.get(self.reason, self.reason)
+        return f"{self.reason}（{zh}）" + (f"：{self.detail}" if self.detail else "")
 
 
 # ---- 意图关键词（每个意图都必须"关键词 + 关键槽位"双命中才接管）----
@@ -130,6 +163,20 @@ def _emu_model(text: str) -> str:
 
 
 async def plan(message: str, history: list[dict] | None = None) -> FastPlan | None:
+    """兼容入口：只要结论（接管方案或 None）。要"为什么交回 LLM"时用 plan_with_reason。
+
+    ⚠️ 测试里"关掉快路径"请 patch **plan_with_reason**（planner 的唯一入口）。
+    patch 本函数不会有任何效果 —— 它只是 plan_with_reason 的薄包装。
+    （改这个分层时踩过：三个测试文件原本 patch 的是 plan，入口一改就静默失效，
+    表现为"stub 不生效、真的去调了模型"。）
+    """
+    fp, _defer = await plan_with_reason(message, history)
+    return fp
+
+
+async def plan_with_reason(
+    message: str, history: list[dict] | None = None
+) -> tuple[FastPlan | None, "Defer | None"]:
     """尝试用确定性规则给出 (intent, question_type, slots)；判断不了返回 None。
 
     设为 async 的原因：站名要用**本地站点库**最长匹配，而站点库是包内静态资源需先加载
@@ -142,9 +189,9 @@ async def plan(message: str, history: list[dict] | None = None) -> FastPlan | No
     except Exception as e:  # noqa: BLE001 —— 站点库不可用时退化为"无站名信号"，不影响其它规则
         _log.warning("站点库加载失败：%s: %s", type(e).__name__, e)
     if not text or len(text) > 120:        # 过长/成分复杂的句子交回 LLM
-        return None
+        return None, Defer("EMPTY")
     if _KNOWLEDGE_HINT_RE.search(text):    # 知识型/开放型：问题性质需模型判断，不接管
-        return None
+        return None, Defer("KNOWLEDGE_OR_OPEN")
 
     # 多轮继承：本次没给车次/站名时，从最近一条用户消息里继承（指代消解）
     ctx_text = " ".join(str(m.get("content") or "") for m in (history or [])
@@ -175,33 +222,34 @@ async def plan(message: str, history: list[dict] | None = None) -> FastPlan | No
     # ---- 1) 担当/交路（需要车次或车组号）----
     if _ROUTING_RE.search(text):
         if train:
-            return FastPlan("emu_routing", "realtime", slots(target=train), "担当+车次", matched)
+            return (FastPlan("emu_routing", "realtime", slots(target=train), "担当+车次", matched), None)
         emu_model = _emu_model(text)
         if emu_model and rt.is_emu_train_code(emu_model):
-            return FastPlan("emu_routing", "realtime", slots(target=emu_model), "担当+车次", matched)
+            return (FastPlan("emu_routing", "realtime", slots(target=emu_model), "担当+车次", matched), None)
         model = _emu_model(text)
         if model:                          # 车型（如 CR400AF）→ rail.re 按车型反查
-            return FastPlan("emu_routing", "realtime", slots(target=model), "担当+车型", matched)
-        return None                        # 既无车次也无车型 → 交回 LLM（可能要追问）
+            return (FastPlan("emu_routing", "realtime", slots(target=model), "担当+车型", matched), None)
+        # 既无车次也无车型 → 交回 LLM（可能要追问）：问法对上了，缺的是槽位
+        return None, Defer("NO_SLOT", "命中「担当/交路」问法但缺车次或车型")
 
     # ---- 2) 经停/历时（需要车次）----
     if _STOPS_RE.search(text) and train:
-        return FastPlan("schedule", "realtime", slots(target=train), "经停+车次", matched)
+        return (FastPlan("schedule", "realtime", slots(target=train), "经停+车次", matched), None)
 
     # ---- 3) 车站大屏 / 检票口 ----
     if _SCREEN_RE.search(text) and station:
-        return FastPlan("station", "realtime", slots(location=station), "大屏+站名", matched)
+        return (FastPlan("station", "realtime", slots(location=station), "大屏+站名", matched), None)
 
     # ---- 4) 余票/票价（需要起讫站）----
     if _TICKET_RE.search(text) and od:
-        return FastPlan("ticket", "realtime",
-                        slots(direction=f"{od[0]}→{od[1]}"), "余票+区间", matched)
+        return (FastPlan("ticket", "realtime",
+                        slots(direction=f"{od[0]}→{od[1]}"), "余票+区间", matched), None)
 
     # ---- 5) 里程/径路（区间或线路）----
     if _LINE_RE.search(text) and (od or line):
-        return FastPlan("rail_line", "realtime",
+        return (FastPlan("rail_line", "realtime",
                         slots(target=line or None, direction=f"{od[0]}→{od[1]}" if od else None),
-                        "里程/径路+区间或线路", matched)
+                        "里程/径路+区间或线路", matched), None)
 
     # ---- 5b) 线路的沿线车站（需要线路名）----
     # 实测缺陷：'京沪线的所有车站' 被 LLM 判成 station，于是去调 station.lookup('京沪线')
@@ -209,16 +257,29 @@ async def plan(message: str, history: list[dict] | None = None) -> FastPlan | No
     # 同一件事换个说法（'京沪线经过哪些车站'）却又判成 rail_line。既然口径可以由
     # "线路名 + 车站清单词"完全确定，就不该交给模型猜（顺带省掉两次 LLM 往返）。
     if line and _LINE_STATIONS_RE.search(text):
-        return FastPlan("rail_line", "realtime", slots(target=line), "沿线车站+线路", matched)
+        return (FastPlan("rail_line", "realtime", slots(target=line), "沿线车站+线路", matched), None)
 
     # ---- 6) 车站信息（站名 + 车站类关键词）----
     if _STATION_RE.search(text) and station:
-        return FastPlan("station", "realtime", slots(location=station), "车站信息+站名", matched)
+        return (FastPlan("station", "realtime", slots(location=station), "车站信息+站名", matched), None)
 
     # ---- 7) 拍摄点（地点 + 拍摄词；目标车型可选）----
     if _PHOTO_RE.search(text) and (station or od):
         loc = station or (od[0] if od else "")
-        return FastPlan("photo_spot", "realtime",
-                        slots(location=loc, target=_emu_model(text) or None), "拍摄+地点", matched)
+        return (FastPlan("photo_spot", "realtime",
+                        slots(location=loc, target=_emu_model(text) or None), "拍摄+地点", matched), None)
 
-    return None
+    # 兜底原因：区分"完全没匹配到问法"与"问法对上了但缺关键槽位"。
+    # 后者对排查最有用 —— 它直接指出该补哪一类说法或哪个槽位。
+    for label, kw, ok, slot in (
+        ("大屏", _SCREEN_RE, station, "站名"),
+        ("余票", _TICKET_RE, od, "区间"),
+        ("里程/径路", _LINE_RE, (od or line), "区间或线路名"),
+        ("沿线车站", _LINE_STATIONS_RE, line, "线路名"),
+        ("车站信息", _STATION_RE, station, "站名"),
+        ("拍摄点", _PHOTO_RE, (station or od), "地点"),
+        ("经停", _STOPS_RE, train, "车次"),
+    ):
+        if kw.search(text) and not ok:
+            return None, Defer("NO_SLOT", f"命中「{label}」问法但缺{slot}")
+    return None, Defer("UNKNOWN_FAMILY")

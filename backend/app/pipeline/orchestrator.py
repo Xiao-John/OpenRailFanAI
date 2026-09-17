@@ -81,7 +81,8 @@ async def run_stream(
         t0 = time.perf_counter()
         # ⚠️ 局部变量**不能**叫 planner：那会遮蔽上面 import 的 planner 模块
         # （RHS 的 planner.decide 会去找局部名 → UnboundLocalError）
-        intent_, question_type, slots, planner_used = await planner.decide(message, history=history)
+        intent_, question_type, slots, planner_used, defer_reason = await planner.decide(
+            message, history=history)
         # 决策走了 LLM（慢）才值得投机预取；快路径 1–16ms，没有可藏的时间
         pf = None
         if planner_used != "deterministic":
@@ -89,8 +90,11 @@ async def run_stream(
         intent_str = f"{intent_.value}（{intent_.label_zh}）"
         slots_pairs = [(k, v) for k, v in slots.non_empty().items()]
         planner_label = _PLANNER_ZH.get(planner_used, planner_used)
+        # 快路径没接管时，把"为什么交回 LLM"一并写进这条**用户可见**的日志：
+        # 以前只有一句"交回 LLM"，看不出是没匹配到问法，还是问法对上了但缺槽位
+        defer_note = f" · 快路径未接管：{defer_reason}" if defer_reason else ""
         logs.append(f"[决策] {planner_label}：{intent_str} · 问题性质={question_type} "
-                    f"· 槽位={list(slots_pairs)} · {_ms(t0)}ms")
+                    f"· 槽位={list(slots_pairs)} · {_ms(t0)}ms{defer_note}")
         yield {"type": "stage", "stage": "intent",
                "msg": f"{intent_str} · {question_type}（{planner_label}）", "ms": _ms(t0) + 0.0}
 
@@ -218,7 +222,8 @@ async def run(
     try:
         # 1+2 决策（快路径 / 合并调用 / 两次调用）
         t0 = time.perf_counter()
-        intent_, question_type, slots, planner_used = await planner.decide(message, history=history)
+        intent_, question_type, slots, planner_used, defer_reason = await planner.decide(
+            message, history=history)
         logs.append(
             f"[决策] {_PLANNER_ZH.get(planner_used, planner_used)}："
             f"{intent_.value}（{intent_.label_zh}）"

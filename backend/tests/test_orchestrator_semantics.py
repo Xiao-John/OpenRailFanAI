@@ -184,7 +184,7 @@ def _force_legacy():
     import unittest.mock as _mock
 
     return [
-        _mock.patch("app.pipeline.fastpath.plan", new=_mock.AsyncMock(return_value=None)),
+        _mock.patch("app.pipeline.fastpath.plan_with_reason", new=_mock.AsyncMock(return_value=(None, None))),
         _mock.patch("app.pipeline.planner.chat_structured",
                     new=_mock.AsyncMock(side_effect=RuntimeError("merged call disabled in test"))),
     ]

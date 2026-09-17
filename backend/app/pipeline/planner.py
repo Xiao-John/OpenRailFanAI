@@ -67,8 +67,13 @@ def _slots_from(data: dict) -> Slots:
                  direction=g("direction"), extra=g("extra"), raw=dict(data))
 
 
-async def decide(message: str, history: list[dict] | None = None) -> tuple[Intent, str, Slots, str]:
-    """返回 (intent, question_type, slots, planner)。"""
+async def decide(message: str, history: list[dict] | None = None
+           ) -> tuple[Intent, str, Slots, str, str]:
+    """返回 (intent, question_type, slots, planner, defer_reason)。
+
+    defer_reason 只在"快路径没接管"时有值（见 fastpath.Defer）：它说明**为什么**交回 LLM，
+    是排查"这句为什么走了慢路径/判错了"的第一手信息。
+    """
     settings = get_settings()
     t0 = time.perf_counter()
 
@@ -82,14 +87,14 @@ async def decide(message: str, history: list[dict] | None = None) -> tuple[Inten
     # ---- 1) 确定性快路径（0 次 LLM）----
     if getattr(settings, "fastpath_enabled", True):
         try:
-            fp = await fastpath.plan(message, history)
+            fp, defer = await fastpath.plan_with_reason(message, history)
         except Exception as e:  # noqa: BLE001 —— 快路径异常绝不能影响可用性
             _log.warning("快路径判断异常，回退 LLM：%s: %s", type(e).__name__, e)
-            fp = None
+            fp, defer = None, None
         if fp is not None:
             _log.info("快路径命中：%s（%s）· %.0fms", fp.reason, ", ".join(fp.matched),
                       (time.perf_counter() - t0) * 1000)
-            return Intent(fp.intent), fp.question_type, fp.slots, "deterministic"
+            return Intent(fp.intent), fp.question_type, fp.slots, "deterministic", ""
 
     # ---- 2) 合并调用（1 次 LLM）----
     try:
@@ -103,7 +108,8 @@ async def decide(message: str, history: list[dict] | None = None) -> tuple[Inten
         if intent_val in _VALID_INTENTS:
             if q_type not in _VALID_Q_TYPES:
                 q_type = "realtime"        # 从严回退（与既有策略一致）
-            return Intent(intent_val), q_type, _slots_from(data or {}), "llm-merged"
+            return (Intent(intent_val), q_type, _slots_from(data or {}), "llm-merged",
+                    defer.text if defer else "")
         _log.warning("合并调用输出非法 intent=%r，回退两次调用", intent_val)
     except LLMUnavailable:
         raise                          # LLM 不可用是**硬故障**，交由编排层统一降级
@@ -114,7 +120,7 @@ async def decide(message: str, history: list[dict] | None = None) -> tuple[Inten
     intent_, detail = await intent.classify(message, history=history)
     q_type = str((detail or {}).get("question_type") or "realtime")
     slots = await extract.fill(message, intent=intent_.value, history=history)
-    return intent_, q_type, slots, "llm-legacy"
+    return intent_, q_type, slots, "llm-legacy", defer.text if defer else ""
 
 
 # 供测试/回归对照用：把两级 schema 暴露出来（测试会断言它们与合并 schema 字段一致）
