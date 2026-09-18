@@ -38,7 +38,7 @@ for arg in "$@"; do
     --write) WRITE=1 ;;
     --bench) BENCH=1 ;;
     -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
-    *) echo "[错误] 未知参数：$arg（可用：--write / --bench）"; exit 1 ;;
+    *) echo "[错误] 未知参数：${arg}（可用：--write / --bench）"; exit 1 ;;
   esac
 done
 
@@ -62,7 +62,7 @@ if ! command -v ollama >/dev/null 2>&1; then
 fi
 echo "    $(ollama --version 2>/dev/null | head -1)"
 
-echo "==> [2/5] 确认服务在跑（$HOST）"
+echo "==> [2/5] 确认服务在跑（${HOST}）"
 if ! curl -fsS --max-time 3 "$HOST/api/version" >/dev/null 2>&1; then
   echo "    服务未响应，后台拉起 ollama serve …"
   nohup ollama serve >"$ROOT/.ollama.log" 2>&1 &
@@ -77,10 +77,10 @@ if ! curl -fsS --max-time 3 "$HOST/api/version" >/dev/null 2>&1; then
 fi
 echo "    $HOST 就绪"
 
-echo "==> [3/5] 拉取模型 $MODEL（约 1.5 GB，可断点续传）"
+echo "==> [3/5] 拉取模型 ${MODEL}（约 1.5 GB，可断点续传）"
 ollama pull "$MODEL"
 
-echo "==> [4/5] 派生 $LOCAL_NAME（num_ctx=$CTX）"
+echo "==> [4/5] 派生 ${LOCAL_NAME}（num_ctx=${CTX}）"
 # 为什么必须派生：官方 tag 自带 PARAMETER num_ctx 4096。本项目注入的事实块
 # （车站大屏/逐站时刻/表格）经常远超 4k，超出的部分会被**静默丢弃** ——
 # 表现为"模型答得头头是道但少了一半数据"，比报错难查得多。
