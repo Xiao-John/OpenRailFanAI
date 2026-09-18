@@ -31,6 +31,7 @@ from __future__ import annotations
 import contextvars
 import json
 import logging
+import re
 import time
 from typing import Any, AsyncIterator
 
@@ -140,6 +141,21 @@ class LLMUnavailable(RuntimeError):
     """LLM 未配置或调用失败。"""
 
 
+class LLMOutputInvalid(LLMUnavailable):
+    """**服务是通的，但这次输出不能当结构化结果用**（解析不出 JSON 对象）。
+
+    为什么要与"服务不可用"分开（本地小模型场景的硬需求）：
+
+    - `LLMUnavailable` 的语义是"这个模型这次用不了" → 编排层只能整体降级；
+    - 而"模型答了但格式不对"是**可以换一种问法再试**的 —— 决策层还有一条保底路径
+      （`intent.classify` + `extract.fill` 两次独立调用，单个任务更简单，小模型更容易过）。
+      以前两者混为一谈：一个 2B 模型把 JSON 写成散文，整轮决策就直接降级成规则排版。
+
+    仍是 `LLMUnavailable` 的子类 —— 既有 `except LLMUnavailable` 的降级契约完全不变，
+    只是多给调用方一个"还能再抢救一下"的判据。
+    """
+
+
 # ---------------------------------------------------------------- 诊断
 def _status_of(e: Exception) -> int | None:
     status = getattr(e, "status_code", None) or getattr(e, "status", None)
@@ -171,7 +187,10 @@ def _raw_message(e: Exception) -> str:
 # 可选参数 → 上游可能用来拒绝它的关键词（参数降级阶梯据此决定丢谁）
 _DROPPABLE_PARAMS: dict[str, tuple[str, ...]] = {
     "temperature": ("temperature",),
-    "response_format": ("response_format", "response format", "json_object", "json mode"),
+    "response_format": ("response_format", "response format", "json_object", "json mode",
+                        # json_schema 是 response_format 的"加强版"，上游不支持时必须
+                        # 能被同一阶梯丢掉（否则会以 LLMUnavailable 结束整轮，而不是降级重试）
+                        "json_schema", "json schema", "structured output"),
     "enable_thinking": ("enable_thinking", "thinking"),
     "max_tokens": ("max_tokens", "max output", "max_output_tokens", "max tokens"),
     "stream_options": ("stream_options", "include_usage"),
@@ -520,6 +539,8 @@ def _kwargs_for(
     json_mode: bool,
     no_think: bool,
     dropped: set[str],
+    json_schema: dict | None = None,
+    json_schema_name: str = "result",
 ) -> dict[str, Any]:
     """按方言组装请求参数；`dropped` 里的键不出现（参数降级阶梯的结果）。"""
     extra_body = dict(provider.extra_body)
@@ -538,7 +559,16 @@ def _kwargs_for(
         if max_tokens and "max_tokens" not in dropped:
             kw["max_tokens"] = max_tokens
         if json_mode and "response_format" not in dropped:
-            kw["response_format"] = {"type": "json_object"}
+            if json_schema:
+                kw["response_format"] = {
+                    "type": "json_schema",
+                    # 不传 strict：strict 要求 additionalProperties:false 且所有字段必填，
+                    # 而本项目的 schema 用 draft-07 的 ["string","null"] 写法（更宽松、
+                    # 本地服务全都吃）。省略 strict 两端兼容性最好，约束效果不变。
+                    "json_schema": {"name": json_schema_name, "schema": json_schema},
+                }
+            else:
+                kw["response_format"] = {"type": "json_object"}
     else:
         system, rest = _split_system(messages)
         if system:
@@ -549,7 +579,13 @@ def _kwargs_for(
         if max_tokens and "max_tokens" not in dropped:
             kw["max_output_tokens"] = max_tokens
         if json_mode and "response_format" not in dropped:
-            kw["text"] = {"format": {"type": "json_object"}}
+            if json_schema:
+                kw["text"] = {"format": {
+                    "type": "json_schema", "name": json_schema_name,
+                    "schema": json_schema,
+                }}
+            else:
+                kw["text"] = {"format": {"type": "json_object"}}
     if extra_body:
         kw["extra_body"] = extra_body
     if provider.extra_headers:
@@ -877,6 +913,7 @@ async def chat_structured(
     temperature: float = 0.0,
     history: list[dict] | None = None,
     no_think: bool = False,
+    schema_in_prompt: bool = True,
 ) -> Any:
     """结构化输出：让模型严格按提供的 JSON Schema 输出。
 
@@ -887,6 +924,13 @@ async def chat_structured(
 
     两种方言下的结构约束方式不同：Chat Completions 用 `response_format`，
     Responses 用 `text.format`；都由 `_kwargs_for` 处理。
+
+    `schema_in_prompt=False` 时**不把 schema 原文拼进提示词** —— 调用方自己负责
+    说清输出格式。这是给本地小模型准备的：把 JSON Schema 原文（尤其中文的字段描述）
+    甩给 2B 模型，实测它会**把 schema 骨架当成答案模板照抄回来**
+    （输出 `{"type":"object","properties":{"intent":"查询余票"}}`），而不是生成实例。
+    改成"模板 + 一个算例"就正常了，而且提示词还短了近千 token。
+    详见 docs/local-model.md 与 `planner._SLM_OUTPUT_TEMPLATE`。
 
     用法：
         data = await chat_structured("……", schema={"$schema":"…", "type":"object", "properties":{...}})
@@ -903,13 +947,17 @@ async def chat_structured(
     client = get_client(provider)
     _model = model or provider.effective_structured_model
     schema_json = json.dumps(schema, ensure_ascii=False)
+    # 是否把**完整 schema** 下发给上游做约束解码（而不只是声明"要一个 JSON 对象"）。
+    # 本地小模型必开：小模型"根本没输出 JSON"的比例高得离谱，而约束解码是唯一能把合法率
+    # 拉到接近 100% 的手段；云端网关大多不支持，开了要多付一次失败往返（见 config 注释）。
+    constrained = schema if getattr(settings, "llm_structured_json_schema", False) else None
     # 约定：结果必须是一个 JSON 对象，键名须取自 schema 的 properties。
     user_prompt = (
         f"{prompt}\n\n"
         "必须输出一个 JSON 对象，仅包含以下字段（若某字段用户未提及，取 null 或空串），"
         "不要输出任何额外文字或 markdown 代码块围栏：\n"
         f"{schema_json}"
-    )
+    ) if schema_in_prompt else prompt
     messages = build_messages(user_prompt, system, history)
     ladder = _Ladder(provider)
 
@@ -919,6 +967,7 @@ async def chat_structured(
             ladder.dialect, provider, messages=messages, model=_model,
             temperature=temperature, max_tokens=0, json_mode=True,
             no_think=no_think, dropped=ladder.dropped,
+            json_schema=constrained, json_schema_name="railfan_structured",
         )
         _t0 = time.perf_counter()
         try:
@@ -1004,14 +1053,31 @@ def _looks_like_chat_model(model_id: str) -> bool:
     return not any(h in low for h in _NON_CHAT_HINTS)
 
 
+def _strip_trailing_commas(text: str) -> str:
+    """去掉 JSON 里的尾随逗号（`{"a":1,}` / `[1,2,]`）。
+
+    小模型最常见的"几乎对了"的格式错误。这是一个**无损**变换：尾随逗号在 JSON 里
+    本来就非法，删掉不改变任何语义，因此不需要"猜"。**只做这一种修复**——
+    补引号、补括号、补截断字段都属于"编造值"，宁可让它失败（见下方说明）。
+    """
+    return re.sub(r",(\s*[}\]])", r"\1", text)
+
+
 def _parse_json_object(content: str) -> dict:
-    """把模型输出解析成 JSON 对象（容忍 markdown 围栏与前后噪声）。
+    """把模型输出解析成 JSON 对象（容忍 markdown 围栏、前后噪声、尾随逗号）。
 
     社区版要面对几十家网关，"严格只输出 JSON"并不总能被遵守：
     实测常见 ` ```json ... ``` ` 围栏、句子前后带解释。宽松解析能省掉一整轮失败重试。
 
     结构化层只接受 JSON 对象：数组/字符串/数字/null 都会让下游 AttributeError 逃出
     LLMUnavailable 契约（曾经导致意图/抽取不再降级、整个请求报错）。
+
+    **失败时抛 `LLMOutputInvalid`**（`LLMUnavailable` 的子类）：语义是"服务通、输出不能用"，
+    调用方据此可以选择换条更简单的路再试，而不是直接放弃（见该类 docstring）。
+
+    **刻意不做**的修复：输出被 max_tokens 截断时补全括号。补齐会让"没答完的值"变成
+    一个看起来正常的错值（如截断的站名），这与本项目"宁可说不认识"的口径冲突。
+    截断单独给一句可读的诊断，让人知道该调大输出预算。
     """
     text = (content or "").strip()
     if text.startswith("```"):
@@ -1019,20 +1085,39 @@ def _parse_json_object(content: str) -> dict:
         if text.rstrip().endswith("```"):
             text = text.rstrip()[:-3]
         text = text.strip()
-    try:
-        obj = json.loads(text)
-    except json.JSONDecodeError:
-        # 退一步：截取第一个 { 到最后一个 } 之间的内容
-        start, end = text.find("{"), text.rfind("}")
-        if start == -1 or end <= start:
-            raise LLMUnavailable("LLM 返回非 JSON（无法解析结构化输出）")
+
+    candidates = [text]
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        candidates.append(text[start : end + 1])
+    for cand in list(candidates):
+        fixed = _strip_trailing_commas(cand)
+        if fixed != cand:
+            candidates.append(fixed)
+
+    # 不能用 None 当"没解析出来"的哨兵：`null` 本身是合法 JSON，
+    # "解析成功但值是 None"与"压根没解析成功"必须分开（这个坑被测试逮到过）。
+    _MISSING = object()
+    obj: Any = _MISSING
+    last_err: Exception | None = None
+    for cand in candidates:
         try:
-            obj = json.loads(text[start : end + 1])
+            obj = json.loads(cand)
+            break
         except json.JSONDecodeError as e:
-            raise LLMUnavailable(f"LLM 返回非 JSON（无法解析结构化输出）: {e}") from e
+            last_err = e
+
+    if obj is _MISSING:
+        # 截断（回一句话但 JSON 没闭合）与"压根没输出 JSON"是两种病，诊断分开
+        if len(text) >= 40 and text.count("{") > text.count("}"):
+            raise LLMOutputInvalid(
+                "LLM 输出疑似被截断（JSON 括号未闭合，"
+                "可能是 max_tokens 不够或被上游截流）"
+            )
+        raise LLMOutputInvalid(f"LLM 返回非 JSON（无法解析结构化输出）: {last_err}")
 
     if not isinstance(obj, dict):
-        raise LLMUnavailable(
+        raise LLMOutputInvalid(
             f"LLM 返回的 JSON 不是对象（实际为 {type(obj).__name__}），无法用于结构化解析"
         )
     return obj

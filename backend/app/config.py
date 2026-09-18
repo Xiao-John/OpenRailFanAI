@@ -109,6 +109,32 @@ class Settings(BaseSettings):
     fastpath_enabled: bool = True
     # 结构化调用（意图/槽位）关闭"思考"：这类任务里思考 token 纯属延迟（实测 3.3s → 1.1s）
     llm_structured_no_think: bool = True
+    # 结构化调用时把**完整 JSON Schema** 下发给上游（response_format=json_schema /
+    # Responses 的 text.format=json_schema），让服务端做**约束解码**（语法掩码），
+    # 而不只是声明"请给一个 JSON 对象"。
+    #
+    # 默认关的原因：约束解码是后来才普及的能力，多数 OpenAI 兼容网关不支持；不支持时
+    # 白费一次失败往返（阶梯会自动丢参数重试，不报错，但慢一拍）。
+    #
+    # **用本地小模型（Ollama / llama.cpp / LM Studio）时务必打开**：
+    #   实测（arXiv 2609.07370，1000 条 CPU 小模型原始响应）**只有 5 条**能被 json.loads
+    #   直接解析；另一组对照实验里"好好请求"的合法率 4%、重试 5 次也只有 23%，
+    #   而**约束解码是 100%**（且每条可用记录的 token 花费少 19 倍）。
+    #   即"小模型能不能当决策器"主要不取决于模型多聪明，而取决于有没有约束解码。
+    # 配套：LLM_STRUCTURED_NO_THINK=true，且 LLM_CONTEXT_TOKENS 要与本地服务端的
+    # num_ctx 对齐（对不齐时超出的部分会被静默丢弃，比报错难查）。
+    llm_structured_json_schema: bool = False
+    # 决策层的提示词用"**模板 + 算例**"代替"JSON Schema 原文"。
+    #
+    # 默认关（云端模型照旧用 schema 原文，行为零变化）。
+    # **用本地小模型时务必打开**：实测把带中文描述的 schema 原文甩给 2B 模型，
+    # 它会**把 schema 骨架当成答案模板照抄回来**
+    #   {"type":"object","properties":{"intent":"查询余票","location":{},…}}
+    # —— 19 条语料里合并调用 19 次全废，整轮退化到两次调用的兜底路径且槽位全空。
+    # 换成模板 + 两个算例（其中一个必须是省略句，用来钉住多轮继承）后同样三条全部正确，
+    # 而且提示词从 ~1072 token 压到 ~300（本地推理里 prefill 就是延迟本身）。
+    # 见 docs/local-model.md §5。
+    llm_structured_compact_prompt: bool = False
 
     # ---- 本地数据字典（里程/车站档案/离线时刻；2026-09-15 拍板）----
     # 由 `scripts/mirror_dict.py` 构建到 backend/data/dict.db（已 gitignore）。
