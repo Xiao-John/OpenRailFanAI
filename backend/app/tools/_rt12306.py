@@ -790,13 +790,29 @@ def infer_endpoints_from_offline(train_code: str) -> tuple[str, str] | None:
     return None
 
 
+_ALL_STATIONS_CACHE: dict[str, dict] = {}
+
+
 def all_stations() -> dict[str, dict]:
-    """全部站点索引：站名 → {code, city, pinyin, py_short, num}。
+    """全部站点索引：站名 → {code, city, pinyin, py_short, num}（**结果缓存，只读**）。
 
     用途：mcp 的 `search_stations_validated` **硬上限 10 条**（实测 limit=80 仍只回 10），
     导致"列出北京/苏州的主要车站"这类需求拿到的是"房山东、后吕村"而漏掉北京丰台、清河
     （R1 E08）。本地索引让我们能按 `city` 同城归组、按 `num`（12306 站序≈重要度）自行排序。
+
+    **为什么要缓存**（perf P2-1）：这是"包内静态站点表"的只读投影，`ensure_loaded()` 之后
+    不再变化，却被热路径反复取用 —— 每次重建 3384 条字典实测 **1.6 ms**，
+    按 §7.7 的统计一次问答要取 2–4 次。缓存后命中成本可忽略。
+
+    **未加载时返回空字典且不缓存**（与 `station_name_set` 同一条纪律）：否则会把
+    "调用方忘了先 `ensure_loaded()`"固化成永久空表，表现为"站名一律查不到"的静默退化 ——
+    这个坑在 `fastpath._station_in_text` 的 docstring 里已经踩过一次。
+
+    调用方**不得修改**返回值（会污染全局缓存）。
     """
+    global _ALL_STATIONS_CACHE
+    if _ALL_STATIONS_CACHE:
+        return _ALL_STATIONS_CACHE
     try:
         from mcp_12306.services import ticket_service as ts
 
@@ -815,6 +831,8 @@ def all_stations() -> dict[str, dict]:
             "py_short": str(getattr(st, "py_short", "") or ""),
             "num": _safe_int(getattr(st, "num", None)),
         }
+    if out:
+        _ALL_STATIONS_CACHE = out
     return out
 
 
