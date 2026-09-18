@@ -70,6 +70,8 @@ SUITES=(
   test_frontend_render
   # 确定性规则回复（mock / 模型不可用兜底：prompt 解析 + 规则排版；全部无网络）
   test_mock_render
+  # 多轮槽位/意图继承（省略句承接上文；含"该交出的必须交出"红线；全部无网络）
+  test_multiturn_slots
 )
 
 FAILED=()

@@ -63,6 +63,11 @@ POST /api/chat/stream                                   api/chat.py:61
 这些是项目里已经落地的性能与治理措施，改造时应保持语义不变：
 
 - **确定性快路径**（`pipeline/fastpath.py`）：覆盖约 56–68% 车迷问法，0 次 LLM 调用，实测 ≈1 ms。
+  **多轮省略句**（「那明天呢 / 那上海虹桥呢 / 改成上海呢」这类没有字面信号的承接句）自
+  2026-09-17 起也能确定性接管：槽位与意图从上文用户消息继承，判据见
+  `_history_user_turns` / `_merge_inherited`。语料实测（`tests/corpus/intent_corpus.jsonl`
+  的 24 条带 history 用例）接管数由 **3/24 提升到 11/24**；纯指代（「这车呢」）与
+  时间口径冲突（「那下午还有吗」承接「明天上午」）**故意不接管**，交回模型。
 - **合并结构化调用**（`planner.py:100`）：把"意图 + 问题性质 + 槽位"合成 1 次往返，替代原来 2 次。
 - **投机预取**（`pipeline/prefetch.py`）：只在 LLM 决策路径上、最多 1 个工具、失败静默、同名同参才复用。
 - **工具并发**（`retrieve.py:700-720`）：`asyncio.Semaphore(TOOL_CONCURRENCY)` + `gather`，且保持计划顺序输出。
