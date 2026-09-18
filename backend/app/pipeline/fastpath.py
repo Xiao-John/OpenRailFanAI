@@ -306,22 +306,50 @@ def _target_of(text: str) -> str:
     return train or emu
 
 
-def _merge_od(
-    own_od: tuple[str, str] | None, station: str, text: str, inh_od: tuple[str, str] | None
-) -> tuple[str, str] | None:
-    """本次只提到**一个**站名时，判定它替换的是起点还是终点。
+def _station_hits(text: str) -> list[str]:
+    """原话里出现的**全部**站名（丢掉被更长站名包含的短名），按长度降序。
 
-    判据：「从X」→ 起点，否则 → 终点。实测语料：
-      「改成上海呢」承接「北京南到济南西还有票吗？」应得 北京南→上海（换终点）；
-      「那从南京走呢」承接「G35全程几个小时？」应得 南京→…（换起点）。
+    用途是判断"本次到底提到了几个站"。只看 `_station_in_text`（只回最长的一个）
+    会出事：实测「深圳北到厦门北今天还有票吗？要高铁的」里两个站名同长，
+    `max` 取到先出现的**深圳北**，于是把它当成"本次新给的终点"去替换上文区间，
+    得到 **北京南→深圳北** —— 起点当成终点，方向直接错（"看起来正常的错答案"）。
     """
-    if own_od:
-        return own_od
+    try:
+        names = [n for n in rt.all_stations().keys() if 2 <= len(n) <= 8]
+    except Exception:  # noqa: BLE001 —— 站点库不可用时不判歧义
+        return []
+    found = [n for n in names if n in (text or "")]
+    kept: list[str] = []
+    for n in sorted(found, key=len, reverse=True):
+        if not any(n in k for k in kept):     # 「北京」被「北京南」包含 → 丢掉
+            kept.append(n)
+    return kept
+
+
+def _merge_od(
+    own_od: tuple[str, str] | None, station: str, text: str,
+    inh_od: tuple[str, str] | None, hits: list[str],
+) -> tuple[tuple[str, str] | None, bool]:
+    """定本次区间；返回 `(区间, 是否无法确定)`。
+
+    决策表（顺序即优先级）：
+      ① 本次给了**可信**区间 → 直接用（可信 = 两端都是站点库里的真实站名，
+         或者本次只提到一个站名 —— 单站句里的解析结果无从"多解"）；
+      ② 本次提到**多个**站名却解析不出区间 → 说不清换的是哪一个 → 标为无法确定
+         （`parse_od` 对「深圳北到厦门北今天还有票吗？要高铁的」会直接返回 None，
+         对「有没有通宵的车从西安到兰州」会给出 junk 起点）；
+      ③ 本次只提一个站名 + 上文有区间 → 「从X」换起点，否则换终点；
+      ④ 其余 → 用上文的区间。
+    """
+    if own_od and (_plausible_od(own_od) or len(hits) <= 1):
+        return own_od, False
+    if len(hits) > 1:
+        return None, True
     if station and inh_od:
         if re.search(r"从\s*" + re.escape(station), text):
-            return (station, inh_od[1])
-        return (inh_od[0], station)
-    return inh_od
+            return (station, inh_od[1]), False
+        return (inh_od[0], station), False
+    return inh_od, False
 
 
 async def _inherit_plan(turns: list[str]) -> FastPlan | None:
@@ -348,10 +376,17 @@ def _merge_inherited(
 ) -> Slots | None:
     """把本次新增的槽位合并进继承来的槽位；**无法唯一确定时返回 None（交回模型）**。
 
-    返回 None 的情形只有一种，但很关键：**时间口径冲突**。
-    实测「那下午还有吗」承接「G1明天上午还有二等座吗？」——本次只能确定"下午"，
-    日期只能用上文的"明天"，而 `_time_phrase` 对裸时段会退回"今天"，直接覆盖
-    就会把**明天**的问句答成**今天**的余票（看起来正常的错答案）。
+    返回 None 的情形有两种，都属于"说了但说不清"：
+
+    **① 时间口径冲突。** 实测「那下午还有吗」承接「G1明天上午还有二等座吗？」——
+    本次只能确定"下午"，日期只能用上文的"明天"，而 `_time_phrase` 对裸时段会退回
+    "今天"，直接覆盖就会把**明天**的问句答成**今天**的余票。
+
+    **② 区间说不清。** 本次提到多个站名却没给出可信区间（见 `_merge_od` 的决策表）：
+    「深圳北到厦门北今天还有票吗？要高铁的」`parse_od` 直接返回 None，
+    「有没有通宵的车从西安到兰州」给出 junk 起点（'有没有通宵的车从西安'）——
+    这两种情况下"拿上文的区间凑一个"会产出方向错的答案。
+
     这类只能交给模型：规则的职责是"不确定就别猜"。
     """
     merged = dict(inh.slots.non_empty())
@@ -364,9 +399,16 @@ def _merge_inherited(
     elif own_line and inh.intent in _OD_INTENTS:
         merged["target"] = own_line
 
+    hits = _station_hits(text)
+
     if inh.intent in _OD_INTENTS:
-        od = _merge_od(parse_od(text), station, text,
-                       _plausible_od(parse_od(str(merged.get("direction") or ""))))
+        od, amb = _merge_od(parse_od(text), station, text,
+                            _plausible_od(parse_od(str(merged.get("direction") or ""))),
+                            hits)
+        if amb:
+            # 本次提到多个站名却没给出可信区间：说不清它换的是哪一个。
+            # 绝不能"用继承来的区间凑一个"——那会得到 北京南→深圳北 这种方向错的答案。
+            return None
         merged["direction"] = f"{od[0]}→{od[1]}" if od else None
         merged["location"] = None
     elif station:
@@ -426,6 +468,7 @@ async def plan_with_reason(
 
     own_target = _train_code(text) or _emu_model(text)
     own_station = _station_in_text(text)
+    own_hits = _station_hits(text)          # 本次到底提到了几个站（判区间歧义用）
     own_time = _time_phrase(text)
     own_line = _line_in_text(text)
     own_od = parse_od(text) or None
@@ -437,8 +480,10 @@ async def plan_with_reason(
     line = own_line or _first_of(recent, _line_in_text)
     time_phrase = own_time or _first_of(recent, _time_phrase)
     # 区间：本次给了就用本次；本次只给了一个站名 + 上文有区间 → 按「从X / X呢」
-    # 判定替换的是起点还是终点（见 _merge_od）。
-    od = _merge_od(own_od, own_station, text, _first_od(recent))
+    # 判定替换的是起点还是终点（见 `_merge_od` 的决策表）。本次提到多个站名却
+    # 解析不出可信区间时 `od` 为 None —— 需要区间的问法自然会走到 NO_SLOT 交回模型，
+    # 不会拿着半截区间去查。
+    od, _od_amb = _merge_od(own_od, own_station, text, _first_od(recent), own_hits)
 
     matched: list[str] = []
     if train:

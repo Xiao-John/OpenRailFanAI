@@ -32,7 +32,7 @@ from __future__ import annotations
 import asyncio
 
 from app.od import parse_od
-from app.pipeline.fastpath import _line_in_text, plan_with_reason
+from app.pipeline.fastpath import _line_in_text, _station_hits, plan_with_reason
 
 
 def _U(content: str) -> dict:
@@ -205,6 +205,31 @@ def test_single_hop_inheritance_only():
     print("[PASS] 继承深度固定为 1 轮（不做套娃式传递）")
 
 
+def test_ambiguous_stations_defer_instead_of_guessing():
+    """本次提到**多个**站名却给不出可信区间时，必须交出——不许拿上文的区间凑一个。
+
+    这条是本次改动自己踩出来的坑（写完继承后自测才发现）：
+      · 「深圳北到厦门北今天还有票吗？要高铁的」`parse_od` 返回 None，而
+        `_station_in_text` 只回最长的一个（两个站名同长 → 取先出现的**深圳北**），
+        于是"本次新给的终点"被当成深圳北，产出 **北京南→深圳北** —— 起点当成终点，
+        方向直接错；
+      · 「有没有通宵的车从西安到兰州」`parse_od` 给出 junk 起点 '有没有通宵的车从西安'，
+        产物是 `有没有通宵的车从西安→兰州`。
+    两者都会给用户一个**看起来正常的错答案**，比"查不到"更糟。
+    """
+    hist = [_U("北京南到济南西还有票吗？"), _A("有票。")]
+    for msg in ("深圳北到厦门北今天还有票吗？要高铁的", "有没有通宵的车从西安到兰州"):
+        fp, _ = _plan(msg, hist)
+        assert fp is None, f"{msg!r} 被用继承区间凑出了答案：{fp.slots.non_empty()}"
+    # 站名计数本身也要对（两个站名同长时不能只留一个）
+    hits = _station_hits("深圳北到厦门北今天还有票吗？要高铁的")
+    assert set(hits) == {"深圳北", "厦门北"}, hits
+    # 只提一个站名的句子仍按"换终点"处理
+    _, slots, _ = _taken("那上海虹桥呢", hist)
+    assert slots.get("direction") == "北京南→上海虹桥", slots
+    print("[PASS] 多站名 + 无可信区间 → 交回模型（不做方向错的替换）")
+
+
 # ---------------------------------------------------------------- 3) 顺带修掉的既有缺陷
 def test_line_name_with_leading_chars():
     """线路名前带字也要能取到（`_line_in_text` 的匹配推进方式修好了）。
@@ -256,6 +281,7 @@ def main():
     test_only_user_turns_are_slot_source()
     test_no_history_means_no_change()
     test_single_hop_inheritance_only()
+    test_ambiguous_stations_defer_instead_of_guessing()
     test_line_name_with_leading_chars()
     test_od_tail_verb_trimmed()
     print("\n多轮槽位/意图继承测试全部通过 ✔")
