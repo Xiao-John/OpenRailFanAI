@@ -208,26 +208,55 @@ def test_single_hop_inheritance_only():
 def test_ambiguous_stations_defer_instead_of_guessing():
     """本次提到**多个**站名却给不出可信区间时，必须交出——不许拿上文的区间凑一个。
 
-    这条是本次改动自己踩出来的坑（写完继承后自测才发现）：
-      · 「深圳北到厦门北今天还有票吗？要高铁的」`parse_od` 返回 None，而
-        `_station_in_text` 只回最长的一个（两个站名同长 → 取先出现的**深圳北**），
-        于是"本次新给的终点"被当成深圳北，产出 **北京南→深圳北** —— 起点当成终点，
-        方向直接错；
-      · 「有没有通宵的车从西安到兰州」`parse_od` 给出 junk 起点 '有没有通宵的车从西安'，
-        产物是 `有没有通宵的车从西安→兰州`。
-    两者都会给用户一个**看起来正常的错答案**，比"查不到"更糟。
+    这条是本次改动自己踩出来的坑（写完继承后自测才发现）：`_station_in_text` 只回
+    最长的一个站名，两个站名同长时取**先出现的**，于是「本次新给的终点」被当成了起点，
+    产出 **北京南→深圳北** 这种方向错的答案。修法见 `_merge_od` 的决策表：
+    提到 ≥2 个站名却给不出可信区间时标为"无法确定"，`_merge_inherited` 随即交出整句。
+
+    注意：原先触发这个坑的两个句子（`深圳北到厦门北今天还有票吗？要高铁的` 与
+    `有没有通宵的车从西安到兰州`）在 `parse_od` 修好之后**已经能正确解析**，
+    不再是歧义句（见 `test_od_guided_parsing`），所以这里改用"多站名但没有分隔符"
+    的句子来验这条红线。
     """
     hist = [_U("北京南到济南西还有票吗？"), _A("有票。")]
-    for msg in ("深圳北到厦门北今天还有票吗？要高铁的", "有没有通宵的车从西安到兰州"):
-        fp, _ = _plan(msg, hist)
-        assert fp is None, f"{msg!r} 被用继承区间凑出了答案：{fp.slots.non_empty()}"
-    # 站名计数本身也要对（两个站名同长时不能只留一个）
-    hits = _station_hits("深圳北到厦门北今天还有票吗？要高铁的")
-    assert set(hits) == {"深圳北", "厦门北"}, hits
-    # 只提一个站名的句子仍按"换终点"处理
+    msg = "深圳北 厦门北 还有票吗"          # 提到两个站名，但没有"到/去"可切 → 说不清区间
+    assert set(_station_hits(msg)) == {"深圳北", "厦门北"}, _station_hits(msg)
+    fp, _ = _plan(msg, hist)
+    assert fp is None, f"{msg!r} 被用继承区间凑出了答案：{fp.slots.non_empty()}"
+
+    # `_merge_od` 的决策表直接钉一遍（不依赖具体问法）
+    from app.pipeline.fastpath import _merge_od
+    od, amb = _merge_od(None, "深圳北", msg, ("北京南", "济南西"), ["深圳北", "厦门北"])
+    assert (od, amb) == (None, True), (od, amb)
+    # 单站名仍按"换终点"处理，且不算歧义
     _, slots, _ = _taken("那上海虹桥呢", hist)
     assert slots.get("direction") == "北京南→上海虹桥", slots
     print("[PASS] 多站名 + 无可信区间 → 交回模型（不做方向错的替换）")
+
+
+def test_od_parsing_improved_for_earlier_failures():
+    """`parse_od` 的引导式解析修好了 7 条实测失败的区间问法（端到端走一遍）。
+
+    改前：单轮含区间的语料 18 条里 7 条错/漏；改后由站点库消歧，全部正确。
+    这些句子都属于**极自然**的问法，之前只能交回 LLM（多一次决策往返），
+    其中三条还会产出方向错的区间——所以这里是"能力 + 红线"一起钉。
+    """
+    cases = [
+        ("深圳北到厦门北今天还有票吗？要高铁的", ("深圳北", "厦门北")),
+        ("北京南到上海虹桥的高铁全程几个小时", ("北京南", "上海虹桥")),
+        ("南京南到杭州东这段大概要跑多久", ("南京南", "杭州东")),
+        ("从南京到上海的普速车走京沪线还是别的线", ("南京", "上海")),
+        ("有没有通宵的车从西安到兰州", ("西安", "兰州")),
+        ("北京到上海为什么不放票", ("北京", "上海")),
+        ("从北京坐到上海走的是哪条线？", ("北京", "上海")),
+    ]
+    for msg, want in cases:
+        got = parse_od(msg)
+        assert got == want, f"parse_od({msg!r}) = {got!r}，期望 {want!r}"
+    # 修好之后这些句子**不再**产出错区间，因此可以放心接管
+    _, slots, _ = _taken("深圳北到厦门北今天还有票吗？要高铁的", None)
+    assert slots.get("direction") == "深圳北→厦门北", slots
+    print(f"[PASS] 引导式区间解析：{len(cases)} 条原先失败的自然问法全部正确")
 
 
 # ---------------------------------------------------------------- 3) 顺带修掉的既有缺陷
@@ -282,6 +311,7 @@ def main():
     test_no_history_means_no_change()
     test_single_hop_inheritance_only()
     test_ambiguous_stations_defer_instead_of_guessing()
+    test_od_parsing_improved_for_earlier_failures()
     test_line_name_with_leading_chars()
     test_od_tail_verb_trimmed()
     print("\n多轮槽位/意图继承测试全部通过 ✔")

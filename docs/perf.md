@@ -63,6 +63,10 @@ POST /api/chat/stream                                   api/chat.py:61
 这些是项目里已经落地的性能与治理措施，改造时应保持语义不变：
 
 - **确定性快路径**（`pipeline/fastpath.py`）：覆盖约 56–68% 车迷问法，0 次 LLM 调用，实测 ≈1 ms。
+  语料实测（2026-09-17，`tests/corpus/intent_corpus.jsonl`，标注非 llm 的用例）：
+  单轮 **68/90（76%）**、多轮 **11/23（48%）**，标注应走 LLM 的 79 条**零误接管**，
+  已接管者的意图判定**零错**。仍未接管的 34 条里 31 条是 `UNKNOWN_FAMILY`
+  （缺问法规则，以 news 类为主）、3 条 `NO_SLOT`。
   **多轮省略句**（「那明天呢 / 那上海虹桥呢 / 改成上海呢」这类没有字面信号的承接句）自
   2026-09-17 起也能确定性接管：槽位与意图从上文用户消息继承，判据见
   `_history_user_turns` / `_merge_inherited`。语料实测（`tests/corpus/intent_corpus.jsonl`

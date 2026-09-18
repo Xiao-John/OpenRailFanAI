@@ -13,7 +13,7 @@ LLM 往返**（意图分类 + 槽位抽取）上——检索层的工具调用�
    关键槽位（车次号 / 起讫站 / 站名 / 线路名）。任何一条不满足 → 返回 None，交回 LLM。
 2. **知识型/开放型问题一律不接管**（"CR400AF 为什么叫复兴号""两者的区别"）：无法用规则判断
    问题性质，交回 LLM 更安全。
-3. 站名一律用**本地站点库最长匹配**（`rt.all_stations()`），不靠正则硬切
+3. 站名一律用**本地站点库最长匹配**（`rt.station_name_set()`，缓存集合），不靠正则硬切
    （本项目有过 D09「明天下午」被当成站名的前科，以及"换乘车站"被切成"换乘车"的静默失败）。
 4. 记录 `reason`（命中的规则），并让流水线把 `planner=deterministic|llm` 透出，
    便于统计快路径误判率、必要时一键关掉（`FASTPATH_ENABLED=false`）。
@@ -124,10 +124,7 @@ def _station_in_text(text: str) -> str:
     """本地站点库最长匹配取站名（与 retrieve._station_from_text 同策略，独立实现避免循环依赖）。"""
     if not text:
         return ""
-    try:
-        names = [n for n in rt.all_stations().keys() if 2 <= len(n) <= 8]
-    except Exception:  # noqa: BLE001
-        return ""
+    names = [n for n in _station_names() if 2 <= len(n) <= 8]
     hits = [n for n in names if n in text]
     return max(hits, key=len) if hits else ""
 
@@ -269,19 +266,26 @@ def _first_of(turns: list[str], fn) -> str:
 def _plausible_od(od: tuple[str, str] | None) -> tuple[str, str] | None:
     """起讫站是否**两端都是真实站名**（按站点库精确匹配）。
 
-    为什么只校验**继承来的**区间：`parse_od` 是在整句话里找"X到Y"的形态，
-    遇到「那趟车现在跑到哪了」会解析出 ('那趟车现在跑', '哪了') —— 两端都不是站名。
-    本次原话直接解析出的区间沿用既有行为（下游还有兜底），但**继承**是这次新加的风险面，
-    不设闸门就可能把上文的噪声当成区间拿去查，产出"看起来正常的错答案"。
-    实测站点库把城市名（北京/上海）也收作键，所以这道校验不会误伤正常说法。
+    这道校验是**继承**路径的闸门：`parse_od` 历史上会从噪声句里抠出
+    ('那趟车现在跑', '哪了') 这类垃圾，不设闸门就可能把上文的噪声当成区间拿去查，
+    产出"看起来正常的错答案"。`parse_od` 自己现在也做站点库引导（见 `od._parse_od_guided`），
+    两处判据一致；这里保留是因为**站点库不可用时 `parse_od` 会退回纯规则**，
+    而继承是我新加的风险面，宁可不继承。
     """
     if not od:
         return None
-    try:
-        names = rt.all_stations()
-    except Exception:  # noqa: BLE001 —— 站点库不可用时宁可不继承
+    names = _station_names()
+    if not names:                      # 站点库不可用 → 宁可不继承
         return None
     return od if (od[0] in names and od[1] in names) else None
+
+
+def _station_names() -> set[str]:
+    """全部站名集合（`_rt12306.station_name_set()` 的缓存版）。"""
+    try:
+        return rt.station_name_set()
+    except Exception:  # noqa: BLE001
+        return set()
 
 
 def _first_od(turns: list[str]) -> tuple[str, str] | None:
@@ -314,10 +318,7 @@ def _station_hits(text: str) -> list[str]:
     `max` 取到先出现的**深圳北**，于是把它当成"本次新给的终点"去替换上文区间，
     得到 **北京南→深圳北** —— 起点当成终点，方向直接错（"看起来正常的错答案"）。
     """
-    try:
-        names = [n for n in rt.all_stations().keys() if 2 <= len(n) <= 8]
-    except Exception:  # noqa: BLE001 —— 站点库不可用时不判歧义
-        return []
+    names = [n for n in _station_names() if 2 <= len(n) <= 8]
     found = [n for n in names if n in (text or "")]
     kept: list[str] = []
     for n in sorted(found, key=len, reverse=True):

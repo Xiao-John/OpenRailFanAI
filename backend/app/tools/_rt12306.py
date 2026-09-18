@@ -818,6 +818,29 @@ def all_stations() -> dict[str, dict]:
     return out
 
 
+_STATION_NAME_SET: set[str] = set()
+
+
+def station_name_set() -> set[str]:
+    """全部站名的**集合**（判"这是不是一个真实站名"用；结果缓存）。
+
+    为什么单独给一个缓存的集合：`all_stations()` 每次调用都要重建 3384 条字典，
+    而"逐候选站名判真伪"是要**反复**查的（起讫站解析、多轮继承的区间校验），
+    一次问答里会被调几十次。
+
+    **库未加载时返回空集且不缓存** —— 否则"调用方忘了先 `ensure_loaded()`"会被
+    永久固化成一个空集合，表现为"站名一律判假"的静默退化（这个坑
+    `fastpath._station_in_text` 的 docstring 里已经踩过一次）。
+    """
+    global _STATION_NAME_SET
+    if _STATION_NAME_SET:
+        return _STATION_NAME_SET
+    names = {n for n in all_stations() if n}
+    if names:
+        _STATION_NAME_SET = names
+    return names
+
+
 def _safe_int(v) -> int:
     try:
         return int(str(v).strip())

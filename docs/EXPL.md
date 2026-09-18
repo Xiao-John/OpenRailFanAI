@@ -33,6 +33,9 @@ cd backend && PYTHONPATH=. .venv/bin/uvicorn app.main:app --host 127.0.0.1 --por
 backend/app/
   main.py / config.py      # 入口（/health、挂 /api、静态托管前端）/ pydantic v1 读根目录 .env
   dates.py / od.py         # 日期归一化（今天/明天/9月14日 → YYYY-MM-DD）/ 起讫站解析（"北京到上海"）
+                           # od.py 是**规则 + 站点库引导**双层：先用原字符串规则整串匹配，
+                           # 解出垃圾或解不出时，改为在各分隔符处切候选、由站点库判真伪
+                           # （`station_ok` 可注入；不可用时退回纯规则，口径不变）
   context.py / models.py   # 多轮上下文裁剪（最近 6 条 · 单条 800 字 · 合计 3000 字）/ ChatRequest·PipelineResult
   api/chat.py              # POST /api/chat + /api/chat/stream(SSE) + GET /api/sessions
   llm/client.py / _mock.py # chat / chat_with_reasoning / chat_structured / stream_completion / 确定性 mock
@@ -98,7 +101,7 @@ scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预
 
 | 类别 | 套件与覆盖要点 |
 |---|---|
-| 基础 / 流水线 | `test_dates` `test_od` `test_context` `test_policy` `test_pipeline` `test_integration_fullchain` `test_api` `test_perf_fastpath` `test_phrasings`：日期归一化（大后天/下周X/非法回落）、起讫站解析、上下文裁剪、作答策略（knowledge 放宽 + **未知回退 realtime**）、三层流水线（假 LLM）+ 降级 + SSE 事件序列、整链 prompt 注入、HTTP 多轮/422/**提前中断**/按类型分流、确定性快路径/合并调用/投机预取 |
+| 基础 / 流水线 | `test_dates` `test_od` `test_context` `test_policy` `test_pipeline` `test_integration_fullchain` `test_api` `test_perf_fastpath` `test_phrasings`：日期归一化（大后天/下周X/非法回落）、起讫站解析（含站点库引导：目的地夹词/超长、起点残留动词都能解对）、上下文裁剪、作答策略（knowledge 放宽 + **未知回退 realtime**）、三层流水线（假 LLM）+ 降级 + SSE 事件序列、整链 prompt 注入、HTTP 多轮/422/**提前中断**/按类型分流、确定性快路径/合并调用/投机预取 |
 | 工具与数据 | `test_tools` `test_emu_routing` `test_train_stops` `test_station_screen` `test_rail_line_stations` `test_dict_mileage` `test_station_quality`：16 工具逐个调用、rail.re 交路、车次经停（**权威 train_no 纠正离线目录**、D06 红线、余票不可用时仍给经停）、车站大屏（方向判定、`----`→None、空结果三义歧义、车底后缀=**定员**）、按线路名查站序、本地字典、站序排序与 pypinyin 同音纠错（太安→泰安） |
 | 回归 | `test_regressions` `test_product_fixes` `test_r1_fixes` `test_r1_fixes2`：脱敏、非对象 JSON、流关闭、SSRF、体积上限、搜索相关性、交路一致性、日志净化；车迷测试集 17 项；R1 的 9 项 + 第 2 批 10 项（D06 次日值隔离、跨日期/自造印证禁令、完整性契约、反推禁令） |
 | 语义与治理 | `test_routing` `test_orchestrator_semantics` `test_cost_governance` `test_hardening` `test_config_docs` `test_frontend_store` `test_mock_render` `test_multiturn_slots`：mock 路由不伪造起讫站、块式/流式故障语义一致与恰好一次 `done`、历史只注入一次 + 工具并发保序、径路多候选/里程口径/缓存 TTL、配置与文档一致性；确定性规则回复（prompt 结构化解析、槽位不丢、只搬运不编造、降级接线与开关）；**多轮槽位/意图继承**（省略句承接上文、区间端点替换、以及"纯指代 / 时间冲突 / 垃圾区间一律交回模型"的红线）；前端数据层 node 直跑（22 项：多对话 CRUD、消息上限、思考/日志截断、主题持久化） |
