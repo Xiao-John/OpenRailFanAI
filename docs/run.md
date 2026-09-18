@@ -55,7 +55,7 @@ cd backend && python3 -m venv .venv
 | `HOST` / `PORT` / `APP_ENV` | `127.0.0.1` / `8000` / `dev`·`production`（production 校验必须显式配置的密钥，缺失拒绝启动） |
 | `ENABLE_API_DOCS` / `API_BASE` | 是否暴露 `/docs`·`/redoc`·`/openapi.json`（生产应关闭或置于鉴权/内网后）/ 前端代理目标 |
 | 治理阈值 | `MAX_MESSAGE_CHARS=2000`、`TOOL_CONCURRENCY=3`、`FACT_TEXT_MAX_CHARS=4000`（代码字段 `fact_text_max_chars`）、`FACT_TABLE_MAX_ROWS=40`、`STATION_LIST_LIMIT=12`、`STATION_SCREEN_LIMIT=15`、`RAIL_LINE_CACHE_TTL_S=3600`（大屏一次回全天 200–700 条，必须裁剪后再进 prompt）、`HTTP_TIMEOUT=12.0`、`HTTP_MAX_BYTES=2000000` |
-| 性能与本地字典 | `FASTPATH_ENABLED=true`（确定性快路径，出问题置 false 回退纯 LLM）、`LLM_STRUCTURED_NO_THINK=true`、`DICT_DB_PATH=data/dict.db`、`DICT_GTFS_MAX_AGE_DAYS=5`、`DICT_SITE_MIN_INTERVAL_S=2.0`（个人站点间隔下限，勿调小） |
+| 性能与本地字典 | `FASTPATH_ENABLED=true`（确定性快路径，出问题置 false 回退纯 LLM）、`LLM_STRUCTURED_NO_THINK=true`、`LLM_STRUCTURED_JSON_SCHEMA=false`（**用本地小模型时务必置 true**：把完整 JSON Schema 下发做约束解码；小模型"输出不是 JSON"的比例极高，约束解码是唯一能把合法率拉到接近 100% 的手段 —— 详见 [`local-model.md`](local-model.md)）、`DICT_DB_PATH=data/dict.db`、`DICT_GTFS_MAX_AGE_DAYS=5`、`DICT_SITE_MIN_INTERVAL_S=2.0`（个人站点间隔下限，勿调小） |
 | 其他 | `TRAIN_CACHE_TTL_DAYS=30`、`TICKET_PRESALE_DAYS=15`、`HUB_PROBE_PAIRS=北京:上海,北京:广州,北京:哈尔滨,上海:广州` |
 
 ### Android 一体化版本

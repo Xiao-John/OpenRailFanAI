@@ -105,6 +105,8 @@ cp .env.example .env
 # 真实模型：编辑 .env 填入 LLM_BASE_URL / LLM_API_KEY（OpenAI 兼容）
 # 多家混用/自备 Key：设 LLM_PROVIDER 选内置供应商（deepseek/openai/zhipu/ollama…），
 #   或用 LLM_PROVIDERS / LLM_PROVIDERS_FILE 添加自定义供应商；也可启动后在界面「⚙️ 设置」里直接选
+# 零 API 成本 / 8G 内存机器：跑本地小模型（Qwen3.5-2B），见 docs/local-model.md
+#   bash scripts/setup_local_model.sh --write
 # 无 Key 演示：直接设 LLM_MOCK=true（确定性本地 mock 跑通整链）
 
 # 3. 启动（从 backend/ 目录启动，配置会自动向上查找根目录 .env）
