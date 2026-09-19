@@ -354,10 +354,10 @@ def test_compact_prompt_replaces_schema_dump() -> None:
     （`{"type":"object","properties":{"intent":"查询余票","location":{},…}}`），
     19 条语料的合并调用 19 次全废。所以这条链路必须被钉住。
     """
-    from app.pipeline.planner import _merged_prompt
+    from app.pipeline.planner import _merged_static_prompt
 
-    full = _merged_prompt("那商务座呢", None, compact=False)
-    slim = _merged_prompt("那商务座呢", None, compact=True)
+    full = _merged_static_prompt(compact=False)
+    slim = _merged_static_prompt(compact=True)
 
     check('"intent": "…"' in slim, "精简版必须给出可照抄的输出模板")
     check("只能取这 8 个之一" in slim and "只能取这 3 个之一" in slim,
@@ -404,6 +404,139 @@ def test_schema_can_be_left_out_of_prompt() -> None:
     print("[PASS] schema_in_prompt=False 时不拼 schema 原文；默认路径行为不变")
 
 
+def test_no_think_field_is_per_provider() -> None:
+    """关思考的字段名**按供应商**下发 —— 各家不通用，而且不认时是静默忽略。
+
+    实测（Qwen3.5-2B on Ollama 0.33.3，同一提示词、同一 max_tokens）：
+      {"enable_thinking": false}   → 被忽略，400 token 全是思考，正文为**空**
+      {"think": false}             → OpenAI 兼容层同样忽略（只有原生 /api/chat 认）
+      {"reasoning_effort": "none"} → 生效：44 token / 0.9s，正文就是那个 JSON
+    所以 ollama 预设必须带 no_think_body，否则本地路径表现为"模型答不出话"。
+    """
+    from app.llm.providers import BUILTIN_PROVIDERS, provider_from_dict
+
+    ollama = provider_from_dict("ollama", BUILTIN_PROVIDERS["ollama"], source="builtin")
+    check(ollama.no_think_body == {"reasoning_effort": "none"},
+          f"ollama 预设应带 reasoning_effort，实际 {ollama.no_think_body}")
+
+    kw = llm._kwargs_for("chat_completions", ollama, messages=[{"role": "user", "content": "x"}],
+                         model="m", temperature=0.0, max_tokens=0, json_mode=True,
+                         no_think=True, dropped=set())
+    check(kw.get("extra_body") == {"reasoning_effort": "none"},
+          f"关思考时应下发 reasoning_effort，实际 {kw.get('extra_body')}")
+
+    # 没有声明 no_think_body 的供应商仍用通用字段（云端行为不变）
+    plain = provider_from_dict("plain", {"base_url": "https://api.example.com/v1", "model": "m"},
+                               source="request")
+    kw2 = llm._kwargs_for("chat_completions", plain, messages=[{"role": "user", "content": "x"}],
+                          model="m", temperature=0.0, max_tokens=0, json_mode=True,
+                          no_think=True, dropped=set())
+    check(kw2.get("extra_body") == {"enable_thinking": False},
+          f"普通供应商应回落到 enable_thinking，实际 {kw2.get('extra_body')}")
+
+    # 关掉思考时不下发任何东西
+    kw3 = llm._kwargs_for("chat_completions", ollama, messages=[{"role": "user", "content": "x"}],
+                          model="m", temperature=0.0, max_tokens=0, json_mode=True,
+                          no_think=False, dropped=set())
+    check("extra_body" not in kw3, f"no_think=False 时不应带 extra_body，实际 {kw3.get('extra_body')}")
+
+    # reasoning_effort 不被支持时也要能被阶梯丢掉（否则整轮失败）
+    check(llm._unsupported_param(_FakeStatusError(
+        400, "unknown field reasoning_effort")) == "enable_thinking",
+        "reasoning_effort 不被支持时必须能被识别为可降级参数")
+    print("[PASS] 关思考字段按供应商下发：ollama→reasoning_effort，其余→enable_thinking")
+
+
+def test_no_think_defaults_to_config() -> None:
+    """不传 no_think 时沿用配置 —— 兜底路径（intent/extract）也要吃到它。
+
+    这里踩过一个真坑：只有合并调用显式传了 no_think，兜底的 intent.classify /
+    extract.fill 走默认 False。云端只是白烧钱，本地小模型则是**整轮超时**
+    （思考 token 吃满预算、正文为空）。
+    """
+    from types import SimpleNamespace
+
+    seen: list[bool] = []
+
+    async def _create_once(client, ladder, kw):
+        seen.append("extra_body" in kw)
+        return _FakeResp('{"intent": "ticket"}')
+
+    async def run(setting: bool):
+        with patch.object(llm, "_create_once", _create_once), \
+             patch.object(llm, "get_client", lambda *a, **kw: object()), \
+             patch.object(llm, "current_provider", lambda: _fake_provider()), \
+             patch.object(llm, "get_settings", lambda: SimpleNamespace(
+                 llm_mock=False, llm_structured_no_think=setting,
+                 llm_structured_json_schema=False)):
+            return await llm.chat_structured("x", _SCHEMA)   # 故意不传 no_think
+
+    asyncio.run(run(True))
+    check(seen[-1] is True, "配置为 true 时，不传 no_think 也应当关思考")
+    asyncio.run(run(False))
+    check(seen[-1] is False, "配置为 false 时不应带关思考字段")
+    print("[PASS] no_think 不传时沿用 LLM_STRUCTURED_NO_THINK（兜底路径同样生效）")
+
+
+def test_variable_part_always_goes_last() -> None:
+    """随请求变化的内容必须拼在提示词**最后** —— 本地推理吃到前缀缓存的前提。
+
+    为什么值得单独钉一条：本地推理的延迟几乎全在 prefill，而 Ollama / llama-server 靠
+    **复用上一次请求的公共前缀**（KV cache）把它省掉。用户输入一旦夹在中间，
+    后面的 schema / 判定要点就全部作废、每次重算。这条断言直接量"两个不同问题的
+    提示词能共用多长的前缀"。
+    """
+    from app.pipeline.planner import _merged_static_prompt, _merged_user_tail
+
+    static = _merged_static_prompt(compact=True)
+    # 注意：静态前缀里**可以**有「那商务座呢」—— 那是模板里的少样本算例，本来就该固定。
+    # 所以这里换一句模板里没出现过的话，来验"当前输入没混进静态部分"。
+    probe = "G35今天几点到上海虹桥"
+    check(probe not in static, "静态前缀里不许出现本次用户输入")
+    check("前文对话" not in static, "静态前缀里不许出现前文对话段")
+    check("[本次用户输入]" not in static, "静态前缀里不许出现本次输入段")
+
+    tail = _merged_user_tail("那商务座呢", [{"role": "user", "content": "G1今天还有票吗"}])
+    check(tail.index("前文对话") < tail.index("本次用户输入"), "尾巴里前文在输入之前")
+    check(tail.rstrip().endswith("那商务座呢"), "尾巴必须以本次用户输入收尾")
+
+    # 真跑两个不同的问题，量公共前缀能覆盖多少
+    seen: list[str] = []
+
+    def _run_one(message: str) -> None:
+        async def _create_once(client, ladder, kw):
+            seen.append(kw["messages"][-1]["content"])
+            return _FakeResp('{"intent": "ticket"}')
+
+        async def run():
+            from types import SimpleNamespace
+
+            with patch.object(llm, "_create_once", _create_once), \
+                 patch.object(llm, "get_client", lambda *a, **kw: object()), \
+                 patch.object(llm, "current_provider", lambda: _fake_provider()), \
+                 patch.object(llm, "get_settings", lambda: SimpleNamespace(
+                     llm_mock=False, llm_structured_json_schema=False)):
+                await llm.chat_structured(
+                    _merged_static_prompt(compact=True), _SCHEMA,
+                    schema_in_prompt=False, prompt_tail=_merged_user_tail(message, None))
+
+        asyncio.run(run())
+
+    _run_one(probe)
+    _run_one("西安北站哪个站台最出片？")
+    a, b = seen
+    common = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        common += 1
+    check(common >= len(static),
+          f"两个不同问题的公共前缀 {common} 字符，应覆盖整个静态前缀（{len(static)} 字符）")
+    check(a.rstrip().endswith(probe) and b.rstrip().endswith("西安北站哪个站台最出片？"),
+          "提示词必须以本次用户输入收尾")
+    print(f"[PASS] 变量拼在最后：两个不同问题共用 {common} 字符前缀（静态部分全命中）")
+
+
 def main() -> int:
     print("=" * 72)
     print("本地小模型（SLM）加固测试")
@@ -421,6 +554,9 @@ def main() -> int:
     test_json_schema_is_dropped_when_unsupported()
     test_compact_prompt_replaces_schema_dump()
     test_schema_can_be_left_out_of_prompt()
+    test_variable_part_always_goes_last()
+    test_no_think_field_is_per_provider()
+    test_no_think_defaults_to_config()
 
     if _failures:
         print(f"\n失败 {len(_failures)} 条（共校验 {_checks} 项）：")

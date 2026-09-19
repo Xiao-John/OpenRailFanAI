@@ -80,15 +80,56 @@ echo "    $HOST 就绪"
 echo "==> [3/5] 拉取模型 ${MODEL}（约 1.5 GB，可断点续传）"
 ollama pull "$MODEL"
 
-echo "==> [4/5] 派生 ${LOCAL_NAME}（num_ctx=${CTX}）"
-# 为什么必须派生：官方 tag 自带 PARAMETER num_ctx 4096。本项目注入的事实块
-# （车站大屏/逐站时刻/表格）经常远超 4k，超出的部分会被**静默丢弃** ——
-# 表现为"模型答得头头是道但少了一半数据"，比报错难查得多。
+echo "==> [4/5] 派生 ${LOCAL_NAME}（num_ctx=${CTX} + 正确的对话模板与停止符）"
+# 为什么要派生，而不是直接用 pull 下来的 tag —— 三件事都必须靠 Modelfile 修：
+#
+# 1) **对话模板**：线上 tag 的 template 是 `{{ .Prompt }}`（裸拼接），GGUF 里自带的
+#    Qwen 模板没有被用上。后果不是"效果差一点"，而是**模型根本不知道轮次边界**：
+#    实测表现为不停生成（跑到 2600+ token 也不会自己停）、把思考写在正文外面。
+#    下面这份模板按 GGUF 里的官方模板重写（只保留文本分支，去掉 tools/vision），
+#    并在 assistant 开头写入**空的思考块** —— 官方模板里这就是"不思考"的写法。
+#
+# 2) **停止符**：线上 tag 没定义任何 stop。缺了它，模型答完会继续编下一轮，
+#    白白烧掉整个输出预算。
+#
+# 3) **num_ctx**：线上 tag 默认只有 4096，本项目注入的事实块（车站大屏/逐站时刻/
+#    表格）经常远超 4k，超出的部分会被**静默丢弃** —— 表现为"模型答得头头是道
+#    但少了一半数据"，比报错难查得多。
 TMP_MF="$(mktemp)"
 cat >"$TMP_MF" <<EOF
 FROM $MODEL
 PARAMETER num_ctx $CTX
-PARAMETER temperature 0.7
+PARAMETER temperature 0
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|im_start|>"
+TEMPLATE """{{- if .Messages }}
+{{- range \$i, \$_ := .Messages }}
+{{- \$last := eq (len (slice \$.Messages \$i)) 1 }}
+{{- if \$last }}
+{{- if ne .Role "assistant" }}
+<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+
+{{- else }}
+<|im_start|>{{ .Role }}
+{{ .Content }}
+{{- end }}
+{{- else }}
+<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{- end }}
+{{- end }}
+{{- else }}
+<|im_start|>assistant
+<think>
+
+</think>
+
+{{- end }}"""
 EOF
 ollama create "$LOCAL_NAME" -f "$TMP_MF" >/dev/null
 rm -f "$TMP_MF"
@@ -103,6 +144,7 @@ if curl -fsS --max-time 180 "$HOST/v1/chat/completions" \
   "model": "$LOCAL_NAME",
   "temperature": 0,
   "response_format": {"type": "json_object"},
+  "reasoning_effort": "none",
   "messages": [
     {"role": "system", "content": "你是 RailFanAI 的结构化解析器，只输出满足要求的 JSON。"},
     {"role": "user", "content": "把这句话解析成 JSON：intent（ticket/schedule/station/rail_line/emu_routing/photo_spot/news/general 之一）、question_type（realtime/knowledge/mixed）、target（车次号，没有填 null）。\n\n输入：明天北京到上海还有票吗？"}

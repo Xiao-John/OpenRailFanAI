@@ -111,6 +111,8 @@ BUILTIN_PROVIDERS: dict[str, dict[str, Any]] = {
         "base_url": "http://localhost:11434/v1",
         "model": "",
         "key_required": False,
+        # 关思考用 reasoning_effort：见 Provider.no_think_body 注释（实测唯一生效的字段）
+        "no_think_body": {"reasoning_effort": "none"},
         "note": "本地推理，无需 Key；模型名填 ollama list 里的名字",
     },
     "lmstudio": {
@@ -234,6 +236,16 @@ class Provider:
     structured_model: str = ""
     extra_headers: dict[str, Any] = field(default_factory=dict)
     extra_body: dict[str, Any] = field(default_factory=dict)
+    # 关闭"思考"时要下发的字段（结构化调用用）。留空则用通用默认 {"enable_thinking": false}。
+    #
+    # 为什么必须做成**按供应商**的数据：各家关思考的字段名根本不是同一个东西，
+    # 而且不认时**静默忽略**（不报错），于是表现为"关不掉、思考 tokens 吃满预算、
+    # 正文是空的"。实测（Qwen3.5-2B on Ollama 0.33.3，同一提示词）：
+    #   {"enable_thinking": false}  → 忽略，生成 400 token 全是思考，正文为空
+    #   {"think": false}            → OpenAI 兼容层同样忽略（原生 /api/chat 才认）
+    #   {"reasoning_effort": "none"}→ **生效**：44 token / 0.9s，正文就是那个 JSON
+    # 所以 ollama 预设带上这一条，用户只要 `LLM_PROVIDER=ollama` 就自动正确。
+    no_think_body: dict[str, Any] = field(default_factory=dict)
     key_required: bool | None = None      # None = 按地址自动推断
     source: str = "builtin"               # builtin | file | env | legacy | request
     note: str = ""
@@ -312,6 +324,7 @@ def provider_from_dict(pid: str, data: dict[str, Any], *, source: str) -> Provid
         structured_model=str(data.get("structured_model") or data.get("structuredModel") or "").strip(),
         extra_headers=_as_dict(data.get("extra_headers") or data.get("extraHeaders")),
         extra_body=_as_dict(data.get("extra_body") or data.get("extraBody")),
+        no_think_body=_as_dict(data.get("no_think_body") or data.get("noThinkBody")),
         key_required=key_required,
         source=source,
         note=str(data.get("note") or ""),
@@ -323,6 +336,7 @@ def _canonical_keys(data: dict[str, Any]) -> dict[str, Any]:
     alias = {
         "baseUrl": "base_url", "apiKey": "api_key", "structuredModel": "structured_model",
         "extraHeaders": "extra_headers", "extraBody": "extra_body",
+        "noThinkBody": "no_think_body",
         "keyRequired": "key_required", "dialect": "api",
     }
     return {alias.get(k, k): v for k, v in data.items() if k != "id"}
@@ -334,6 +348,7 @@ def _provider_to_dict(p: Provider) -> dict[str, Any]:
         "label": p.label, "base_url": p.base_url, "api_key": p.api_key, "api": p.api,
         "model": p.model, "structured_model": p.structured_model,
         "extra_headers": p.extra_headers, "extra_body": p.extra_body,
+        "no_think_body": p.no_think_body,
         "key_required": p.key_required, "note": p.note,
     }
 
@@ -544,6 +559,7 @@ def resolve_provider(
         "structured_model": ov.get("structured_model") or base.structured_model,
         "extra_headers": base.extra_headers,
         "extra_body": base.extra_body,
+        "no_think_body": base.no_think_body,
         "key_required": base.key_required,
         "note": base.note,
     }

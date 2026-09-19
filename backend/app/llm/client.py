@@ -191,7 +191,7 @@ _DROPPABLE_PARAMS: dict[str, tuple[str, ...]] = {
                         # json_schema 是 response_format 的"加强版"，上游不支持时必须
                         # 能被同一阶梯丢掉（否则会以 LLMUnavailable 结束整轮，而不是降级重试）
                         "json_schema", "json schema", "structured output"),
-    "enable_thinking": ("enable_thinking", "thinking"),
+    "enable_thinking": ("enable_thinking", "thinking", "reasoning_effort", "reasoning effort"),
     "max_tokens": ("max_tokens", "max output", "max_output_tokens", "max tokens"),
     "stream_options": ("stream_options", "include_usage"),
 }
@@ -544,9 +544,15 @@ def _kwargs_for(
 ) -> dict[str, Any]:
     """按方言组装请求参数；`dropped` 里的键不出现（参数降级阶梯的结果）。"""
     extra_body = dict(provider.extra_body)
+    # 关思考的字段**按供应商**下发：各家字段名不同，而且不认时是**静默忽略**
+    # （表现为"关不掉、思考 token 吃满预算、正文为空"）。见 Provider.no_think_body。
+    no_think_field = "enable_thinking"
     if no_think and "enable_thinking" not in dropped:
-        extra_body["enable_thinking"] = False
+        no_think_body = provider.no_think_body or {"enable_thinking": False}
+        no_think_field = next(iter(no_think_body), "enable_thinking")
+        extra_body.update(no_think_body)
     if "enable_thinking" in dropped:
+        extra_body.pop(no_think_field, None)
         extra_body.pop("enable_thinking", None)
     if "extra_body" in dropped:
         extra_body = {}
@@ -912,8 +918,9 @@ async def chat_structured(
     model: str | None = None,
     temperature: float = 0.0,
     history: list[dict] | None = None,
-    no_think: bool = False,
+    no_think: bool | None = None,
     schema_in_prompt: bool = True,
+    prompt_tail: str = "",
 ) -> Any:
     """结构化输出：让模型严格按提供的 JSON Schema 输出。
 
@@ -932,6 +939,11 @@ async def chat_structured(
     改成"模板 + 一个算例"就正常了，而且提示词还短了近千 token。
     详见 docs/local-model.md 与 `planner._SLM_OUTPUT_TEMPLATE`。
 
+    `prompt_tail` 是**随请求变化的那部分**（本次用户输入），会被拼在整个提示词的最后。
+    为什么要有这个参数：本地推理（Ollama / llama-server）会复用上一次请求的**公共前缀**
+    KV cache，把变量放中间等于让后面的 schema/指令全部作废、每次重算 prefill ——
+    而本地推理的延迟几乎全在 prefill。固定顺序 = `prompt` → （schema）→ `prompt_tail`。
+
     用法：
         data = await chat_structured("……", schema={"$schema":"…", "type":"object", "properties":{...}})
     返回解析后的 dict（键名遵循 schema 的 properties）。
@@ -942,6 +954,13 @@ async def chat_structured(
         from app.llm import _mock
 
         return await _mock.mock_structured(prompt, schema)
+
+    # 不传就沿用配置（默认关）。**必须在这里兜底**：以前只有合并调用显式传了 no_think，
+    # 兜底的 intent.classify / extract.fill 走的是默认 False —— 于是"关思考"这条配置
+    # 只管住了主路径，一退回兜底路径就又开始思考。云端只是白烧钱和时间，
+    # 本地小模型则是灾难：思考 token 吃满预算、正文为空、客户端直接超时。
+    if no_think is None:
+        no_think = bool(getattr(settings, "llm_structured_no_think", True))
 
     provider = current_provider()
     client = get_client(provider)
@@ -958,6 +977,8 @@ async def chat_structured(
         "不要输出任何额外文字或 markdown 代码块围栏：\n"
         f"{schema_json}"
     ) if schema_in_prompt else prompt
+    # 变量部分**永远拼在最后**：这一条决定了本地推理能不能吃到前缀缓存（见 docstring）
+    user_prompt += prompt_tail
     messages = build_messages(user_prompt, system, history)
     ladder = _Ladder(provider)
 
