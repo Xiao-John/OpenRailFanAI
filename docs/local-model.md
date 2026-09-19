@@ -263,6 +263,27 @@ backend/.venv/bin/python scripts/bench_planner_model.py --compare /tmp/cloud.jso
 **这五条里只有第 1 条是"提示词工程"，2–4 条都是"让本地推理真的按预期工作"。**
 换句话说：本地化的主要工作量不在调模型，在把推理服务的坑填平。
 
+### 5.3 端到端：整条链路真的跑得起来
+
+规划与生成**都用本地 2B 模型**（`llm={"provider":"ollama","model":"railfan-slm"}`），
+走完整编排（`orchestrator.run_stream`）：
+
+```
+问题：为什么高铁要叫复兴号？
+  intent=general   planner=llm-merged   degraded=False   answer_done=True   truncated=False
+  思考 0 字 / 答案 768 字
+  工具：web.search: ok
+```
+
+它自己**规划出了 web.search**（`planner=llm-merged`，不是快路径兜的），
+再把检索到的网页事实组织成 768 字的分点中文回答并带来源编号 ——
+格式、接地、来源标注都对。**唯一的代价是慢**：这一轮 92 秒
+（其中大头是 768 字的生成 + 联网检索，不是决策）。
+
+所以结论是"**能用，但慢**"，而不是"跑不起来"。
+真要日常用，建议**本地决策 + 云端生成**：决策只需几十个 token、1 秒；
+生成要几百个 token，本地 2B 会很吃力，而那正是云端最擅长、也最便宜的部分。
+
 ### 5.3 根因：小模型会把 JSON Schema **照抄回来**
 
 第一轮 19 条**全部**走了兜底路径（合并调用被判定输出非法），槽位 20 个全空。
