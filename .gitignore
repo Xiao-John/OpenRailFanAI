@@ -44,3 +44,6 @@ android/build/
 android/app/build/
 android/local.properties
 android/keystore.properties
+
+# 设备端推理二进制：由 scripts/android/build-llama.sh 交叉编译产出，不进仓库
+android/app/src/lm/jniLibs/

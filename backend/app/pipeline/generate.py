@@ -16,10 +16,13 @@
 from __future__ import annotations
 
 from datetime import date
+import os
+import re
 
 from app.config import get_settings
 from app.context import format_history
 from app.llm.client import chat_with_reasoning
+from app.llm import client as llm_client
 from app.pipeline.extract import Slots
 
 # 生成层历史深度：比意图/抽取层（4 条）更深，用于对话连贯
@@ -30,6 +33,8 @@ _POLICY_REALTIME = (
     "【作答策略：实时数据型】\n"
     "本节问题依赖实时/事实性数据（时刻、余票、担当车组、开行状态、径路里程等）。\n"
     "必须**只依据下方“检索事实”作答**，不得用模型记忆补充或推测这类数据。\n"
+    "**列车时刻边界**：rail.re/车组交路记录的时间只代表记录时间，绝不能改写成发车、到达或停站时刻；"
+    "多个车次必须逐车依据各自的查询结果，绝不能用相反方向、同一车底或另一车次的时刻推算缺失车次。\n"
     "检索不足时，如实说明缺哪些数据并给出方向性建议，不要编造。\n"
     "**唯一例外（站点纠错）**：若检索明确显示“未找到该站”并给出了候选站名，"
     "你可以基于模型知识指出可能的同音/形近正确站名（例如“太安”→“泰安”），"
@@ -70,9 +75,33 @@ _POLICY = {
 }
 
 
-def answer_policy(question_type: str | None) -> str:
+# 精简版作答策略：只留"能不能用模型知识"这一条分歧点。
+# 长版里那 400 字主要是在解释**边界情形**（站点纠错例外等），
+# 而 0.8B/2B 的实测失败模式是"读不完就走样"，不是"不知道边界"。
+_POLICY_COMPACT = {
+    "realtime": (
+        "【作答策略：实时数据型】\n"
+        "只依据下方「检索事实」作答，不用模型记忆补充或推测。事实不足就如实说明缺什么，不要编。\n"
+        "rail.re/车组交路记录的时间不是列车到发时刻；多个车次必须逐车核对，不能用另一个车次反推。\n"
+    ),
+    "knowledge": (
+        "【作答策略：知识型】\n"
+        "可结合你的铁路常识作答；与检索事实冲突时以事实为准。"
+        "事实没覆盖的内容要标注「据模型知识，未检索确认」，不确定的用「据称/可能」。\n"
+    ),
+    "mixed": (
+        "【作答策略：混合型】\n"
+        "实时部分（时刻/余票/担当）只依据检索事实；知识部分可结合常识，但要标注"
+        "「据模型知识，未检索确认」。\n"
+    ),
+}
+
+
+def answer_policy(question_type: str | None, *, compact: bool = False) -> str:
     """按问题性质返回作答策略文本（未知/缺省按 realtime 从严处理）。"""
-    return _POLICY.get(str(question_type or "realtime"), _POLICY_REALTIME)
+    table = _POLICY_COMPACT if compact else _POLICY
+    key = str(question_type or "realtime")
+    return table.get(key) or (table["realtime"] if compact else _POLICY_REALTIME)
 
 
 # ---- 事实渲染：结构化投影优先，取消"900 字符硬截"（2026-09-14）----
@@ -144,56 +173,21 @@ def _cap_fact_text(text: str, settings) -> str:
     return text[: max(0, limit - len(marker))] + marker
 
 
-def build_prompt(
-    user_message: str,
-    slots: Slots,
-    retrieval: dict,
-    history: list[dict] | None = None,
-    question_type: str | None = None,
-) -> str:
-    """构造生成层 prompt（流式/非流式共用）。
-
-    每条检索事实都带自己的来源与时效说明（note），避免把某个工具的
-    陈旧数据警告错误地套用到另一个工具的实时数据上。
-
-    question_type 决定作答策略：
-      realtime  → 严格闭卷（只用检索事实）
-      knowledge → 允许结合模型知识（需标注来源与不确定度）
-      mixed     → 实时/知识分别处理
-    """
-    slot_lines = ", ".join(f"{k}={v}" for k, v in slots.non_empty().items()) or "(未抽取到关键槽位)"
-    sources: list[str] = retrieval.get("sources") or []
-    trace: list[str] = retrieval.get("tool_trace") or []
-    data_entries: list[dict] = retrieval.get("data") or []
-
-    settings = get_settings()
-    if data_entries:
-        blocks: list[str] = []
-        for d in data_entries:
-            text = _render_fact_text(d, settings)
-            if not text:
-                continue
-            entry_sources = d.get("sources") or []
-            entry_note = str(d.get("note") or "").strip()
-            integrity = str(d.get("integrity") or "").strip()
-            line = f"- [{d['tool']}] {text}"
-            if integrity:
-                line += f"\n  数据完整性：{integrity}"
-            if entry_sources:
-                line += "\n  来源：" + ", ".join(entry_sources)
-            if entry_note:
-                line += f"\n  时效/说明：{entry_note}"
-            blocks.append(line)
-        data_anchor = "\n".join(blocks) or "(数据块为空)"
-    else:
-        data_anchor = "(无可引用的检索数据)"
-
-    ctx = format_history(history, limit=GEN_HISTORY_LIMIT)
-    ctx_block = f"[对话历史]\n{ctx}\n\n" if ctx else ""
-
-    return (
-        "以下是一句铁路相关请求，我已解析意图与关键信息，并调用了数据源工具。\n"
-        f"{answer_policy(question_type)}\n"
+# ---- 精简生成提示词（本地小模型用）----
+#
+# 为什么必须另写一份：**实测同一条真实生成提示词（2073 字）下**
+#     0.8B   输出 1200 token（撞上限不会停）· 重复率 97% · 同一片段重复 68 次 · 编造站名
+#     2B/4B/云端  119–234 token · 重复率 0% · 内容正确
+# 而把提示词换成 227 字的精简版后，**同一个 0.8B** 输出 61 token、重复率 0%。
+#
+# 也就是说：长提示词不是"信息更多"，对 0.8B 这种规模它是**过载** ——
+# 它会去逐条应付读不完的规则，最后抓住其中一条反复复读。
+# 这与决策层的 `LLM_STRUCTURED_COMPACT_PROMPT` 是同一个教训，只是发生在生成层。
+#
+# 保留的是**会被真实扣分的那几条**，删掉的是解释性文字与长例子。
+# 另外它顺带是**延迟优化**：设备端 prefill 是唯一瓶颈，2073→约 500 字，
+# prefill 直接砍到约 1/4。
+_LONG_REQUIREMENTS = (
         "通用要求（所有类型都适用）：\n"
         "- 每条检索事实都带有自己的“来源”与“时效/说明”，请**逐条按各自的说明判断时效性**，"
         "不要用某条数据的时效说明去否定另一条数据；\n"
@@ -233,7 +227,150 @@ def build_prompt(
         "回答里必须原样声明总数与已展示条数，并禁止使用“没有/未包含/全部/只有”这类全集表述；"
         "用户若问的是被截掉的部分，应说明“需按条件缩小范围后重查”。\n"
         "- 回答末尾可用一行说明哪些内容来自检索、哪些来自模型知识。\n\n"
-        f"{ctx_block}"
+)
+
+_COMPACT_REQUIREMENTS = (
+    "通用要求：\n"
+    "- **只依据上面的检索事实作答**；事实里没有的不要补（知识型问题可补充，但要标注"
+    "「据模型知识，未检索确认」）。\n"
+    "- 每条事实有自己的时效说明，**各按各的判断**，不要用一条的说明去否定另一条。\n"
+    "- 日期**直接采用事实里给出的**，不要自己推算；禁止从「开通 N 周年」这类表述倒推年份。\n"
+    "- 结构性事实（经停站、站序、里程、编组）即使不是今日数据也可以拿来回答，"
+    "但要用一句话说明其日期与「图定/计划」性质。\n"
+    "- 事实若标注「已截断」或给出「命中 N 条/展示 M 条」，回答里要原样声明，"
+    "并避免「全部/只有」这类说法。\n"
+    "- 回答末尾用一行说明哪些来自检索。\n\n"
+)
+
+_STRUCTURED_REQUIREMENTS = (
+    "通用要求：\n"
+    "- 日期直接采用本次检索事实；每条事实的来源、日期与时效说明分别核对。"
+    "历史回答不作为本次检索事实。\n"
+    "- 当日实际到发、正晚点、余票和担当只能依据查询日实际数据；不可得须说明，"
+    "其他日期的记录不得冒充今日或据此断言停运。\n"
+    "- 经停、站序、历时、里程、编组是结构性事实：非今日图定数据也可引用，"
+    "须明确日期及图定/计划性质，不称实际运行、不推断晚点；仅有站序不得补出时刻。\n"
+    "- 交路记录时间不是到发时间。多车次逐车核对，不从相反方向、同车底或其他车次反推。"
+    "事实确认同一次车不同车次号时须说明别名，采用当日实际开行编号。\n"
+    "- 来源需同一日期、对象的可比数值才可称交叉印证；资讯采用带日期的最新来源，"
+    "冲突须说明，无日期不能确认现状；禁止由推理反推时间节点（如开通 N 周年）。\n"
+    "- 已截断或命中 N 条/展示 M 条须声明原有总数与展示数，不用全部/只有/没有等全集措辞；"
+    "询问省略部分须建议按条件重查。空、部分失败与参考数据须如实说明，不编造。\n"
+    "- 卡片展示具体事实，正文仅写必要的简短衔接（尽量不超过100字），不复述表格或记录。"
+    "不要思考中起草正文；最后可一行说明来源。\n\n"
+)
+
+
+def is_structured_realtime(retrieval: dict, question_type: str | None) -> bool:
+    """Optimize only pure rail cards; composite requests still need full prose.
+
+    A photo-spot question can include emu.routing alongside geographic/search
+    facts. The presence of that one card does not make the entire answer auxiliary.
+    """
+    tools = {str(item.get("tool") or "")
+             for item in [*(retrieval.get("data") or []),
+                          *(retrieval.get("display_errors") or [])]
+             if isinstance(item, dict)}
+    return (os.environ.get("APP_VARIANT", "main").lower() != "lm"
+            and (question_type or "realtime") == "realtime"
+            and bool(tools) and tools.issubset({"train.schedule", "emu.routing"}))
+
+
+def completion_options(retrieval: dict, question_type: str | None) -> dict:
+    """Reduce invisible structured prose while retaining explicit BYOK budgets."""
+    if not is_structured_realtime(retrieval, question_type):
+        return {}
+    options = {"no_think": True}
+    if not llm_client._spec_override("max_tokens"):
+        options["max_tokens"] = min(int(get_settings().llm_max_tokens), 256)
+    return options
+
+def build_prompt(
+    user_message: str,
+    slots: Slots,
+    retrieval: dict,
+    history: list[dict] | None = None,
+    question_type: str | None = None,
+) -> str:
+    """构造生成层 prompt（流式/非流式共用）。
+
+    每条检索事实都带自己的来源与时效说明（note），避免把某个工具的
+    陈旧数据警告错误地套用到另一个工具的实时数据上。
+
+    question_type 决定作答策略：
+      realtime  → 严格闭卷（只用检索事实）
+      knowledge → 允许结合模型知识（需标注来源与不确定度）
+      mixed     → 实时/知识分别处理
+    """
+    slot_lines = ", ".join(f"{k}={v}" for k, v in slots.non_empty().items()) or "(未抽取到关键槽位)"
+    sources: list[str] = retrieval.get("sources") or []
+    trace: list[str] = retrieval.get("tool_trace") or []
+    data_entries: list[dict] = retrieval.get("data") or []
+    structured_tools = {str(item.get("tool") or "") for item in data_entries}
+
+    settings = get_settings()
+    # 注入条数上限（0 = 不限制）。**本地小模型必须收敛**：候选一多它就会
+    # "逐条列出"与"总结论"自相矛盾（实测 4B 列出"G1 余 12 张"却下结论"没票"）。
+    # 被丢弃的条数在这里**显式声明**，否则模型会把"我只看到 8 条"讲成"资料就这 8 条"。
+    max_entries = int(getattr(settings, "fact_max_entries", 0) or 0)
+    dropped_entries = 0
+    if max_entries > 0 and len(data_entries) > max_entries:
+        dropped_entries = len(data_entries) - max_entries
+        data_entries = data_entries[:max_entries]
+    if data_entries:
+        blocks: list[str] = []
+        for d in data_entries:
+            text = _render_fact_text(d, settings)
+            if not text:
+                continue
+            entry_sources = d.get("sources") or []
+            entry_note = str(d.get("note") or "").strip()
+            integrity = str(d.get("integrity") or "").strip()
+            line = f"- [{d['tool']}] {text}"
+            if integrity:
+                line += f"\n  数据完整性：{integrity}"
+            if entry_sources:
+                line += "\n  来源：" + ", ".join(entry_sources)
+            if entry_note:
+                line += f"\n  时效/说明：{entry_note}"
+            blocks.append(line)
+        if dropped_entries:
+            total = dropped_entries + len(data_entries)
+            blocks.append(
+                f"…（本次共命中 {total} 条检索事实，受注入上限约束**仅列出前 "
+                f"{len(data_entries)} 条**，另有 {dropped_entries} 条未列出。"
+                f"回答涉及数量时必须原样说明"
+                f"“共 {total} 条、仅列出 {len(data_entries)} 条”，"
+                f"**禁止**使用“没有/未包含/全部/只有”这类全集表述；"
+                f"用户若问的是未列出的部分，应说明需缩小范围后重查）"
+            )
+        data_anchor = "\n".join(blocks) or "(数据块为空)"
+    else:
+        data_anchor = "(无可引用的检索数据)"
+
+    ctx = format_history(history, limit=GEN_HISTORY_LIMIT)
+    ctx_block = f"[对话历史]\n{ctx}\n\n" if ctx else ""
+
+    # 本地小模型走精简版（默认关，云端行为零变化），理由见 _COMPACT_REQUIREMENTS 上方注释
+    compact_gen = bool(getattr(settings, "llm_generation_compact_prompt", False))
+    requirements = (_STRUCTURED_REQUIREMENTS if is_structured_realtime(retrieval, question_type)
+                    else _COMPACT_REQUIREMENTS if compact_gen else _LONG_REQUIREMENTS)
+    structured_boundary = ""
+    if structured_tools.intersection({"train.schedule", "emu.routing"}):
+        structured_boundary = (
+            "【结构化事实展示边界】本次列车时刻/车组交路事实会由界面依据工具结构化结果单独展示。"
+            "回答只写必要的说明或衔接，不要输出 Markdown 表格、逐站时刻表或重复列举结构化记录；"
+            "具体事实字段以工具结果为准，不得改写、补全或从回答文本推断。\n"
+        )
+
+    return (
+        "以下是一句铁路相关请求，我已解析意图与关键信息，并调用了数据源工具。\n"
+        f"{answer_policy(question_type, compact=compact_gen)}\n"
+        f"{structured_boundary}"
+        # 必须显式用 `+`：`requirements` 现在是变量，不能像原来那样靠相邻字符串字面量
+        # 做隐式拼接 —— 从字面量换成变量时漏掉这一步就是一个语法错误。
+        + requirements
+        + f"{ctx_block}"
         f"用户原话：{user_message}\n"
         f"关键槽位 => {slot_lines}\n"
         f"工具调用：{trace or '(无)'}\n"
@@ -253,5 +390,54 @@ async def generate(
     """生成最终回答，返回 (answer, sources, thinking)。"""
     prompt = build_prompt(user_message, slots, retrieval, history, question_type)
     # 历史已在 prompt 的 [对话历史] 区块中；不再重复传入 messages（见模块 docstring）
-    answer, thinking = await chat_with_reasoning(prompt)
+    answer, thinking = await chat_with_reasoning(prompt, **completion_options(retrieval, question_type))
+    if suppress_duplicate_structured_answer(answer, retrieval):
+        answer = ""
     return answer, retrieval.get("sources") or [], thinking
+
+
+def suppress_duplicate_structured_answer(answer: str, retrieval: dict) -> bool:
+    """Reject model prose that repeats or conflicts with structured tool facts."""
+    entries = retrieval.get("data") or []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        tool = str(entry.get("tool") or "")
+        data = entry.get("data") if isinstance(entry.get("data"), dict) else {}
+        if tool == "train.schedule":
+            stops = data.get("stops") or data.get("routes") or []
+            stations = {str(s.get("station") or s.get("station_name") or s.get("name") or "") for s in stops if isinstance(s, dict)} - {""}
+            times = {str(s.get(k) or "") for s in stops if isinstance(s, dict) for k in ("arrive_time", "start_time", "arrive", "depart")} - {""}
+            dates = {str(data.get("train_date") or "")}
+            unsupported_dates = set(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", answer)) - dates
+            expected_md = {f"{d[5:7]}月{d[8:10]}日" for d in dates if len(d) == 10 and d[4] == "-"}
+            mentioned_md = set(re.findall(r"\d{1,2}月\d{1,2}日", answer))
+            unsupported_dates |= mentioned_md - expected_md
+            if data.get("train_date") and str(data["train_date"]) != date.today().isoformat() and re.search(r"今天|今日|当日实际", answer):
+                unsupported_dates.add("today-vs-result-date")
+            mentioned_times = set(re.findall(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b", answer))
+            unsupported_times = mentioned_times - times
+            if (sum(1 for value in stations if value in answer) >= 2
+                    or sum(1 for value in times if value in answer) >= 3
+                    or unsupported_dates or unsupported_times):
+                return True
+        elif tool == "emu.routing":
+            records = data.get("records") or []
+            codes = {str(r.get("train_code") or "") for r in records if isinstance(r, dict)} - {""}
+            times = {str(r.get("time") or "") for r in records if isinstance(r, dict)} - {""}
+            dates = {str(data.get("focus_date") or "")} | {str(r.get("date") or "") for r in records if isinstance(r, dict)}
+            dates.discard("")
+            unsupported_dates = set(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", answer)) - dates
+            expected_md = {f"{d[5:7]}月{d[8:10]}日" for d in dates if len(d) == 10 and d[4] == "-"}
+            mentioned_md = set(re.findall(r"\d{1,2}月\d{1,2}日", answer))
+            unsupported_dates |= mentioned_md - expected_md
+            focus_date = str(data.get("focus_date") or "")
+            if focus_date and focus_date != date.today().isoformat() and re.search(r"今天|今日|当日实际", answer):
+                unsupported_dates.add("today-vs-result-date")
+            mentioned_times = set(re.findall(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b", answer))
+            unsupported_times = mentioned_times - times
+            if (sum(1 for value in codes if value in answer) >= 2
+                    or sum(1 for value in times if value in answer) >= 2
+                    or unsupported_dates or unsupported_times):
+                return True
+    return False

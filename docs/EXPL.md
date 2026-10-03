@@ -13,7 +13,7 @@
 | 项 | 值 |
 |---|---|
 | 后端 | **Python 3.12**（要求 ≥ 3.10）、FastAPI、**pydantic v1**（`from pydantic import BaseSettings`，**刻意不用 v2**：Android 一体化把 Python 运行时随 APK 分发，v2 依赖的 `pydantic-core` 是 Rust 扩展，Chaquopy 上没有可用轮子；见 `backend/app/config.py` 开头） |
-| LLM / 数据源库 | OpenAI 兼容（`AsyncOpenAI`），**多供应商 + 双 API 方言**：默认供应商沿用 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`，另可用 `LLM_PROVIDER` 选 11 家内置目录之一，或用 `LLM_PROVIDERS` / `LLM_PROVIDERS_FILE` 添加自定义供应商；`api=auto` 时先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存结论（两种方言的响应结构与 usage 字段名不同，已在 `app/llm/client.py` 抹平）；用户可在界面「设置」里用自己的 Key（BYOK），随请求下发、服务端不落库。`LLM_MOCK=true` 走确定性本地 mock；依赖 `mcp-server-12306`（12306 实时）、`httpx[http2]`、`brotli`（浏览器级请求头所需）、`pypinyin`（站名同音纠错） |
+| LLM / 数据源库 | OpenAI 兼容（`AsyncOpenAI`），**多供应商 + 双 API 方言**：默认供应商沿用 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`，另可用 `LLM_PROVIDER` 选 11 家内置目录之一，或用 `LLM_PROVIDERS` / `LLM_PROVIDERS_FILE` 添加自定义供应商；`api=auto` 时先发 `/chat/completions`，遇 404/405 自动改发 `/responses` 并缓存结论（两种方言的响应结构与 usage 字段名不同，已在 `app/llm/client.py` 抹平）；用户可在界面「设置」里用自己的 Key（BYOK），随请求下发、服务端不落库。`LLM_MOCK=true` 走确定性本地 mock（`app/llm/_mock.py`：解析 prompt 结构后按固定模板排版，**不是**让模型作答）；模型不可用但检索已完成时，同一套渲染器会作为**降级**把已抓到的数据排版出来（`LLM_FALLBACK_RENDER=true`，正文自报非模型输出，`error` 与 `degraded` 如实下发）；依赖 `mcp-server-12306`（12306 实时）、`httpx[http2]`、`brotli`（浏览器级请求头所需）、`pypinyin`（站名同音纠错） |
 | 前端 | 原生 HTML + JS（无构建工具），由 FastAPI 静态托管，SSE 流式；**移动优先三端自适应**，支持多对话并存；**深浅色默认跟随系统**（设置页「外观」可选 跟随系统/浅色/深色；Android 上要配合应用主题的 `isLightTheme`，见 `docs/android.md`） |
 | 网络前提 | **中国境内出口**（12306 与 rail.re 均仅境内可达） |
 
@@ -33,6 +33,9 @@ cd backend && PYTHONPATH=. .venv/bin/uvicorn app.main:app --host 127.0.0.1 --por
 backend/app/
   main.py / config.py      # 入口（/health、挂 /api、静态托管前端）/ pydantic v1 读根目录 .env
   dates.py / od.py         # 日期归一化（今天/明天/9月14日 → YYYY-MM-DD）/ 起讫站解析（"北京到上海"）
+                           # od.py 是**规则 + 站点库引导**双层：先用原字符串规则整串匹配，
+                           # 解出垃圾或解不出时，改为在各分隔符处切候选、由站点库判真伪
+                           # （`station_ok` 可注入；不可用时退回纯规则，口径不变）
   context.py / models.py   # 多轮上下文裁剪（最近 6 条 · 单条 800 字 · 合计 3000 字）/ ChatRequest·PipelineResult
   api/chat.py              # POST /api/chat + /api/chat/stream(SSE) + GET /api/sessions
   llm/client.py / _mock.py # chat / chat_with_reasoning / chat_structured / stream_completion / 确定性 mock
@@ -44,6 +47,28 @@ frontend/                  # index.html + src/{main,store,pages}.js + tests/
 docs/                      # README(索引) / EXPL(本文件) / run / datasources
 scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预热离线数据） / upgrade_python.sh
 ```
+
+## Main 移动端结构化展示结果
+
+`POST /api/chat/stream` 的 `done` SSE 事件保留原有 `intent`、`slots`、`sources`、`tool_trace`、`usage`、`latency_ms` 与日志字段，并增加 `display_results`。`POST /api/chat` 的 `PipelineResult` 同样定义该可选字段；旧消息缺少字段或字段为空时，Main 前端继续用原 Markdown 内容显示。
+
+`backend/app/display_result.py` 只把工具返回的规范化 `ToolResult.data` 投影成前端安全对象，不使用模型回答文本，也不暴露供应商原始响应。当前可判别类型为：
+
+结构化对象使用 `schema_version: 1`。站点记录只投影 `station_no`、`station`、`arrive_time`、`start_time`、`stopover_time`；交路记录只投影 `train_code`、`date`、`time`。各顶层结果及嵌套项均带版本字段。Main 前端忽略声明了未知版本的结果，保留其旧 Markdown 降级显示；未带版本的既有结果仍可兼容读取。列车时刻的 `time_basis` 区分 `reference` 与 `stations_only`。12306 实时查询确认有当日车次时，接口提供的发到及经停时刻可显示，但经停时刻仍标作图定参考；工具明确标记当日时刻不可用且无单独 reference 时，不投影当日发到时刻。
+
+| kind | 主要字段 | 状态 |
+|---|---|---|
+| `train_schedule` | `train_code`、`date`、起讫站、时刻、`stops`、口径、来源 | `success` / `empty` |
+| `train_schedule_batch` | `items`（每项保留车次、日期和单项结果） | `success` / `partial` |
+| `emu_routing` | 查询对象、`focus_date`、交路 `records`、来源、记录时间语义 | `success` / `empty` |
+| `empty` | 空交路日期、查询对象及来源错误说明 | `empty` |
+| `error` | 相关工具与错误说明 | `failed` |
+
+批量时刻操作通过可选 `ChatRequest.display_action` 传递 `{kind: "train_schedule_batch", trains: [...], date: "YYYY-MM-DD"}`；只重试失败项时，前端只发送失败车次。日期切换和最近交路入口通过 `{kind: "emu_routing", query, date}` 发起结构化动作。单项状态由工具结果分别投影，成功项不因另一项失败而丢弃。交路记录的 `time_semantics` 明确说明其为记录时间，不是列车到发时间。
+
+Main 移动端对话历史使用 `#/history`，按会话更新时间分组，复用 `store.js` 现有搜索、切换、重命名和删除能力。流式滚动在用户离开底部后暂停，点击“回到底部”提示恢复跟随；追问只写入输入框，不直接发送。设计状态的静态文案集中在 `frontend/src/ui-copy.js`，图标资源位于 `frontend/assets/icons/`。
+
+Main 移动端视觉夹具位于 `frontend/tests/visual/fixtures.json`，用 `node frontend/tests/visual/capture.mjs` 启动本地 FastAPI 和 Microsoft Edge，使用 CDP 固定 CSS viewport 为 390×844。脚本在测试浏览器页内替换 SSE 响应并注入固定会话，不增加生产请求分支；`query_loading` 和 `reading_followup` 使用保持打开的活动流。九张 PNG、逐元素文案核对、原图坐标换算、DOM 矩形和逐项交互记录写入 `frontend/tests/visual/screenshots/`。`design-targets.json` 按对应手机框宽度或独立模块局部原点定义目标，`measurement-map.json` 记录原图到页面的语义映射，`page-comparisons/` 生成九份并列对照图。当前 71 项可比较布局测量均在 2px 内、109 项文案核对通过；两张设计图的阅读输入栏高度冲突单独标注，不作为页面偏差。`compare-icons.py` 从原图图标裁切与 Edge 截图生成 `icon-comparisons/` 的轮廓叠加和中心偏差；仍有 31 项超过 1px，因此 T13 与 T16 未完整通过。原 T1 至 T16 的逐条件证据和结论见 `frontend/tests/visual/acceptance.md`。
 
 ## 四、工具清单（16 个，全部已注册并验证）
 
@@ -98,13 +123,13 @@ scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预
 
 | 类别 | 套件与覆盖要点 |
 |---|---|
-| 基础 / 流水线 | `test_dates` `test_od` `test_context` `test_policy` `test_pipeline` `test_integration_fullchain` `test_api` `test_perf_fastpath` `test_phrasings`：日期归一化（大后天/下周X/非法回落）、起讫站解析、上下文裁剪、作答策略（knowledge 放宽 + **未知回退 realtime**）、三层流水线（假 LLM）+ 降级 + SSE 事件序列、整链 prompt 注入、HTTP 多轮/422/**提前中断**/按类型分流、确定性快路径/合并调用/投机预取 |
+| 基础 / 流水线 | `test_dates` `test_od` `test_context` `test_policy` `test_pipeline` `test_integration_fullchain` `test_api` `test_perf_fastpath` `test_phrasings`：日期归一化（大后天/下周X/非法回落）、起讫站解析（含站点库引导：目的地夹词/超长、起点残留动词都能解对）、上下文裁剪、作答策略（knowledge 放宽 + **未知回退 realtime**）、三层流水线（假 LLM）+ 降级 + SSE 事件序列、整链 prompt 注入、HTTP 多轮/422/**提前中断**/按类型分流、确定性快路径/合并调用/投机预取 |
 | 工具与数据 | `test_tools` `test_emu_routing` `test_train_stops` `test_station_screen` `test_rail_line_stations` `test_dict_mileage` `test_station_quality`：16 工具逐个调用、rail.re 交路、车次经停（**权威 train_no 纠正离线目录**、D06 红线、余票不可用时仍给经停）、车站大屏（方向判定、`----`→None、空结果三义歧义、车底后缀=**定员**）、按线路名查站序、本地字典、站序排序与 pypinyin 同音纠错（太安→泰安） |
 | 回归 | `test_regressions` `test_product_fixes` `test_r1_fixes` `test_r1_fixes2`：脱敏、非对象 JSON、流关闭、SSRF、体积上限、搜索相关性、交路一致性、日志净化；车迷测试集 17 项；R1 的 9 项 + 第 2 批 10 项（D06 次日值隔离、跨日期/自造印证禁令、完整性契约、反推禁令） |
-| 语义与治理 | `test_routing` `test_orchestrator_semantics` `test_cost_governance` `test_hardening` `test_config_docs` `test_frontend_store`：mock 路由不伪造起讫站、块式/流式故障语义一致与恰好一次 `done`、历史只注入一次 + 工具并发保序、径路多候选/里程口径/缓存 TTL、配置与文档一致性；前端数据层 node 直跑（22 项：多对话 CRUD、消息上限、思考/日志截断、主题持久化） |
+| 语义与治理 | `test_routing` `test_orchestrator_semantics` `test_cost_governance` `test_hardening` `test_config_docs` `test_frontend_store` `test_mock_render` `test_multiturn_slots`：mock 路由不伪造起讫站、块式/流式故障语义一致与恰好一次 `done`、历史只注入一次 + 工具并发保序、径路多候选/里程口径/缓存 TTL、配置与文档一致性；确定性规则回复（prompt 结构化解析、槽位不丢、只搬运不编造、降级接线与开关）；**多轮槽位/意图继承**（省略句承接上文、区间端点替换、以及"纯指代 / 时间冲突 / 垃圾区间一律交回模型"的红线）；前端数据层 node 直跑（22 项：多对话 CRUD、消息上限、思考/日志截断、主题持久化） |
 
 - **无网络套件**（断网/CI 可跑，前端套件需 node）：`test_regressions` `test_routing` `test_orchestrator_semantics` `test_cost_governance` `test_hardening` `test_config_docs` `test_product_fixes` `test_r1_fixes` `test_r1_fixes2`
-  `test_station_quality` `test_rail_line_stations` `test_dict_mileage` `test_perf_fastpath` `test_frontend_store`；其余依赖真实 LLM 或境内数据源。
+  `test_station_quality` `test_rail_line_stations` `test_dict_mileage` `test_perf_fastpath` `test_frontend_store` `test_mock_render` `test_multiturn_slots`；其余依赖真实 LLM 或境内数据源。
 - 真实模型联调通过（SiliconFlow / DeepSeek-V4-Flash）；意图分类 6 用例 × 3 次 = **18 次判定 100% 一致**（单次仍可能漂移，`test_api` 语义断言用有限重试，结构断言仍为硬断言）。
 
 ## 七、代码导读（关键文件入口）

@@ -1,0 +1,126 @@
+[
+  {
+    "tool_data": {
+      "train_code": "G1",
+      "train_date": "2026-09-25",
+      "source": "12306-realtime",
+      "today_times_available": true,
+      "start_time": "07:10",
+      "arrive_time": "09:20",
+      "stops": [
+        {
+          "station": "北京南",
+          "start_time": "07:10"
+        },
+        {
+          "station": "天津南",
+          "arrive_time": "07:36",
+          "start_time": "07:38"
+        }
+      ]
+    },
+    "answer_variants": [
+      "这里是时刻信息。",
+      "请查看卡片中的站点。"
+    ],
+    "projection_invocations": 2,
+    "display_results_equal": true,
+    "display_result": {
+      "kind": "train_schedule",
+      "status": "success",
+      "train_code": "G1",
+      "date": "2026-09-25",
+      "from_station": null,
+      "to_station": null,
+      "start_time": "07:10",
+      "arrive_time": "09:20",
+      "duration": null,
+      "stops": [
+        {
+          "station_no": null,
+          "station": "北京南",
+          "arrive_time": null,
+          "start_time": "07:10",
+          "stopover_time": null,
+          "schema_version": 1
+        },
+        {
+          "station_no": null,
+          "station": "天津南",
+          "arrive_time": "07:36",
+          "start_time": "07:38",
+          "stopover_time": null,
+          "schema_version": 1
+        }
+      ],
+      "schedule_type": "图定时刻",
+      "time_basis": "reference",
+      "today_times_available": true,
+      "sample_data": false,
+      "sources": [],
+      "schema_version": 1
+    }
+  },
+  {
+    "tool_data": {
+      "train_code": "G1",
+      "train_date": "2026-09-25",
+      "source": "12306-realtime",
+      "today_times_available": false,
+      "start_time": "07:10",
+      "arrive_time": "09:20",
+      "stops": [
+        {
+          "station": "北京南",
+          "start_time": "07:10"
+        },
+        {
+          "station": "天津南",
+          "arrive_time": "07:36",
+          "start_time": "07:38"
+        }
+      ]
+    },
+    "answer_variants": [
+      "这里是时刻信息。",
+      "请查看卡片中的站点。"
+    ],
+    "projection_invocations": 2,
+    "display_results_equal": true,
+    "display_result": {
+      "kind": "train_schedule",
+      "status": "success",
+      "train_code": "G1",
+      "date": "2026-09-25",
+      "from_station": null,
+      "to_station": null,
+      "start_time": null,
+      "arrive_time": null,
+      "duration": null,
+      "stops": [
+        {
+          "station_no": null,
+          "station": "北京南",
+          "arrive_time": null,
+          "start_time": null,
+          "stopover_time": null,
+          "schema_version": 1
+        },
+        {
+          "station_no": null,
+          "station": "天津南",
+          "arrive_time": null,
+          "start_time": null,
+          "stopover_time": null,
+          "schema_version": 1
+        }
+      ],
+      "schedule_type": "仅站名（当日时刻不可用）",
+      "time_basis": "stations_only",
+      "today_times_available": false,
+      "sample_data": false,
+      "sources": [],
+      "schema_version": 1
+    }
+  }
+]

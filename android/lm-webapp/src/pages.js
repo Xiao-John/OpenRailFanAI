@@ -1,0 +1,1285 @@
+// OpenRailFanAI · 内容页（使用帮助 / 免责声明 / 联系我们）+ 设置页（模型供应商 / 关于）
+// 说明：免责声明正文已填写（依据仓库文档与实现现状）；使用帮助已填写。
+// 「关于」不再是独立页面，而是**设置页里的一张卡片**（入口重复过一次：
+// 侧栏「ℹ️ 关于」与顶栏「⚙️ 设置」并列，用户要找一个设置得先猜它在哪一边）。
+
+import { store } from "./store.js";
+import { native } from "./native.js";
+
+const API_BASE = window.__API_BASE__ || "";
+const FILE_PREVIEW = window.location.protocol === "file:" && !API_BASE;
+const CONNECTION_HELP = FILE_PREVIEW
+  ? "当前是本地文件预览，无法连接查询服务。请启动后端，再从 http://127.0.0.1:8000 打开应用。"
+  : "无法连接服务，请检查网络与后端运行状态后重试。";
+
+// 唯一的对外反馈入口（GitHub Issues）。写死在这里而不是可配置项：
+// 社区版没有工单系统，留一个"待填写"的客服邮箱只会让用户白等回复。
+export const ISSUES_URL = "https://github.com/Xiao-John/OpenRailFanAI/issues";
+export const REPO_URL = "https://github.com/Xiao-John/OpenRailFanAI";
+
+export const DOCS = {
+  disclaimer: { title: "免责声明", icon: "⚠️" },
+  help: { title: "使用帮助", icon: "❓" },
+  contact: { title: "联系我们", icon: "✉️" },
+};
+
+// 版本号**不再硬编码**。以前这里写死 "v0.6 · Community"，而 Android 包的版本是
+// 另一个号（0.1.1），界面上同时出现两个互不相干的版本 —— 正是"我到底装的哪一版"
+// 这类疑惑的来源。现在统一从 `/api/version`（后端读仓库根的 VERSION）或打包时写入的
+// build.json 取，号只有一个。
+export const EDITION = "Community";
+export let APP_VERSION = "";            // 运行时填充；空值时界面显示"…"
+
+/** 版本展示文案：`0.1.2 · Community`。取不到就退回只显示版本号或占位。 */
+export function versionLabel() {
+  return APP_VERSION ? `${APP_VERSION} · ${EDITION}` : EDITION;
+}
+
+let _versionPromise = null;
+
+/** 取应用版本（只请求一次）。Android 优先读打包时写入的 build.json，桌面读 /api/version。 */
+export function loadAppVersion() {
+  if (FILE_PREVIEW) return Promise.resolve("");
+  if (_versionPromise) return _versionPromise;
+  const fromBuild = fetch("build.json", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((b) => (b && b.version) || null)
+    .catch(() => null);
+  _versionPromise = fromBuild
+    .then((v) => v || fetch(API_BASE + "/api/version", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => (b && b.version) || "")
+      .catch(() => ""))
+    .then((v) => {
+      APP_VERSION = String(v || "").trim();
+      return APP_VERSION;
+    });
+  return _versionPromise;
+}
+
+// 未选择具体供应商时，用户的 BYOK Key 记在这个键下
+// （语义：只覆盖 Key，供应商地址/模型仍用服务端默认配置）
+export const ROOT_KEY_ID = "__default__";
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function card(title) {
+  const c = el("div", "card");
+  if (title) c.appendChild(el("h3", null, title));
+  return c;
+}
+
+function kv(k, v) {
+  const row = el("div", "kv");
+  row.appendChild(el("span", "k", k));
+  row.appendChild(el("span", "v", v));
+  return row;
+}
+
+function placeholder(text) {
+  return el("div", "placeholder-block", text);
+}
+
+async function api(path, options = {}) {
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  // 容错：忘了写 /api 前缀时自动补上。这个坑真实踩过 —— 设置页因此静默 404，
+  // 界面只显示"服务端不可达"，而网络层才看得到真实 URL 少了 /api。
+  const url = path.startsWith("/api/") ? path : "/api" + path;
+  if (FILE_PREVIEW) return connectionFailure();
+  let resp;
+  try {
+    resp = await fetch(API_BASE + url, { ...options, headers });
+  } catch {
+    return connectionFailure();
+  }
+  let body = null;
+  try { body = await resp.json(); } catch { /* 非 JSON */ }
+  return { ok: resp.ok, status: resp.status, body };
+}
+
+function connectionFailure() {
+  return { ok: false, status: 0, body: { detail: { code: "CONNECTION_FAILED", message: CONNECTION_HELP } } };
+}
+
+function errText(res, fallback) {
+  const d = res && res.body && res.body.detail;
+  if (d && typeof d === "object" && !Array.isArray(d)) return d.message || d.code || fallback;
+  if (Array.isArray(d) && d.length) return String(d[0].msg || "").replace(/^Value error,\s*/, "") || fallback;
+  return fallback;
+}
+
+// ============ 页面骨架 ============
+
+function pageHeader(title, onBack) {
+  const wrap = el("div");
+  const bar = el("div");
+  bar.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:12px";
+  const back = el("button", "icon-btn", "←");
+  back.title = "返回对话";
+  back.addEventListener("click", onBack);
+  bar.appendChild(back);
+  bar.appendChild(el("h1", null, title));
+  wrap.appendChild(bar);
+  return wrap;
+}
+
+export function renderDocPage(key, deps) {
+  const { onBack } = deps;
+  const meta = DOCS[key] || { title: "文档", icon: "📄" };
+  const root = el("div");
+  root.appendChild(pageHeader(meta.title, onBack));
+
+  if (key === "contact") return renderContact(root, deps);
+  if (key === "help") return renderHelp(root, deps);
+
+  // 协议类页面：免责声明正文已填写；其余协议页仍为占位
+  if (key === "disclaimer") {
+    root.appendChild(el("p", null,
+      "本页说明 RailFanAI（OpenRailFanAI）的使用条件与责任边界，继续使用即表示已阅读并同意以下内容。"));
+    for (const [h, body] of [
+      ["一、数据来源与准确性",
+        "回答所依据的事实来自 12306（含车站车次大屏、站点库）、rail.re、黄河铁路网（jprailfan）、cnrail.geogv.org 等第三方公开数据源，" +
+        "可能存在延迟、缺失或错误；余票为提问时刻的快照，12306 不再列出当日已发车次；线路里程存在口径差异（两站间最短径路与指定径路／既有线口径不同，回答中会分别标注）。" +
+        "请以铁路官方发布为准，本服务的任何数据不作为出行依据。"],
+      ["二、不构成任何建议",
+        "本服务不构成购票、行程安排、线路选择、拍摄安全等任何专业建议。拍摄点信息仅供参考，系统会自动拒答危险行为；" +
+        "外出拍车请遵守法律法规与车站、线路的现场管理规定，不得影响行车安全与公共秩序。"],
+      ["三、模型生成内容",
+        "标注为「知识型／混合型」的回答可能包含模型记忆内容（页面显示「含模型知识，请核实」徽标），涉及编号、参数、厂商等信息时可能不准确；" +
+        "系统中的日期与时刻类数值以检索事实为准，模型知识部分请以官方资料核实。"],
+      ["四、第三方链接与数据版权",
+        "各数据源与外部链接的内容、版权归其所有者所有；本服务仅做检索与转述，并在回答中标注来源与时效。" +
+        "请遵守各站点的使用条款与 robots 约定，不得滥用，包括但不限于高频或并发抓取、绕过限流与反爬、整表转载与转售第三方数据。"],
+      ["五、免责与责任限制",
+        "本服务按「现状」提供，不对可用性、准确性、连续性作任何明示或默示担保。" +
+        "因使用或无法使用本服务（含数据错误、服务中断、依据回答作出的任何决定）造成的直接或间接损失，作者与贡献者不承担赔偿责任。"],
+      ["六、使用许可",
+        "本项目代码按仓库 LICENSE 声明的许可发布（MIT），允许包括商业使用在内的使用、修改与分发；" +
+        "第三方数据不在该授权范围内，其使用须另行遵守各数据源条款；使用本服务时请遵守所在地法律法规。"],
+    ]) {
+      root.appendChild(el("h2", null, h));
+      root.appendChild(el("p", null, body));
+    }
+  } else {
+    root.appendChild(placeholder("本节为条款正文占位，待法务/运营补齐后替换本段。"));
+  }
+
+  root.appendChild(el("div", "meta", `版本 ${APP_VERSION || "…"} · ${EDITION}｜内容随版本更新`));
+  return root;
+}
+
+/**
+ * 「关于」卡片 —— 挂在**设置页**底部，不再单独占一个路由。
+ *
+ * 为什么保留这一张卡而不是直接删掉：应用名/版本/许可是用户排查问题时
+ * 第一个会被问到的信息（"你装的是哪版"），随手可查比藏在某个折叠块里有用。
+ * 免责声明 / 使用帮助 / 联系我们 三个入口也从这里进 —— 它们原来是从
+ * 「关于」页链接过去的，不在这里留入口就等于改完找不到了。
+ */
+export function aboutCard(navigate) {
+  const c = card("关于");
+
+  const intro = el("p", "sub",
+    "RailFanAI 是面向中国铁路爱好者的 RAG / Agent 助手：输入一句自然语言，"
+    + "系统先判断意图与问题性质，再调用真实数据源检索，最后给出带来源与时效说明的回答。");
+  c.appendChild(intro);
+
+  c.appendChild(kv("应用", "RailFanAI（OpenRailFanAI）"));
+  c.appendChild(kv("版本", "…"));
+  // 版本拿到后回填（避免为了一个号把整页渲染改成异步）
+  loadAppVersion().then((v) => {
+    const row = [...c.querySelectorAll(".kv")].find(
+      (r) => r.querySelector(".k") && r.querySelector(".k").textContent === "版本");
+    const val = row && row.querySelector(".v");
+    if (val) val.textContent = versionLabel();
+  });
+  c.appendChild(kv("许可", "MIT（第三方数据的版权归各数据源所有）"));
+  c.appendChild(kv("技术栈", "FastAPI（SSE 流式）+ 原生 HTML/JS（无构建工具）"));
+
+  // 构建标记：Android 包在打包时写入 build.json；桌面/开发态没有这个文件，整行不显示。
+  // 为什么要把它显示给用户：静态资源 URL 跨安装**完全不变**，出问题后只能靠"重新下载"，
+  // 而界面本身分不出新旧 —— 有这一行就能直接确认重装到底生效了没有。
+  const buildRow = kv("构建", "读取中…");
+  c.appendChild(buildRow);
+  // 用 remove() 而不是 parent.removeChild()：用户在 fetch 返回前就离开设置页时，
+  // 这行早已被摘掉，removeChild 会抛异常 —— 而它会冒泡成 unhandledrejection，
+  // 直接把启动错误横幅点亮（本项目有过同类前科）。
+  fetch("build.json", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((b) => {
+      if (!b || !b.commit) { buildRow.remove(); return; }
+      const v = buildRow.querySelector(".v");
+      if (v) v.textContent = b.commit + (b.builtAt ? " · " + b.builtAt : "");
+    })
+    .catch(() => buildRow.remove());
+
+  // 仓库地址与反馈地址是**两个**链接：仓库给"想看源码/自建"的人，
+  // issue 给"要报问题"的人，用同一个地址会让人以为只能提 issue。
+  c.appendChild(externalLink("在 GitHub 上打开仓库", REPO_URL));
+  c.appendChild(el("div", "url-plain", REPO_URL));
+
+  const links = el("div");
+  links.style.marginTop = "10px";
+  for (const key of ["disclaimer", "help", "contact"]) {
+    const meta = DOCS[key];
+    const row = el("div", "list-link");
+    row.appendChild(el("span", null, `${meta.icon} ${meta.title}`));
+    row.appendChild(el("span", "arrow", "›"));
+    row.addEventListener("click", () => { if (navigate) navigate("#/doc/" + key); });
+    links.appendChild(row);
+  }
+  c.appendChild(links);
+  return c;
+}
+
+/**
+ * 外链元素。
+ *
+ * `target="_blank"` + `rel="noopener"` 是给浏览器用的；Android 一体化版的
+ * WebView 里 MainActivity.shouldOverrideUrlLoading **会拦截一切非 127.0.0.1 的跳转**
+ * （只在启动日志里记一行"已拦截外部跳转"），所以页面上同时明写 URL 文本并配"复制链接"，
+ * 保证跳不出去时用户还有路可走 —— 只给一个点了没反应的链接等于没有入口。
+ */
+function externalLink(text, url) {
+  const a = document.createElement("a");
+  a.className = "link-out";
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.appendChild(el("span", null, text));
+  a.appendChild(el("span", null, "↗"));
+  return a;
+}
+
+/**
+ * 复制文本：与 main.js 里同一套兜底顺序。
+ *
+ * 不能只用 Clipboard API —— 它在"没有用户手势 / 文档失焦"时会直接 reject
+ * （真机上被判为"复制失败"就是这么来的），所以 reject 后必须退到 execCommand。
+ */
+function copyText(text) {
+  const legacy = () => new Promise((resolve, reject) => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    // 不能 display:none（那样选不中），挪出视口即可
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    ta.remove();
+    ok ? resolve() : reject(new Error("copy failed"));
+  });
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(legacy);
+  }
+  return legacy();
+}
+
+function renderContact(root) {
+  const c = card("联系我们");
+  c.appendChild(el("p", "sub",
+    "问题反馈、功能建议、数据纠错统一走 GitHub Issues —— 这里能看到处理进度，也方便其他车迷搜到同样的答案。"));
+  c.appendChild(externalLink("在 GitHub 上提 issue", ISSUES_URL));
+
+  // WebView 可能拦掉外链跳转（见 externalLink 注释），所以地址要能看见、能复制。
+  // 地址与按钮**上下排**而不是左右排：窄屏上并排会把 URL 挤成"i ssues"这种断词。
+  const copyWrap = el("div");
+  copyWrap.style.marginTop = "10px";
+  copyWrap.appendChild(el("div", "url-plain", ISSUES_URL));
+  const copyBtn = el("button", "btn ghost", "复制链接");
+  copyBtn.style.marginTop = "8px";
+  copyBtn.addEventListener("click", () => {
+    copyText(ISSUES_URL).then(
+      () => { copyBtn.textContent = "已复制"; },
+      () => { copyBtn.textContent = "复制失败，请长按地址"; }
+    );
+  });
+  copyWrap.appendChild(copyBtn);
+  c.appendChild(copyWrap);
+  root.appendChild(c);
+
+  const note = card("提交问题时请附上");
+  for (const t of ["问题原句与时间", "页面显示的意图与数据来源", "若是错误数据，请附权威来源截图/链接"]) {
+    note.appendChild(el("li", null, t));
+  }
+  root.appendChild(note);
+  root.appendChild(el("div", "meta", "这三项能把排查从「猜」变成「看」：缺了它们往往只能靠运气复现。"));
+  return root;
+}
+
+function renderHelp(root, deps) {
+  const q = card("快速上手");
+  for (const [k, v] of [
+    ["提问", "像跟人说话一样提问，例如「G1 今天由哪组担当？」「明天北京到上海的高铁余票」。"],
+    ["多轮追问", "直接说「那明天呢」「它的余票呢」，系统会承接上一轮的对象。"],
+    ["停止生成", "生成中点「■」或按 ESC，已生成内容会保留。"],
+    ["编辑重发", "悬停/长按消息 → 「编辑」，发送后该消息之后的内容会被丢弃。"],
+    ["多对话", "左上角「☰」打开对话列表，可新建、切换、重命名、删除；对话保存在本机浏览器。"],
+  ]) {
+    q.appendChild(kv(k, v));
+  }
+  root.appendChild(q);
+
+  const tip = card("结果怎么读");
+  for (const [k, v] of [
+    ["意图 / 问题性质", "回答顶部显示识别出的意图；「知识型/混合型」回答含模型知识，页面会提示核实。"],
+    ["数据来源", "回答附来源链接；每条事实带各自的时效说明。"],
+    ["流程日志 / 思考过程", "折叠块可展开，便于核对检索与推理过程。"],
+    ["非今日数据", "若标注【非今日数据】，表示该值不是当天的实时值（例如已发车车次的次日图定时刻）。"],
+  ]) {
+    tip.appendChild(kv(k, v));
+  }
+  root.appendChild(tip);
+
+  const limits = card("已知限制");
+  for (const t of [
+    "12306 不再列出当日已发车次，此时会明确说明「今日时刻不可得」，而不是编造。",
+    "余票为提问时刻的快照，低余量会二次校验并标注变动。",
+    "线路里程有口径差异：最短径路（可能走高线）与指定径路/既有线口径不同，页面会分别标注。",
+    "普速车次的担当机车无公开数据源，系统会如实说明。",
+  ]) {
+    limits.appendChild(el("li", null, t));
+  }
+  root.appendChild(limits);
+  return root;
+}
+
+// ============ 本地模型（一键下载并启用）============
+//
+// 为什么必须有这张卡片：模型 508MB–2.6GB，**不可能打进 APK**。此前只能 `adb push`，
+// 封测用户根本用不了 —— 一个只能靠数据线才能启用的功能等于没有功能。
+//
+// 链路：选档 → 下载（带进度）→ 服务端自动拉起 llama-server → 一键设为当前使用。
+// 全程不碰服务端 .env，也**不打开 LLM_ALLOW_PRIVATE_BASE_URL** 那个全局口子：
+// 服务端把就绪的本地推理注册成 id 为 `ondevice` 的供应商，前端按 id 选中，
+// 于是它走的是"配置级"而不是"请求级"，SSRF 守卫直接早返回（见 providers.load_providers）。
+let _lmTimer = null;
+
+function stopLmPolling() {
+  if (_lmTimer) { clearInterval(_lmTimer); _lmTimer = null; }
+}
+
+function localModelCard(notify, rerender) {
+  const c = card("本地模型（免 API Key）");
+  const box = el("div");
+  c.appendChild(box);
+
+  /**
+   * 选档 + 一键下载。**已下载其它档位时也照样显示**（标题变成「再下一档」）——
+   * 多档共存的全部意义就是能同时留着 2B 和 4B 做对照，把入口藏起来等于没做。
+   */
+  function downloadArea(d, dl) {
+    const wrap = el("div", "lm-download");
+    if (!d.model && dl.state === "failed") {
+      wrap.appendChild(el("p", "sub", "上次下载失败：" + (dl.detail || "未知原因")));
+      // 服务端有断点续传：再点一次是**接着下**，不是从头来。不写清楚的话
+      // 用户看到失败就以为 500MB 白下了，直接放弃。
+      wrap.appendChild(el("p", "lm-hint",
+        "再点一次会从已下载的部分继续（支持断点续传），不会从头重来。"));
+    }
+    const hasSome = (d.models || []).length > 0;
+    if (hasSome) wrap.appendChild(el("div", "lm-sub", "再下载一档（可同时保留）"));
+
+    const choices = (d.choices || []).filter(
+      (x) => !(d.models || []).some((m) => m.name === x.gguf_name));
+    if (!choices.length) {
+      wrap.appendChild(el("p", "lm-hint", "可选档位都已下载。"));
+      return wrap;
+    }
+    const sel = selectEl(choices.map((x) => [x.id, x.label]), choices[0] && choices[0].id);
+    const row = el("div", "lm-row");
+    row.appendChild(sel);
+    const dlBtn = buttonEl(hasSome ? "下载" : "一键下载并启用", "primary", async () => {
+      dlBtn.disabled = true;
+      dlBtn.textContent = "准备中…";
+      const r = await api("/api/local-model/download", {
+        method: "POST",
+        body: JSON.stringify({ choice: sel.value }),
+      });
+      if (!r.ok) {
+        notify(errText(r, "下载启动失败"), "warn");
+      } else {
+        notify("开始下载，完成后会自动启用");
+      }
+      refresh();
+    });
+    row.appendChild(dlBtn);
+    wrap.appendChild(row);
+
+    const cur = choices.find((x) => x.id === sel.value);
+    const hint = el("p", "lm-hint", cur ? cur.note : "");
+    wrap.appendChild(hint);
+    sel.addEventListener("change", () => {
+      const x = choices.find((c2) => c2.id === sel.value);
+      hint.textContent = x ? x.note : "";
+    });
+
+    wrap.appendChild(el("p", "lm-hint",
+      `模型只在手机上跑，不调用任何云端接口 —— 装了它就是完全免费。`
+      + `当前可用空间约 ${(d.free_mb / 1024).toFixed(1)} GB，目录：${d.models_dir}`));
+    return wrap;
+  }
+
+
+  async function refresh() {
+    const res = await api("/api/local-model");
+    if (!res.ok || !res.body) {
+      box.innerHTML = "";
+      box.appendChild(el("p", "sub", errText(res, "读取本地模型状态失败。")));
+      stopLmPolling();
+      return;
+    }
+    render(res.body);
+  }
+
+  function render(d) {
+    box.innerHTML = "";
+    const dl = d.download || {};
+
+    // ---- 本安装包不含推理组件（正式线就是不带的）----
+    if (!d.binary_present) {
+      c.remove();
+      stopLmPolling();
+      return;
+    }
+
+    // ---- 正在下载 ----
+    if (dl.state === "downloading") {
+      const pct = dl.total ? Math.min(100, Math.floor(dl.received * 100 / dl.total)) : 0;
+      box.appendChild(el("div", "lm-status", "正在下载模型…"));
+      const bar = el("div", "lm-bar");
+      const fill = el("i");
+      fill.style.width = pct + "%";
+      bar.appendChild(fill);
+      box.appendChild(bar);
+      const meta = el("div", "lm-meta");
+      meta.appendChild(el("span", null,
+        `${pct}%  ${(dl.received / 1048576).toFixed(0)} / ${(dl.total / 1048576).toFixed(0)} MB`));
+      meta.appendChild(el("span", null, "可切到别的页面，下载在后台继续"));
+      box.appendChild(meta);
+      const row = el("div", "lm-row");
+      row.appendChild(buttonEl("取消下载", "ghost", async () => {
+        await api("/api/local-model/cancel", { method: "POST" });
+        notify("已取消下载", "warn");
+        refresh();
+      }));
+      box.appendChild(row);
+      // 下载中轮询；离开设置页时由 stopLmPolling 收尾
+      if (!_lmTimer) _lmTimer = setInterval(refresh, 1000);
+      return;
+    }
+
+    // ---- 还没模型：给出选档 + 一键下载 ----
+    if (!d.model) {
+      box.style.display = "flex";
+      box.style.flexDirection = "column";
+      box.style.gap = "10px";
+      box.appendChild(downloadArea(d, dl));
+      stopLmPolling();
+      return;
+    }
+
+    // ---- 已有模型 ----
+    const row = el("div", "lm-status");
+    const dot = el("span", "prov-dot" + (d.state === "ready" ? " ok" : ""));
+    row.appendChild(dot);
+    const stateText = d.state === "ready" ? "已就绪"
+      : d.state === "starting" ? "正在加载…"
+      : d.state === "failed" ? "启动失败"
+      : "已下载，未启用";
+    // 这里只报"服务处于什么状态"，当前是哪个模型由下面的列表标「使用中」——
+    // 两处都写名字的话，多档共存时两处会各说各话（一处是 d.model，一处是列表标记）。
+    row.appendChild(el("span", null, stateText));
+    box.appendChild(row);
+
+    // **实际跑在 GPU 还是 CPU 必须露出来**：我们刚因为看不到它而误判了一整轮
+    // （以为在用 Adreno，其实全程 CPU）。它不是调试细节，是决定快慢的那个事实。
+    if (d.backend) {
+      box.appendChild(el("p", "lm-hint", `运行后端：${d.backend}`));
+    }
+    if (d.model_warning) {
+      box.appendChild(el("p", "lm-hint", "⚠️ " + d.model_warning));
+    }
+
+    // ---- 发热提醒（**可操作的**，不是装饰文案）----
+    //
+    // 为什么必须有：llama-server 是个**常驻进程**，会把模型权重整个读进内存并持续
+    // 占着 CPU 线程。手机上没有风扇，散热全靠机身，结果是持续温热 + 掉电明显变快。
+    // 实测设备端 2B 一次问答 47 秒全程满载 —— 闲置时虽然不跑计算，但进程、KV 缓存
+    // 与 1.2–2.6 GB 常驻内存一直在，系统还会因此更早触发 LMK 回收别的 App。
+    // 用户不知道这件事，就会把"手机莫名发烫、掉电快"记到别的地方去。
+    if (d.state === "ready" || d.state === "starting") {
+      const mins = Math.floor((d.uptime_s || 0) / 60);
+      const long = mins >= 10;
+      const heat = el("div", "lm-heat" + (long ? " warn" : ""));
+      heat.appendChild(el("span", null, long
+        ? `⚠️ 本地推理已在后台连续运行 ${mins} 分钟 —— 手机会持续发热、掉电变快。`
+          + `不用的时候请点「停用」；确认这段时间都不用本地模型，就把文件删掉腾出空间。`
+        : `ℹ️ 本地推理正在后台运行。它常驻内存并占用 CPU，会让手机温热、掉电变快；`
+          + `不用时点「停用」即可，模型文件留在手机上不占运行资源。`));
+      if (long) {
+        const stopNow = buttonEl("立即停用", "ghost", async () => {
+          stopNow.disabled = true;
+          await api("/api/local-model/stop", { method: "POST" });
+          notify("已停用本地推理，不再发热");
+          rerender();
+        });
+        heat.appendChild(stopNow);
+      }
+      box.appendChild(heat);
+    }
+
+    // ---- 已下载的模型（多档共存：**换档不再需要删掉再下载**）----
+    //
+    // 此前 `find_model()` 取字母序第一个、`delete_model()` 删全部，于是对比 2B/4B
+    // 只能"删掉再下"（0.5–2.6 GB，一次十几分钟）—— 等于把对比评测变成做不了的事。
+    const models = d.models || [];
+    if (models.length) {
+      box.appendChild(el("div", "lm-sub", `已下载（${models.length} 档）`));
+      for (const m of models) {
+        const row = el("div", "lm-item" + (m.active ? " active" : ""));
+        const mark = el("span", "prov-dot" + (m.active && d.state === "ready" ? " ok" : ""));
+        row.appendChild(mark);
+        const info = el("div", "lm-item-info");
+        info.appendChild(el("span", "lm-item-name", m.name));
+        info.appendChild(el("span", "lm-item-meta",
+          `${(m.size_mb / 1024).toFixed(2)} GB` + (m.active ? " · 使用中" : "")));
+        if (m.warning) info.appendChild(el("span", "lm-item-warn", "⚠️ " + m.warning));
+        row.appendChild(info);
+
+        const acts = el("div", "lm-item-acts");
+        if (!m.active) {
+          acts.appendChild(buttonEl("使用", "ghost", async () => {
+            // 切换是**同步等待**的（设备端加载 1–3.5s）。不显示"正在切换"的话，
+            // 用户点完看到的还是旧模型，会以为按钮没反应 —— 然后连点。
+            notify("正在切换到 " + m.name + "…");
+            const r = await api("/api/local-model/select", {
+              method: "POST",
+              body: JSON.stringify({ name: m.name }),
+            });
+            if (!r.ok) notify(errText(r, "切换失败"), "warn");
+            else if ((r.body || {}).state === "ready") notify("已切换到 " + m.name);
+            else notify("已切换，但未就绪：" + ((r.body || {}).detail || "未知"), "warn");
+            rerender();
+          }));
+        }
+        // 每个模型各一个删除按钮，**沿用两步确认**（Android WebView 里 window.confirm 是哑的）
+        const del = buttonEl("删除", "danger", async () => {
+          if (!del.dataset.armed) {
+            del.dataset.armed = "1";
+            del.textContent = "确认删除";
+            setTimeout(() => {
+              if (del.dataset.armed) { delete del.dataset.armed; del.textContent = "删除"; }
+            }, 5000);
+            return;
+          }
+          delete del.dataset.armed;
+          del.disabled = true;
+          const r = await api("/api/local-model/delete", {
+            method: "POST",
+            body: JSON.stringify({ name: m.name }),
+          });
+          if (!r.ok) notify(errText(r, "删除失败"), "warn");
+          else notify("已删除 " + m.name);
+          rerender();
+        });
+        acts.appendChild(del);
+        row.appendChild(acts);
+        box.appendChild(row);
+      }
+    }
+
+    // GPU 卸载层数可运行时切换：**这是隔离崩溃原因的唯一手段**。
+    // 实测设备端出现 SIGSEGV（`detects sig11`），要一步判断是不是 Vulkan 后端的锅，
+    // 就得能在不重装、不重新下载模型的前提下切到纯 CPU 跑一遍。
+    // 推理参数三件套：都能运行时改、都会落盘。
+    // **threads 最值得试**：设备 8 核而我们一直写死 4；decode 的有效带宽只有 ~18 GB/s
+    // （机器约 68–77 GB/s），说明既没打满带宽也没打满算力，线程数嫌疑最大。
+    const tune = d.tune || {};
+    const tRow = el("div", "lm-row");
+    const nglSel = selectEl([[0, "0（纯 CPU）"], [12, "12（真·部分卸载）"],
+                             [99, "99（全部上 GPU）"]], String(tune.ngl ?? 0));
+    const thSel = selectEl([[4, "4（默认）"], [6, "6"], [8, "8（全部核心）"]],
+                           String(tune.threads ?? 4));
+    const ctxSel = selectEl([[4096, "4096"], [8192, "8192"], [16384, "16384"]],
+                            String(tune.ctx ?? 8192));
+    tRow.appendChild(el("span", "lm-hint", "GPU层"));
+    tRow.appendChild(nglSel);
+    tRow.appendChild(el("span", "lm-hint", "线程"));
+    tRow.appendChild(thSel);
+    tRow.appendChild(el("span", "lm-hint", "上下文"));
+    tRow.appendChild(ctxSel);
+    tRow.appendChild(buttonEl("应用并重启", "ghost", async () => {
+      notify("正在按新设置重启本地服务…");
+      const r = await api("/api/local-model/start", {
+        method: "POST",
+        body: JSON.stringify({ ngl: Number(nglSel.value), threads: Number(thSel.value),
+                               ctx: Number(ctxSel.value) }),
+      });
+      const st = (r.body || {});
+      if (st.state === "ready") notify("已重启：" + (st.backend || ""));
+      else notify("重启后未就绪：" + (st.detail || "未知"), "warn");
+      rerender();
+    }));
+    box.appendChild(tRow);
+
+    // ---- 原始 llama-server 参数（内部调试轨）----
+    //
+    // **一行顶掉所有"再给某个开关加个下拉"的需求**：llama.cpp 的开关有几十个
+    // （-fa / -ctk / -ctv / --device / --split-mode / --tensor-split …），
+    // 每加一个都要改后端、改前端、再出一版包 —— 而调试时真正需要的是**立刻能试**。
+    // 这里直接写、直接生效。
+    //
+    // 安全性：后端把它 `shlex.split` 后作为**参数列表**交给 subprocess，**不经过 shell**，
+    // 所以 `;` / `&&` / 反引号都没有执行语义 —— 不是靠黑名单挡的，是根本没有那个通道。
+    // 参数**追加在命令末尾**：llama.cpp 后者覆盖前者，所以用户写的确实说了算
+    //（放在前面会被我们的 `-t 4` 盖掉，那是最隐蔽的"设了没生效"）。
+    const extraWrap = el("div", "lm-extra");
+    extraWrap.appendChild(el("div", "lm-sub", "原始参数（追加在末尾，会覆盖上面的设置）"));
+    const extraInp = document.createElement("textarea");
+    extraInp.className = "lm-extra-input";
+    extraInp.rows = 2;
+    extraInp.placeholder = "例如：-fa on -ctk q8_0 --device HTP0";
+    extraInp.value = d.extra_args || "";
+    extraWrap.appendChild(extraInp);
+    const extraRow = el("div", "lm-row");
+    extraRow.appendChild(buttonEl("应用并重启", "ghost", async () => {
+      notify("正在按原始参数重启…");
+      const r = await api("/api/local-model/start", {
+        method: "POST",
+        body: JSON.stringify({ extra_args: extraInp.value }),
+      });
+      const st = r.body || {};
+      if (!r.ok) notify(errText(r, "应用失败"), "warn");
+      else if (st.state === "ready") notify("已重启：" + (st.backend || ""));
+      else notify("重启后未就绪：" + (st.detail || "未知"), "warn");
+      rerender();
+    }));
+    extraWrap.appendChild(extraRow);
+    extraWrap.appendChild(el("p", "lm-hint",
+      "参数会写进启动日志的「启动 … ngl=… ctx=… t=…」那一行旁边，导出诊断时能看到实际生效的是什么。"));
+    box.appendChild(extraWrap);
+
+    if (d.state === "failed") {
+      box.appendChild(el("p", "lm-hint", "启动失败：" + (d.server_detail || "未知原因")));
+      // 崩溃（退出码为负 = 被信号杀死）时给出可执行的一步，而不是让用户干瞪眼
+      const crashed = /code=-\d+/.test(d.server_detail || "");
+      box.appendChild(el("p", "lm-hint", crashed
+        ? "这是**进程被信号杀死**（多为 GPU 后端崩溃）。请先点下面「导出诊断」发出日志，"
+          + "再把上面的「GPU 卸载层数」改成 0 应用一次——能稳定运行就说明是 GPU 后端的问题。"
+        : "可点「启用」重试；反复失败请删除后重新下载。"));
+    }
+
+    const active = store.llm().activeId === d.provider_id;
+    if (active) {
+      box.appendChild(el("p", "lm-hint", "当前正在使用这个本地模型。"));
+    }
+
+    const act = el("div", "lm-row");
+    if (d.state !== "ready") {
+      act.appendChild(buttonEl("启用", "primary", async () => {
+        notify("正在加载模型…");
+        const r = await api("/api/local-model/start", { method: "POST" });
+        const st = r.body || {};
+        if (st.state === "ready") notify("本地模型已就绪");
+        else notify("启用失败：" + (st.server_detail || "未知原因"), "warn");
+        rerender();
+      }));
+    } else if (!active) {
+      act.appendChild(buttonEl("设为当前使用", "primary", () => {
+        // **只存 id / label —— 绝不存 base_url、key，也不存 model。**
+        //
+        // 为什么这是硬要求：`main.js:llmSpec()` 对预设会同时下发 id 与 base_url
+        // （为了支持"中转站覆盖地址"），而请求里一旦带 base_url，服务端就会把它
+        // 降级成 `source="request"` —— 那是**用户可控的出站目标**，要过 SSRF 守卫。
+        // Android 上 APP_ENV=production，127.0.0.1 会被直接拒绝：
+        //     「拒绝抓取非公网地址：127.0.0.1 解析为 127.0.0.1」
+        // 生成整条降级到规则排版，且原因只在日志里留一行 —— 实测踩到，
+        // 表现是"本地模型明明就绪、问了却答得像没接上模型"。
+        // 地址是服务端自己的事实（是它启动的 llama-server），回传它没有任何意义。
+        //
+        // `model` 是**同一个病根的第二次发作**：第一版删了 base_url 和 key、漏了 model，
+        // 而 model 会随着用户在设置页换档（2B↔4B）而过期 —— 换完之后请求里带的是旧名字。
+        // 服务端的 `provider_item()` 本来就有权威的模型名，前端再存一份只会错。
+        // 双保险：`llmSpec()` 对 `ondevice` 这类服务端自有的供应商直接不下发 model。
+        store.upsertLlmEntry({
+          id: d.provider_id,
+          label: d.provider_label,
+        });
+        store.setActiveLlm(d.provider_id);
+        notify("已切换到本地模型");
+        rerender();
+      }));
+    } else {
+      act.appendChild(buttonEl("停用", "ghost", async () => {
+        await api("/api/local-model/stop", { method: "POST" });
+        notify("已停用本地模型（不再占用 CPU、也不再发热）");
+        rerender();
+      }));
+    }
+    // 删除已移到上面的模型列表里（**每个模型一个删除按钮**，只删那一个）。
+    // 这里原来的「删除模型」是"无参 = 删光"，多档共存之后它会把用户另外几个 GB 一起清掉。
+    // 排障：清空历史 / 导出为文件 ----
+    //
+    // 两条都是被真实痛点逼出来的：
+    // · llama-server.log 是**跨次追加**的，一份导出混着几十次启动，读不出哪段是哪次；
+    // · 分享长文本各家 App 限制很多，而**写文件**可以 adb pull 或文件管理器直接取。
+    const diagRow = el("div", "lm-row");
+    diagRow.appendChild(buttonEl("清空日志", "ghost", async () => {
+      if (!diagRow.dataset.armed) {
+        diagRow.dataset.armed = "1";
+        const b = diagRow.querySelector("button");
+        if (b) b.textContent = "再点一次确认清空";
+        setTimeout(() => {
+          if (diagRow.dataset.armed) {
+            delete diagRow.dataset.armed;
+            if (b) b.textContent = "清空日志";
+          }
+        }, 5000);
+        return;
+      }
+      delete diagRow.dataset.armed;
+      const r = await api("/api/local-model/log/clear", { method: "POST" });
+      const freed = (r.body && r.body.freed_bytes) || 0;
+      notify(`已清空（释放 ${(freed / 1024).toFixed(0)} KB）。现在复现一次，日志里就只有这一次。`);
+      rerender();
+    }));
+    diagRow.appendChild(buttonEl("导出为文件", "ghost", async () => {
+      notify("正在收集诊断信息…");
+      // **必须先让 Java 侧跑一次**：它才把 NPU 报告缓存进应用私有目录，
+      // 而下面的诊断端点正是从那个文件读 Java 那半。少了这一步，导出的报告就只剩原生那半 ——
+      // 而原生探针跑在独立进程（裸 `(default)` namespace，`dlopen` 必然失败），
+      // 看起来像"设备不支持"。**实测被这个坑咬了两次**（vivo 的两份报告都缺这半）。
+      native.probeNpuJava();
+      const r = await api("/api/local-model/diagnostics");
+      const text = (r.ok && r.body && r.body.text) || "";
+      if (!text) { notify("收集失败（服务端不可达）", "warn"); return; }
+
+      // **优先走 SAF「保存到…」**：用户自己选位置（下载/文档/网盘都行），不需要任何权限，
+      // 落点是他知道的地方。App 私有目录在 Android 11+ 对文件管理器是屏蔽的 ——
+      // 写进去用户也找不到（实测踩到，所以这条路才是主路径）。
+      const name = `railfanai-diag-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")}.txt`;
+      let started = false;
+      try { started = native.saveTextFile(name, text); } catch { started = false; }
+      if (started) { notify("请在系统弹框中选保存位置"); return; }
+
+      // 退化路径（网页端/老包）：写到服务端目录，并把路径复制出来供 adb 取
+      const r2 = await api("/api/local-model/export", { method: "POST" });
+      if (!r2.ok || !r2.body || !r2.body.path) {
+        // 最后兜底：整段文本进剪贴板
+        try { await native.clipboard.copy(text); notify("已复制诊断文本到剪贴板"); }
+        catch { notify("导出失败：保存、写文件、剪贴板都不可用", "warn"); }
+        return;
+      }
+      try { await native.clipboard.copy(r2.body.path); } catch { /* 忽略 */ }
+      notify(`已写到 ${r2.body.path}（路径已复制）`);
+    }));
+    // 探测结果直接铺在卡片里：这是排障证据，不该只存在于一闪而过的提示里。
+    // 声明必须在按钮之前 —— 按钮的回调闭包引用它。
+    const out = el("pre", "lm-probe-out");
+    out.style.display = "none";
+
+    diagRow.appendChild(buttonEl("探测 NPU", "ghost", async () => {
+      // 一次性、决定性的判定：我们的进程到底能不能在 Hexagon DSP 上开会话。
+      // 输出**原样显示**（不用 notify 那种一闪而过的 toast）—— 证据要能读、能截图。
+      notify("正在探测…");
+      // **顺序要紧**：先让 Java 侧跑一次 —— 它会把报告缓存到应用私有目录，
+      // 而下面的端点正是从那个文件读 Java 那半。颠倒过来就永远读到"还没有报告"。
+      // 两半**必须一起看**：原生探针跑在独立进程（裸 `(default)` namespace，dlopen 必然失败），
+      // Java 侧跑在 App 主进程（classloader namespace，才是普通 App 真正走的路）。
+      // 只看任一半都会得出错误结论。
+      native.probeNpuJava();
+      const r = await api("/api/local-model/npu-probe");
+      const text = (r.ok && r.body && r.body.text) || "（服务端不可达）";
+      out.textContent = text;
+      out.style.display = "";
+      // 末尾一定有 EOF 行；没有就说明**这段文本被截断过**，别拿它下结论。
+      try { await native.clipboard.copy(text); notify("结果已显示，并复制到剪贴板"); }
+      catch { notify("结果已显示"); }
+    }));
+    box.appendChild(diagRow);
+    box.appendChild(out);
+
+    // 「再下载一档」放在最下面：已经有一档在跑的人，主要动作是"换档/调参/排障"，
+    // 下载是低频动作，不该占着卡片顶部。
+    box.appendChild(downloadArea(d, dl));
+
+    act.appendChild(buttonEl("删除全部模型", "danger", async () => {
+      // 单独的一个按钮 + 两步确认，且**服务端要求显式 all=true** ——
+      // 这是唯一一个会一次清掉好几个 GB 的动作，必须点两次、且文案写明后果。
+      if (!act.dataset.armed) {
+        act.dataset.armed = "1";
+        const b = act.querySelector("button:last-child");
+        if (b) b.textContent = `确认清空 ${(d.models || []).length} 个模型文件`;
+        setTimeout(() => {
+          if (act.dataset.armed) {
+            delete act.dataset.armed;
+            if (b) b.textContent = "删除全部模型";
+          }
+        }, 5000);
+        return;
+      }
+      delete act.dataset.armed;
+      const r = await api("/api/local-model/delete", {
+        method: "POST",
+        body: JSON.stringify({ all: true }),
+      });
+      if (!r.ok) notify(errText(r, "删除失败"), "warn");
+      else notify("已删除全部本地模型");
+      // 本地供应商已经不成立了，前端条目也要撤掉，否则会留下一个指向空供应商的选择
+      if (store.llm().activeId === d.provider_id) store.removeLlmEntry(d.provider_id);
+      rerender();
+    }));
+    box.appendChild(act);
+
+    // 服务端加载模型要几秒，这期间必须**继续轮询**。下载结束的那一刻状态还是
+    // "starting"，而下载分支的轮询到这里就断了 —— 实测表现为卡片永远停在
+    // 「正在加载…」并显示「启用」按钮，用户以为卡死，要手动点一次才刷新。
+    if (d.state === "starting") {
+      if (!_lmTimer) _lmTimer = setInterval(refresh, 1000);
+    } else {
+      stopLmPolling();
+    }
+  }
+
+  refresh();
+  return c;
+}
+
+// ============ 模型供应商设置（BYOK）============
+//
+// 设计（按用户给的示例图重做）：
+//   · **一张列表**列出已添加的供应商，每行「名称 + 自定义标签 + 状态点 + 操作」；
+//   · 底部两个按钮是**同一个动作的两种来源**：从预设挑 / 从零填。二者都进入
+//     **同一个编辑表单** —— 这正是旧版最大的问题：把"选供应商"和"填地址"
+//     做成上下两张卡片两套表单，逼用户先自我归类。
+//   · 模型用**下拉**（填完 Key 自动探测），保留手工输入兜底（不少网关没有 /models）。
+
+function formRow(labelText, control) {
+  const row = el("div", "form-row");
+  row.appendChild(el("label", null, labelText));
+  row.appendChild(control);
+  return row;
+}
+
+function inputEl(type, placeholder, value) {
+  const i = el("input");
+  i.type = type;
+  i.placeholder = placeholder || "";
+  i.value = value || "";
+  i.autocomplete = "off";
+  i.spellcheck = false;
+  return i;
+}
+
+function selectEl(options, value) {
+  const s = el("select");
+  for (const [v, label] of options) {
+    const o = el("option", null, label);
+    o.value = v;
+    s.appendChild(o);
+  }
+  if (value != null) s.value = value;
+  return s;
+}
+
+function buttonEl(text, cls, onClick) {
+  const b = el("button", "btn" + (cls ? " " + cls : ""), text);
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+/** 一个供应商条目行：名称 + 自定义标签 + 状态点 + 使用中标记 + 操作。 */
+function providerRow(entry, rerender, onEdit) {
+  const row = el("div", "prov-row");
+  if (store.llm().activeId === entry.id) row.classList.add("active");
+
+  const left = el("div", "prov-main");
+  left.appendChild(el("span", "prov-name", entry.label || entry.id));
+  if (entry.custom) left.appendChild(el("span", "prov-tag", "自定义"));
+  const dot = el("span", "prov-dot" + (entry.key ? " ok" : ""));
+  dot.title = entry.key ? "已配置 API Key" : "尚未填写 API Key";
+  left.appendChild(dot);
+  if (store.llm().activeId === entry.id) left.appendChild(el("span", "prov-tag using", "使用中"));
+  row.appendChild(left);
+
+  const actions = el("div", "prov-actions");
+  actions.appendChild(buttonEl("编辑", "", () => onEdit(entry)));
+  if (entry.custom || store.llmEntries().length > 1) {
+    actions.appendChild(buttonEl("删除", "danger", () => {
+      store.removeLlmEntry(entry.id);
+      rerender();
+    }));
+  }
+  if (store.llm().activeId !== entry.id && entry.key) {
+    actions.appendChild(buttonEl("使用", "primary", () => {
+      store.setActiveLlm(entry.id);
+      rerender();
+    }));
+  }
+  row.appendChild(actions);
+  return row;
+}
+
+export function renderSettingsPage(deps) {
+  const { onBack, navigate } = deps;
+  // 反馈走外壳的 toast（与对话页同一套样式与位置）。设置页的表单很高，
+  // 卡片底部那行 .sub 提示经常落在折叠线以下 —— 只写那里等于"点了没反应"。
+  const notify = typeof deps.toast === "function" ? deps.toast : () => {};
+  const root = el("div");
+  // 标题从「模型」改成「设置」：这一页现在同时承载模型供应商与关于，
+  // 顶栏入口叫「⚙️ 设置」，进来看见「模型」会让人以为走错了地方。
+  const leavePage = () => { stopLmPolling(); if (typeof onBack === "function") onBack(); };
+  root.appendChild(pageHeader("设置", leavePage));
+  if (FILE_PREVIEW) {
+    const notice = card("请通过 Web 服务打开应用");
+    notice.setAttribute("role", "status");
+    notice.appendChild(el("p", "sub", CONNECTION_HELP));
+    const link = el("a", null, "打开本机 Web 应用 →");
+    link.href = "http://127.0.0.1:8000/#/settings";
+    notice.appendChild(link);
+    root.appendChild(notice);
+  }
+
+  let presets = [];          // 服务端内置/已配置的供应商（仅作预设来源）
+  let editing = null;        // 正在编辑的条目副本（null = 不在编辑态）
+
+  const body = el("div");
+  root.appendChild(body);
+
+  function render() {
+    stopLmPolling();
+    body.innerHTML = "";
+    const s = store.llm();
+    const entries = store.llmEntries();
+
+    const c = card("云端模型");
+    c.appendChild(el("p", "sub", "选择提供方、填写 API Key，再选一个对话模型。"));
+
+    if (!entries.length) {
+      c.appendChild(el("p", "sub", "还没有添加提供方。点下面的按钮选一个常用服务，或自己填地址。"));
+    }
+    for (const e of entries) {
+      c.appendChild(providerRow(e, () => { editing = null; render(); }, openEditor));
+    }
+
+    const addRow = el("div", "prov-add-row");
+    addRow.appendChild(buttonEl("＋ 添加提供方", "ghost", () => openPresetPicker()));
+    addRow.appendChild(buttonEl("＋ 添加自定义提供方", "ghost", () => {
+      editing = { id: "custom-" + Date.now().toString(36), label: "", base_url: "", model: "", api: "", key: "", custom: true };
+      render();
+    }));
+    c.appendChild(addRow);
+
+    // 记住 Key：全局开关（属于设备偏好，不属于某一家）
+    const rk = el("input");
+    rk.type = "checkbox";
+    rk.checked = !!s.rememberKey;
+    rk.addEventListener("change", () => store.setLlmRemember(rk.checked));
+    const rkRow = el("div", "form-row");
+    rkRow.appendChild(rk);
+    const rkLabel = el("label", null, "记住 API Key（存本机浏览器；不勾选则刷新后需重填）");
+    rkLabel.style.minWidth = "0";
+    rkRow.appendChild(rkLabel);
+    c.appendChild(rkRow);
+
+    c.appendChild(el("p", "sub", "配置仅保存在当前设备。请妥善保管 API Key。"));
+    body.appendChild(c);
+
+    if (editing) {
+      const editor = editorCard();
+      body.appendChild(editor);
+      requestAnimationFrame(() => editor.scrollIntoView({ block: "start", behavior: "smooth" }));
+    }
+
+    // 云端配置是 Main 版主路径，编辑表单紧跟供应商列表。
+    stopLmPolling();
+    if (!FILE_PREVIEW) body.appendChild(localModelCard(notify, () => { editing = null; render(); }));
+  }
+
+  /** 打开某个已添加条目的编辑表单（用副本，取消时不污染已存配置）。 */
+  function openEditor(entry) {
+    if (!entry) return;
+    editing = { ...entry };
+    render();
+  }
+
+  // ---- 从预设挑选（与"添加自定义"进入同一个表单）----
+  //
+  // 预设列表**在这里现取**，而不是依赖进页面时那次 fire-and-forget 请求已完成：
+  // 后者会让"点开却是空列表"偶发出现（真机实测踩到），而且失败时无从补救。
+  async function openPresetPicker() {
+    editing = null;
+    body.innerHTML = "";
+    const c = card("添加提供方");
+    c.appendChild(el("p", "sub", "选一个常用服务，下一步只需填它的 API Key。"));
+    const loading = el("p", "sub", "正在读取预设…");
+    c.appendChild(loading);
+    body.appendChild(c);
+
+    const res = await api("/api/providers");
+    presets = (res.ok && res.body && res.body.providers ? res.body.providers : [])
+      .filter((p) => p.source !== "legacy");
+    loading.remove();
+    if (!presets.length) {
+      c.appendChild(el("p", "sub",
+        errText(res, "读取预设失败，请检查服务状态后重试。")));
+      c.appendChild(buttonEl("← 返回", "ghost", () => { editing = null; render(); }));
+      return;
+    }
+    const list = el("div", "preset-list");
+    for (const p of presets) {
+      const row = el("div", "preset-row");
+      row.appendChild(el("span", "prov-name", p.label));
+      if (p.note) row.appendChild(el("span", "preset-note", p.note));
+      const b = buttonEl(store.llmEntry(p.id) ? "已添加" : "添加", "", () => {
+        const exist = store.llmEntry(p.id);
+        editing = exist
+          ? { ...exist }
+          : { id: p.id, label: p.label, base_url: p.base_url, model: p.model || "", api: "", key: "", custom: false };
+        render();
+      });
+      if (store.llmEntry(p.id)) b.disabled = true;
+      row.appendChild(b);
+      list.appendChild(row);
+    }
+    c.appendChild(list);
+    c.appendChild(buttonEl("← 返回", "ghost", () => { editing = null; render(); }));
+    body.appendChild(c);
+  }
+
+  // ---- 编辑表单（预设与自定义共用同一个）----
+  function editorCard() {
+    const e = editing;
+    const c = card(e.custom ? "自定义提供方" : ("配置 " + (e.label || e.id)));
+
+    const nameInp = inputEl("text", "例如：公司网关", e.label);
+    const baseInp = inputEl("text", "https://api.example.com/v1", e.base_url);
+    const keyInp = inputEl("password", "sk-…（只保存在本机）", e.key);
+    const manualInp = inputEl("text", "手工填写模型名", e.model);
+    // 生成预算：BYOK 场景下 .env 往往不可达（尤其 Android），所以这两项要能在界面上调
+    const maxTokInp = inputEl("text", "留空用服务端默认", e.max_tokens || "");
+    maxTokInp.inputMode = "numeric";
+    const ctxOptions = [
+      ["", "留空用服务端默认"],
+      ["8192", "8k（小窗口 / 老模型）"],
+      ["32768", "32k"],
+      ["65536", "64k"],
+      ["131072", "128k"],
+      ["200000", "200k"],
+      ["__custom__", "手工输入…"],
+    ];
+    const ctxSel = selectEl(ctxOptions, e.context_tokens ? String(e.context_tokens) : "");
+    const ctxCustom = inputEl("text", "窗口大小（token）", "");
+    ctxCustom.inputMode = "numeric";
+    ctxCustom.style.display = "none";
+    ctxSel.addEventListener("change", () => {
+      ctxCustom.style.display = ctxSel.value === "__custom__" ? "" : "none";
+      if (ctxSel.value === "__custom__") ctxCustom.focus();
+    });
+    const modelSel = selectEl([["", "（先填 API Key，再自动探测）"]], e.model);
+    const status = el("div", "sub", "");
+
+    // 「粘贴」按钮：Key 是一长串随机字符，手输几乎必错；而"复制 Key → 切回应用 →
+    // 长按输入框 → 选粘贴"这条路在 WebView 里常常走不通（长按不出系统菜单）。
+    // 读取失败时**如实**说明原因 —— 假装成功会让用户对着空输入框找不到问题在哪。
+    const pasteBtn = buttonEl("粘贴", "inline", async () => {
+      const raw = await native.clipboard.read();
+      // 剪贴板里常常是整段文字（Key 前面带一句说明、或一次复制了多行配置），
+      // 而 Key 本身不含换行，所以只取第一行；trim 掉复制来的首尾空白与换行。
+      const text = String(raw || "").trim().split(/\r?\n/)[0].trim();
+      if (!text) {
+        // 空串不是"剪贴板就是空的"：Android 10+ 只允许有焦点的应用读剪贴板，
+        // 桌面浏览器也可能因权限被拒。两种原因都只能靠用户手动粘贴绕过。
+        const tip = "读不到剪贴板（Android 10+ 只允许当前应用读取剪贴板，请手动长按粘贴）。";
+        // 长提示给足阅读时间；同时留在 status 里，toast 消失后仍能回看
+        notify(tip, 4000);
+        status.textContent = tip;
+        // 提示条在表单底部，手机上往往在折叠线以下；不滚过去，用户看到的就是"什么都没发生"
+        status.scrollIntoView({ block: "nearest" });
+        return;
+      }
+      keyInp.value = text;
+      notify("已从剪贴板填入 API Key");
+      status.textContent = "已从剪贴板填入 API Key，确认无误后点「保存」。";
+      // 聚焦而非直接探测：与手输 Key 完全同一条路径（失焦时既有逻辑会自动探测模型），
+      // 避免粘贴触发一次用户没预期的网络请求。
+      keyInp.focus();
+    });
+    // 既没有原生桥、浏览器也不提供 clipboard API 时，没有任何可用的读取路径，
+    // 按钮点了必然只能报错，不如直接禁用。桌面浏览器上 clipboard.readText() 仍可能
+    // 因权限被拒返回空串，那走上面的空串分支，与 Android 是同一条提示。
+    if (!native.available && !(navigator.clipboard && navigator.clipboard.readText)) {
+      pasteBtn.disabled = true;
+      pasteBtn.title = "当前浏览器不支持读取剪贴板，请手动长按粘贴";
+    }
+    const keyWrap = el("div");
+    keyWrap.style.cssText = "display:flex; gap:8px; flex:1; min-width:0";
+    keyWrap.appendChild(keyInp);
+    keyWrap.appendChild(pasteBtn);
+
+    if (e.custom) c.appendChild(formRow("名称", nameInp));
+    c.appendChild(formRow("接口地址", baseInp));
+    c.appendChild(formRow("API Key", keyWrap));
+
+    // 模型：下拉优先（探测结果），下拉里带"手工输入…"这一项兜底
+    const modelWrap = el("div", "form-row");
+    modelWrap.appendChild(el("label", null, "模型"));
+    const modelCol = el("div");
+    modelCol.style.flex = "1";
+    modelCol.appendChild(modelSel);
+    manualInp.style.display = "none";
+    modelCol.appendChild(manualInp);
+    modelWrap.appendChild(modelCol);
+    c.appendChild(modelWrap);
+    const advanced = document.createElement("details");
+    advanced.className = "advanced-settings";
+    advanced.appendChild(el("summary", null, "高级设置"));
+    advanced.appendChild(formRow("最大输出", maxTokInp));
+    const ctxWrap = el("div", "form-row");
+    ctxWrap.appendChild(el("label", null, "上下文窗口"));
+    const ctxCol = el("div");
+    ctxCol.style.flex = "1";
+    ctxCol.appendChild(ctxSel);
+    ctxCol.appendChild(ctxCustom);
+    ctxWrap.appendChild(ctxCol);
+    advanced.appendChild(ctxWrap);
+    advanced.appendChild(el("p", "sub",
+      "留空即用服务端默认。最大输出包含思考 token；上下文窗口用于控制历史消息预算。"));
+    c.appendChild(advanced);
+
+    modelSel.addEventListener("change", () => {
+      if (modelSel.value === "__manual__") {
+        manualInp.style.display = "";
+        manualInp.focus();
+      } else {
+        manualInp.style.display = "none";
+      }
+    });
+
+    function currentModel() {
+      return modelSel.value === "__manual__" ? manualInp.value.trim() : modelSel.value;
+    }
+
+    function fillModels(models, note) {
+      const keep = currentModel() || e.model;
+      modelSel.innerHTML = "";
+      const opts = [["", note || "（未选择）"]].concat(models.map((m) => [m, m]));
+      opts.push(["__manual__", "手工输入…"]);
+      for (const [v, label] of opts) {
+        const o = el("option", null, label);
+        o.value = v;
+        modelSel.appendChild(o);
+      }
+      // 尽量保持已选值
+      if (keep && models.includes(keep)) modelSel.value = keep;
+      else if (keep) { modelSel.value = "__manual__"; manualInp.value = keep; manualInp.style.display = ""; }
+      else modelSel.value = "";
+    }
+    fillModels([], "（先填 API Key，再自动探测）");
+
+    async function detect(showAll) {
+      const base = baseInp.value.trim();
+      const key = keyInp.value.trim();
+      if (!base || !key) { status.textContent = "需要先填接口地址与 API Key 才能探测模型。"; return; }
+      status.textContent = "正在探测可用模型…";
+      const res = await api("/api/providers/models", {
+        method: "POST",
+        body: JSON.stringify({ base_url: base, api_key: key, provider: e.custom ? undefined : e.id }),
+      });
+      const b = res.body || {};
+      if (b.ok) {
+        const list = showAll ? (b.models || []) : (b.chat_models || b.models || []);
+        fillModels(list);
+        status.textContent = `探测到 ${list.length} 个${showAll ? "" : "对话"}模型`
+          + (b.truncated ? "（已截断）" : "") + "。没找到想要的？点「显示全部」或选「手工输入…」。";
+      } else {
+        fillModels([], "（探测失败，请手工输入）");
+        manualInp.style.display = "";
+        status.textContent = "探测失败：" + (b.error || errText(res, "该供应商可能未提供模型列表"))
+          + " —— 可直接手工填写模型名。";
+      }
+    }
+
+    keyInp.addEventListener("blur", () => { if (keyInp.value.trim() && !currentModel()) void detect(false); });
+    baseInp.addEventListener("blur", () => { if (keyInp.value.trim() && !currentModel()) void detect(false); });
+
+    const btnRow = el("div", "editor-actions");
+    btnRow.appendChild(buttonEl("探测模型", "", () => detect(false)));
+    btnRow.appendChild(buttonEl("显示全部", "", () => detect(true)));
+    btnRow.appendChild(buttonEl("保存", "primary", () => {
+      const id = e.id;
+      const isCustom = !!e.custom;
+      const asInt = (v) => {
+        const n = parseInt(String(v || "").trim(), 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+      };
+      store.upsertLlmEntry({
+        id,
+        label: (isCustom ? nameInp.value.trim() : e.label) || id,
+        base_url: baseInp.value.trim(),
+        model: currentModel(),
+        api: e.api || "",
+        key: keyInp.value.trim(),
+        custom: isCustom,
+        max_tokens: asInt(maxTokInp.value),
+        context_tokens: ctxSel.value === "__custom__"
+          ? asInt(ctxCustom.value)
+          : asInt(ctxSel.value),
+      });
+      editing = null;
+      render();
+    }));
+    btnRow.appendChild(buttonEl("取消", "ghost", () => { editing = null; render(); }));
+    c.appendChild(btnRow);
+    c.appendChild(status);
+    return c;
+  }
+
+  render();
+  // 「外观」与「关于」都挂在 body **之外**：body 每次增删/编辑供应商都会整体重建，
+  // 这两张静态卡片没必要跟着重建（重建还会把用户正在填的表单状态抖掉）。
+  root.appendChild(themeCard());
+  root.appendChild(aboutCard(navigate));
+  return root;
+}
+
+/**
+ * 「外观」卡片：跟随系统 / 浅色 / 深色。
+ *
+ * 为什么要有三档：**默认就是"跟随系统"**。只给一个"深色/浅色"开关的话，这个默认状态
+ * 无处表达 —— 用户点一下浅色再点回来，跟随能力就永久丢了（本项目第一版深色就是这样，
+ * 只能改 localStorage 才能回去）。
+ *
+ * 为什么放在这一页：它属于**设备偏好**，与"填哪个供应商的 Key"是同一类东西，
+ * 都只作用于当前这台设备/浏览器。
+ */
+export function themeCard() {
+  const c = card("外观");
+  const sel = selectEl([
+    ["auto", "跟随系统"],
+    ["light", "浅色"],
+    ["dark", "深色"],
+  ], store.theme());
+  sel.addEventListener("change", () => store.setTheme(sel.value));
+
+  const row = el("div", "form-row");
+  row.appendChild(sel);
+  const lab = el("label", null, "主题");
+  lab.style.minWidth = "0";
+  row.appendChild(lab);
+  c.appendChild(row);
+
+  c.appendChild(el("p", "sub",
+    "「跟随系统」会随系统的深浅色实时切换（Android 上由系统的深色模式设置决定，"
+    + "改完不用重开应用）。选「浅色」或「深色」则固定不变。"));
+  return c;
+}

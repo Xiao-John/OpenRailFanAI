@@ -1,0 +1,7415 @@
+{
+  "browser": "Microsoft Edge",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "results": [
+    {
+      "state": "train_schedule",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1
+      },
+      "path": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/screenshots/train_schedule.png",
+      "designReference": {
+        "file": "desi1.png",
+        "phoneWidthPx": 440,
+        "normalizationTo390": 0.8863636363636364,
+        "overlayPath": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/design-overlays/train_schedule.svg",
+        "coordinateRule": "手机画面坐标按宽度换算到390px"
+      },
+      "measurements": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 87,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".mobile-statusbar": {
+          "x": 24,
+          "y": 0,
+          "width": 342,
+          "height": 35,
+          "cssWidth": "342px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "header .title": {
+          "x": 66,
+          "y": 49,
+          "width": 246,
+          "height": 33,
+          "cssWidth": "246px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        ".row.user": {
+          "x": 106.14,
+          "y": 103,
+          "width": 267.86,
+          "height": 45.19,
+          "cssWidth": "267.859px",
+          "flex": "0 0 auto",
+          "alignSelf": "flex-end"
+        },
+        ".row.user .bubble": {
+          "x": 106.14,
+          "y": 103,
+          "width": 230.86,
+          "height": 45.19,
+          "cssWidth": "230.859px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant": {
+          "x": 16,
+          "y": 162.19,
+          "width": 358,
+          "height": 553.88,
+          "cssWidth": "358px",
+          "flex": "0 0 auto",
+          "alignSelf": "stretch"
+        },
+        ".row.assistant .bubble": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-card": {
+          "x": 62,
+          "y": 162.19,
+          "width": 312,
+          "height": 467.88,
+          "cssWidth": "312px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-head": {
+          "x": 77,
+          "y": 175.19,
+          "width": 284,
+          "height": 28,
+          "cssWidth": "284px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-route": {
+          "x": 77,
+          "y": 204.19,
+          "width": 284,
+          "height": 27,
+          "cssWidth": "284px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-meta": {
+          "x": 75,
+          "y": 238.69,
+          "width": 286,
+          "height": 34,
+          "cssWidth": "286px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-table-wrap": {
+          "x": 73,
+          "y": 284.69,
+          "width": 290,
+          "height": 238.38,
+          "cssWidth": "290px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-note": {
+          "x": 73,
+          "y": 537.06,
+          "width": 290,
+          "height": 36,
+          "cssWidth": "290px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-source": {
+          "x": 73,
+          "y": 581.06,
+          "width": 290,
+          "height": 38,
+          "cssWidth": "290px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".request-details": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".request-detail-row": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "calc(100% + 3px)",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-spinner": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "54px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading strong": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-stage": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-skeletons": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-foot": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".actions": {
+          "x": 276,
+          "y": 148.19,
+          "width": 98,
+          "height": 53,
+          "cssWidth": "98px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".followups": {
+          "x": 84,
+          "y": 677.06,
+          "width": 312,
+          "height": 39,
+          "cssWidth": "312px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "#new-content-cue": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "max-content",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "footer": {
+          "x": 0,
+          "y": 722,
+          "width": 390,
+          "height": 122,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        "#input": {
+          "x": 15,
+          "y": 730,
+          "width": 358,
+          "height": 51,
+          "cssWidth": "358px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        "#send": {
+          "x": 329,
+          "y": 737,
+          "width": 44,
+          "height": 44,
+          "cssWidth": "44px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        }
+      },
+      "iconInventory": [
+        {
+          "asset": "status-signal.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 296,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-wifi.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 318,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-battery.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 340,
+          "y": 11,
+          "width": 26,
+          "height": 13,
+          "visible": true
+        },
+        {
+          "asset": "back.svg",
+          "parent": "icon-btn menu-btn",
+          "x": 16,
+          "y": 55.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "history.svg",
+          "parent": "icon-btn history-btn",
+          "x": 56,
+          "y": 56.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "train-logo.svg",
+          "parent": "title",
+          "x": 138.72,
+          "y": 43.97,
+          "width": 27,
+          "height": 40.26,
+          "visible": true
+        },
+        {
+          "asset": "add.svg",
+          "parent": "icon-btn new-chat-top",
+          "x": 345,
+          "y": 56.5,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": 115.59,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": 154.19,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "calendar.svg",
+          "parent": "",
+          "x": 87.3,
+          "y": 244.11,
+          "width": 18,
+          "height": 20.16,
+          "visible": true
+        },
+        {
+          "asset": "clock.svg",
+          "parent": "",
+          "x": 219.8,
+          "y": 245.19,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "info.svg",
+          "parent": "schedule-note",
+          "x": 85,
+          "y": 544.86,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "link.svg",
+          "parent": "",
+          "x": 82.9,
+          "y": 587.66,
+          "width": 14.4,
+          "height": 23.4,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 66,
+          "y": 641.06,
+          "width": 16,
+          "height": 16,
+          "visible": true
+        },
+        {
+          "asset": "refresh.svg",
+          "parent": "",
+          "x": 153.2,
+          "y": 641.36,
+          "width": 16,
+          "height": 16,
+          "visible": true
+        },
+        {
+          "asset": "send.svg",
+          "parent": "",
+          "x": 340,
+          "y": 744.5,
+          "width": 19,
+          "height": 20,
+          "visible": true
+        }
+      ],
+      "visibleText": {
+        "body": "＋ 新对话\ntrain_schedule\n2 条 · 刚刚\n⋯\n9:41\nRailFanAI\n查一下 G8932 今天的时刻表\n复制\n编辑\nG8932\n图定时刻 · 示例数据\n秦皇岛 → 北京南\n09月25日\n1小时52分\n车站\t到达\t出发\n\n秦皇岛\n\t--\t20:42\n\n唐山\n停12分钟\n\t21:10\t21:22\n\n天津\n停3分钟\n\t21:55\t21:58\n\n北京南\n\t22:34\t--\n图定时刻不代表实际正晚点。\n12306 · 列车时刻\n查询详情\n复制\n重新生成\n查票价\n查担当车组",
+        "placeholders": [
+          "搜索对话…",
+          "继续追问…"
+        ],
+        "values": []
+      },
+      "copyChecks": [
+        {
+          "selector": ".row.user .bubble",
+          "mode": "text",
+          "expected": "查一下 G8932 今天的时刻表",
+          "actual": "查一下 G8932 今天的时刻表",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card .schedule-code",
+          "mode": "text",
+          "expected": "G8932",
+          "actual": "G8932",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card .schedule-example",
+          "mode": "text",
+          "expected": "图定时刻 · 示例数据",
+          "actual": "图定时刻 · 示例数据",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card .schedule-route",
+          "mode": "text",
+          "expected": "秦皇岛 → 北京南",
+          "actual": "秦皇岛 → 北京南",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card .schedule-meta span:nth-child(1)",
+          "mode": "text",
+          "expected": "09月25日",
+          "actual": "09月25日",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card .schedule-meta span:nth-child(2)",
+          "mode": "text",
+          "expected": "1小时52分",
+          "actual": "1小时52分",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card thead th:nth-child(1)",
+          "mode": "text",
+          "expected": "车站",
+          "actual": "车站",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card thead th:nth-child(2)",
+          "mode": "text",
+          "expected": "到达",
+          "actual": "到达",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card thead th:nth-child(3)",
+          "mode": "text",
+          "expected": "出发",
+          "actual": "出发",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card tbody tr:nth-child(1) .schedule-station-name",
+          "mode": "text",
+          "expected": "秦皇岛",
+          "actual": "秦皇岛",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card tbody tr:nth-child(2) .schedule-station-name",
+          "mode": "text",
+          "expected": "唐山",
+          "actual": "唐山",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card tbody tr:nth-child(2) .schedule-stopover",
+          "mode": "text",
+          "expected": "停12分钟",
+          "actual": "停12分钟",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card tbody tr:nth-child(3) .schedule-station-name",
+          "mode": "text",
+          "expected": "天津",
+          "actual": "天津",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card tbody tr:nth-child(3) .schedule-stopover",
+          "mode": "text",
+          "expected": "停3分钟",
+          "actual": "停3分钟",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card tbody tr:nth-child(4) .schedule-station-name",
+          "mode": "text",
+          "expected": "北京南",
+          "actual": "北京南",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card .schedule-note",
+          "mode": "text",
+          "expected": "图定时刻不代表实际正晚点。",
+          "actual": "图定时刻不代表实际正晚点。",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card .schedule-source a",
+          "mode": "text",
+          "expected": "12306 · 列车时刻",
+          "actual": "12306 · 列车时刻",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".schedule-card .schedule-detail-label",
+          "mode": "text",
+          "expected": "查询详情",
+          "actual": "查询详情",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-schedule-result > .actions > button:nth-child(1)",
+          "mode": "text",
+          "expected": "复制",
+          "actual": "复制",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-schedule-result > .actions > button:nth-child(3)",
+          "mode": "text",
+          "expected": "重新生成",
+          "actual": "重新生成",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-schedule-result > .followups > button:nth-child(1)",
+          "mode": "text",
+          "expected": "查票价",
+          "actual": "查票价",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-schedule-result > .followups > button:nth-child(2)",
+          "mode": "text",
+          "expected": "查担当车组",
+          "actual": "查担当车组",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": "#input",
+          "mode": "placeholder",
+          "expected": "继续追问…",
+          "actual": "继续追问…",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        }
+      ],
+      "stateSnapshots": [],
+      "checks": [
+        {
+          "selector": ".schedule-card",
+          "target": {
+            "x": 62,
+            "y": 162,
+            "width": 313,
+            "height": 467
+          },
+          "measured": {
+            "x": 62,
+            "y": 162.19,
+            "width": 312,
+            "height": 467.88
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0.19,
+            "width": -1,
+            "height": 0.88
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "topbar",
+          "selector": "[\".main > header > .icon-btn\",\".main > header .title\",\".main > header .new-chat-top\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            65,
+            174,
+            406,
+            42
+          ],
+          "targetCss": {
+            "x": 15.07,
+            "y": 47.86,
+            "width": 359.86,
+            "height": 37.23
+          },
+          "measured": {
+            "x": 15,
+            "y": 46.5,
+            "width": 360,
+            "height": 38
+          },
+          "measuredViewport": {
+            "x": 15,
+            "y": 46.5,
+            "width": 360,
+            "height": 38
+          },
+          "deltaPx": {
+            "x": -0.07,
+            "y": -1.36,
+            "width": 0.14,
+            "height": 0.77
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "prompt",
+          "selector": ".row.user .bubble",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            168,
+            236,
+            260,
+            51
+          ],
+          "targetCss": {
+            "x": 106.36,
+            "y": 102.82,
+            "width": 230.45,
+            "height": 45.2
+          },
+          "measured": {
+            "x": 106.14,
+            "y": 103,
+            "width": 230.86,
+            "height": 45.19
+          },
+          "measuredViewport": {
+            "x": 106.14,
+            "y": 103,
+            "width": 230.86,
+            "height": 45.19
+          },
+          "deltaPx": {
+            "x": -0.22,
+            "y": 0.18,
+            "width": 0.4,
+            "height": -0.02
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "result_card",
+          "selector": ".schedule-card",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            118,
+            303,
+            353,
+            526
+          ],
+          "targetCss": {
+            "x": 62.05,
+            "y": 162.2,
+            "width": 312.89,
+            "height": 466.23
+          },
+          "measured": {
+            "x": 62,
+            "y": 162.19,
+            "width": 312,
+            "height": 467.88
+          },
+          "measuredViewport": {
+            "x": 62,
+            "y": 162.19,
+            "width": 312,
+            "height": 467.88
+          },
+          "deltaPx": {
+            "x": -0.05,
+            "y": -0.02,
+            "width": -0.89,
+            "height": 1.65
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "title",
+          "selector": ".schedule-head",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            135,
+            319,
+            321,
+            32
+          ],
+          "targetCss": {
+            "x": 77.11,
+            "y": 176.39,
+            "width": 284.52,
+            "height": 28.36
+          },
+          "measured": {
+            "x": 77,
+            "y": 175.19,
+            "width": 284,
+            "height": 28
+          },
+          "measuredViewport": {
+            "x": 77,
+            "y": 175.19,
+            "width": 284,
+            "height": 28
+          },
+          "deltaPx": {
+            "x": -0.11,
+            "y": -1.2,
+            "width": -0.52,
+            "height": -0.36
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "route_summary",
+          "selector": ".schedule-route",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            135,
+            351,
+            321,
+            31
+          ],
+          "targetCss": {
+            "x": 77.11,
+            "y": 204.75,
+            "width": 284.52,
+            "height": 27.48
+          },
+          "measured": {
+            "x": 77,
+            "y": 204.19,
+            "width": 284,
+            "height": 27
+          },
+          "measuredViewport": {
+            "x": 77,
+            "y": 204.19,
+            "width": 284,
+            "height": 27
+          },
+          "deltaPx": {
+            "x": -0.11,
+            "y": -0.56,
+            "width": -0.52,
+            "height": -0.48
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "date_duration",
+          "selector": ".schedule-meta",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            134,
+            389,
+            324,
+            38
+          ],
+          "targetCss": {
+            "x": 76.23,
+            "y": 238.43,
+            "width": 287.18,
+            "height": 33.68
+          },
+          "measured": {
+            "x": 75,
+            "y": 238.69,
+            "width": 286,
+            "height": 34
+          },
+          "measuredViewport": {
+            "x": 75,
+            "y": 238.69,
+            "width": 286,
+            "height": 34
+          },
+          "deltaPx": {
+            "x": -1.23,
+            "y": 0.26,
+            "width": -1.18,
+            "height": 0.32
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "station_timeline_table",
+          "selector": ".schedule-table-wrap",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            130,
+            441,
+            327,
+            270
+          ],
+          "targetCss": {
+            "x": 72.68,
+            "y": 284.52,
+            "width": 289.84,
+            "height": 239.32
+          },
+          "measured": {
+            "x": 73,
+            "y": 284.69,
+            "width": 290,
+            "height": 238.38
+          },
+          "measuredViewport": {
+            "x": 73,
+            "y": 284.69,
+            "width": 290,
+            "height": 238.38
+          },
+          "deltaPx": {
+            "x": 0.32,
+            "y": 0.16,
+            "width": 0.16,
+            "height": -0.94
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "source_note",
+          "selector": ".schedule-note",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            130,
+            726,
+            327,
+            39
+          ],
+          "targetCss": {
+            "x": 72.68,
+            "y": 537.14,
+            "width": 289.84,
+            "height": 34.57
+          },
+          "measured": {
+            "x": 73,
+            "y": 537.06,
+            "width": 290,
+            "height": 36
+          },
+          "measuredViewport": {
+            "x": 73,
+            "y": 537.06,
+            "width": 290,
+            "height": 36
+          },
+          "deltaPx": {
+            "x": 0.32,
+            "y": -0.07,
+            "width": 0.16,
+            "height": 1.43
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "source_details_row",
+          "selector": ".schedule-source",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            130,
+            776,
+            327,
+            41
+          ],
+          "targetCss": {
+            "x": 72.68,
+            "y": 581.45,
+            "width": 289.84,
+            "height": 36.34
+          },
+          "measured": {
+            "x": 73,
+            "y": 581.06,
+            "width": 290,
+            "height": 38
+          },
+          "measuredViewport": {
+            "x": 73,
+            "y": 581.06,
+            "width": 290,
+            "height": 38
+          },
+          "deltaPx": {
+            "x": 0.32,
+            "y": -0.39,
+            "width": 0.16,
+            "height": 1.66
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "result_actions",
+          "selector": "[\".row.assistant > .actions > button:not([title^='分享'])\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            120,
+            840,
+            191,
+            27
+          ],
+          "targetCss": {
+            "x": 63.82,
+            "y": 638.18,
+            "width": 169.3,
+            "height": 23.93
+          },
+          "measured": {
+            "x": 62,
+            "y": 638.06,
+            "width": 169,
+            "height": 24
+          },
+          "measuredViewport": {
+            "x": 62,
+            "y": 638.06,
+            "width": 169,
+            "height": 24
+          },
+          "deltaPx": {
+            "x": -1.82,
+            "y": -0.12,
+            "width": -0.3,
+            "height": 0.07
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "suggestions",
+          "selector": "[\".row.assistant > .followups > button\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            143,
+            884,
+            261,
+            44
+          ],
+          "targetCss": {
+            "x": 84.2,
+            "y": 677.18,
+            "width": 231.34,
+            "height": 39
+          },
+          "measured": {
+            "x": 84,
+            "y": 677.06,
+            "width": 232,
+            "height": 39
+          },
+          "measuredViewport": {
+            "x": 84,
+            "y": 677.06,
+            "width": 232,
+            "height": 39
+          },
+          "deltaPx": {
+            "x": -0.2,
+            "y": -0.12,
+            "width": 0.66,
+            "height": 0
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "fixed_input",
+          "selector": "#input",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            65,
+            944,
+            404,
+            58
+          ],
+          "targetCss": {
+            "x": 15.07,
+            "y": 730.36,
+            "width": 358.09,
+            "height": 51.41
+          },
+          "measured": {
+            "x": 15,
+            "y": 730,
+            "width": 358,
+            "height": 51
+          },
+          "measuredViewport": {
+            "x": 15,
+            "y": 730,
+            "width": 358,
+            "height": 51
+          },
+          "deltaPx": {
+            "x": -0.07,
+            "y": -0.36,
+            "width": -0.09,
+            "height": -0.41
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        }
+      ]
+    },
+    {
+      "state": "emu_routing",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1
+      },
+      "path": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/screenshots/emu_routing.png",
+      "designReference": {
+        "file": "desi1.png",
+        "phoneWidthPx": 439,
+        "normalizationTo390": 0.8883826879271071,
+        "overlayPath": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/design-overlays/emu_routing.svg",
+        "coordinateRule": "手机画面坐标按宽度换算到390px"
+      },
+      "measurements": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 87,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".mobile-statusbar": {
+          "x": 24,
+          "y": 0,
+          "width": 342,
+          "height": 35,
+          "cssWidth": "342px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "header .title": {
+          "x": 66,
+          "y": 49,
+          "width": 246,
+          "height": 33,
+          "cssWidth": "246px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        ".row.user": {
+          "x": 109.11,
+          "y": 103,
+          "width": 264.89,
+          "height": 45.19,
+          "cssWidth": "264.891px",
+          "flex": "0 0 auto",
+          "alignSelf": "flex-end"
+        },
+        ".row.user .bubble": {
+          "x": 109.11,
+          "y": 103,
+          "width": 227.89,
+          "height": 45.19,
+          "cssWidth": "227.891px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant": {
+          "x": 16,
+          "y": 159.19,
+          "width": 358,
+          "height": 533.53,
+          "cssWidth": "358px",
+          "flex": "0 0 auto",
+          "alignSelf": "stretch"
+        },
+        ".row.assistant .bubble": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-card": {
+          "x": 62,
+          "y": 166.19,
+          "width": 312,
+          "height": 421.03,
+          "cssWidth": "312px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-head": {
+          "x": 75,
+          "y": 181.19,
+          "width": 284,
+          "height": 28.5,
+          "cssWidth": "284px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-table-wrap": {
+          "x": 75,
+          "y": 300.69,
+          "width": 286,
+          "height": 229.53,
+          "cssWidth": "286px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-note": {
+          "x": 75,
+          "y": 245.69,
+          "width": 286,
+          "height": 42,
+          "cssWidth": "286px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-source": {
+          "x": 75,
+          "y": 538.22,
+          "width": 286,
+          "height": 40,
+          "cssWidth": "286px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".request-details": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".request-detail-row": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "calc(100% + 3px)",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".routing-card": {
+          "x": 62,
+          "y": 166.19,
+          "width": 312,
+          "height": 421.03,
+          "cssWidth": "312px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".routing-date": {
+          "x": 75,
+          "y": 215.69,
+          "width": 284,
+          "height": 18,
+          "cssWidth": "284px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".routing-batch": {
+          "x": 62,
+          "y": 601.22,
+          "width": 194,
+          "height": 44,
+          "cssWidth": "194px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".routing-integrity-note": {
+          "x": 62,
+          "y": 655.72,
+          "width": 312,
+          "height": 37,
+          "cssWidth": "312px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-spinner": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "54px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading strong": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-stage": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-skeletons": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-foot": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".actions": {
+          "x": 276,
+          "y": 148.19,
+          "width": 98,
+          "height": 53,
+          "cssWidth": "98px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".followups": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "#new-content-cue": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "max-content",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "footer": {
+          "x": 0,
+          "y": 724,
+          "width": 390,
+          "height": 120,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        "#input": {
+          "x": 15,
+          "y": 732,
+          "width": 358,
+          "height": 51,
+          "cssWidth": "358px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        "#send": {
+          "x": 329,
+          "y": 739,
+          "width": 44,
+          "height": 44,
+          "cssWidth": "44px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        }
+      },
+      "iconInventory": [
+        {
+          "asset": "status-signal.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 296,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-wifi.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 318,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-battery.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 340,
+          "y": 11,
+          "width": 26,
+          "height": 13,
+          "visible": true
+        },
+        {
+          "asset": "back.svg",
+          "parent": "icon-btn menu-btn",
+          "x": 16,
+          "y": 55.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "history.svg",
+          "parent": "icon-btn history-btn",
+          "x": 56,
+          "y": 56.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "train-logo.svg",
+          "parent": "title",
+          "x": 138.72,
+          "y": 43.97,
+          "width": 27,
+          "height": 40.26,
+          "visible": true
+        },
+        {
+          "asset": "add.svg",
+          "parent": "icon-btn new-chat-top",
+          "x": 345,
+          "y": 56.5,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": 115.59,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": 154.19,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "clock.svg",
+          "parent": "schedule-note",
+          "x": 84,
+          "y": 257.69,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "chevron-right.svg",
+          "parent": "routing-record-link",
+          "x": 338,
+          "y": 361.11,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "chevron-right.svg",
+          "parent": "routing-record-link",
+          "x": 338,
+          "y": 424.95,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "chevron-right.svg",
+          "parent": "routing-record-link",
+          "x": 338,
+          "y": 488.8,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "link.svg",
+          "parent": "",
+          "x": 84,
+          "y": 549.22,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "chevron-right.svg",
+          "parent": "schedule-detail-label routing-details-button",
+          "x": 326,
+          "y": 549.22,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "send.svg",
+          "parent": "",
+          "x": 340,
+          "y": 746.5,
+          "width": 19,
+          "height": 20,
+          "visible": true
+        }
+      ],
+      "visibleText": {
+        "body": "＋ 新对话\nemu_routing\n2 条 · 刚刚\n⋯\n9:41\nRailFanAI\nCR400BF-5033 今天的交路\n复制\n编辑\nCR400BF-5033\n09月25日 · 交路记录\n以下为记录时间，不是列车到发时间。\n车次\t记录时间\nC2203\t\n07:42\n查看该车次时刻\n\nG8927\t\n11:06\n查看该车次时刻\n\nG8928\t\n13:26\n查看该车次时刻\nrail.re · 交路记录\n查询这三趟车的时刻表\n记录可能不完整，以实际运行情况为准。",
+        "placeholders": [
+          "搜索对话…",
+          "继续追问…"
+        ],
+        "values": []
+      },
+      "copyChecks": [
+        {
+          "selector": ".row.user .bubble",
+          "mode": "text",
+          "expected": "CR400BF-5033 今天的交路",
+          "actual": "CR400BF-5033 今天的交路",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card .schedule-code",
+          "mode": "text",
+          "expected": "CR400BF-5033",
+          "actual": "CR400BF-5033",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card .routing-date",
+          "mode": "text",
+          "expected": "09月25日 · 交路记录",
+          "actual": "09月25日 · 交路记录",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card .schedule-note",
+          "mode": "text",
+          "expected": "以下为记录时间，不是列车到发时间。",
+          "actual": "以下为记录时间，不是列车到发时间。",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card thead th:nth-child(1)",
+          "mode": "text",
+          "expected": "车次",
+          "actual": "车次",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card thead th:nth-child(2)",
+          "mode": "text",
+          "expected": "记录时间",
+          "actual": "记录时间",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card tbody tr:nth-child(1) .routing-jump",
+          "mode": "text",
+          "expected": "C2203",
+          "actual": "C2203",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card tbody tr:nth-child(1) .routing-record-time",
+          "mode": "text",
+          "expected": "07:42",
+          "actual": "07:42",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card tbody tr:nth-child(2) .routing-jump",
+          "mode": "text",
+          "expected": "G8927",
+          "actual": "G8927",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card tbody tr:nth-child(2) .routing-record-time",
+          "mode": "text",
+          "expected": "11:06",
+          "actual": "11:06",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card tbody tr:nth-child(3) .routing-jump",
+          "mode": "text",
+          "expected": "G8928",
+          "actual": "G8928",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card tbody tr:nth-child(3) .routing-record-time",
+          "mode": "text",
+          "expected": "13:26",
+          "actual": "13:26",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card tbody tr:nth-child(1) .routing-record-link",
+          "mode": "text",
+          "expected": "查看该车次时刻",
+          "actual": "查看该车次时刻",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card .schedule-source a",
+          "mode": "text",
+          "expected": "rail.re · 交路记录",
+          "actual": "rail.re · 交路记录",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-card + .request-details + .routing-batch",
+          "mode": "text",
+          "expected": "查询这三趟车的时刻表",
+          "actual": "查询这三趟车的时刻表",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".routing-integrity-note",
+          "mode": "text",
+          "expected": "记录可能不完整，以实际运行情况为准。",
+          "actual": "记录可能不完整，以实际运行情况为准。",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": "#input",
+          "mode": "placeholder",
+          "expected": "继续追问…",
+          "actual": "继续追问…",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        }
+      ],
+      "stateSnapshots": [],
+      "checks": [
+        {
+          "selector": ".routing-card",
+          "target": {
+            "x": 62,
+            "y": 168,
+            "width": 312,
+            "height": 422
+          },
+          "measured": {
+            "x": 62,
+            "y": 166.19,
+            "width": 312,
+            "height": 421.03
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": -1.81,
+            "width": 0,
+            "height": -0.97
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "topbar",
+          "selector": "[\".main > header > .icon-btn\",\".main > header .title\",\".main > header .new-chat-top\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            536,
+            174,
+            406,
+            42
+          ],
+          "targetCss": {
+            "x": 15.1,
+            "y": 47.97,
+            "width": 360.68,
+            "height": 37.31
+          },
+          "measured": {
+            "x": 15,
+            "y": 46.5,
+            "width": 360,
+            "height": 38
+          },
+          "measuredViewport": {
+            "x": 15,
+            "y": 46.5,
+            "width": 360,
+            "height": 38
+          },
+          "deltaPx": {
+            "x": -0.1,
+            "y": -1.47,
+            "width": -0.68,
+            "height": 0.69
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "prompt",
+          "selector": ".row.user .bubble",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            641,
+            236,
+            256,
+            53
+          ],
+          "targetCss": {
+            "x": 108.38,
+            "y": 103.05,
+            "width": 227.43,
+            "height": 47.08
+          },
+          "measured": {
+            "x": 109.11,
+            "y": 103,
+            "width": 227.89,
+            "height": 45.19
+          },
+          "measuredViewport": {
+            "x": 109.11,
+            "y": 103,
+            "width": 227.89,
+            "height": 45.19
+          },
+          "deltaPx": {
+            "x": 0.73,
+            "y": -0.05,
+            "width": 0.46,
+            "height": -1.9
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "result_card",
+          "selector": ".routing-card",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            589,
+            308,
+            351,
+            476
+          ],
+          "targetCss": {
+            "x": 62.19,
+            "y": 167.02,
+            "width": 311.82,
+            "height": 422.87
+          },
+          "measured": {
+            "x": 62,
+            "y": 166.19,
+            "width": 312,
+            "height": 421.03
+          },
+          "measuredViewport": {
+            "x": 62,
+            "y": 166.19,
+            "width": 312,
+            "height": 421.03
+          },
+          "deltaPx": {
+            "x": -0.19,
+            "y": -0.83,
+            "width": 0.18,
+            "height": -1.84
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "title_date",
+          "selector": ".routing-card .schedule-head",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            605,
+            324,
+            319,
+            31
+          ],
+          "targetCss": {
+            "x": 76.4,
+            "y": 181.23,
+            "width": 283.39,
+            "height": 27.54
+          },
+          "measured": {
+            "x": 75,
+            "y": 181.19,
+            "width": 284,
+            "height": 28.5
+          },
+          "measuredViewport": {
+            "x": 75,
+            "y": 181.19,
+            "width": 284,
+            "height": 28.5
+          },
+          "deltaPx": {
+            "x": -1.4,
+            "y": -0.04,
+            "width": 0.61,
+            "height": 0.96
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "date_record",
+          "selector": ".routing-date",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            605,
+            361,
+            319,
+            21
+          ],
+          "targetCss": {
+            "x": 76.4,
+            "y": 214.1,
+            "width": 283.39,
+            "height": 18.66
+          },
+          "measured": {
+            "x": 75,
+            "y": 215.69,
+            "width": 284,
+            "height": 18
+          },
+          "measuredViewport": {
+            "x": 75,
+            "y": 215.69,
+            "width": 284,
+            "height": 18
+          },
+          "deltaPx": {
+            "x": -1.4,
+            "y": 1.59,
+            "width": 0.61,
+            "height": -0.66
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "time_semantics_note",
+          "selector": ".routing-card .schedule-note",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            603,
+            395,
+            324,
+            48
+          ],
+          "targetCss": {
+            "x": 74.62,
+            "y": 244.31,
+            "width": 287.84,
+            "height": 42.64
+          },
+          "measured": {
+            "x": 75,
+            "y": 245.69,
+            "width": 286,
+            "height": 42
+          },
+          "measuredViewport": {
+            "x": 75,
+            "y": 245.69,
+            "width": 286,
+            "height": 42
+          },
+          "deltaPx": {
+            "x": 0.38,
+            "y": 1.38,
+            "width": -1.84,
+            "height": -0.64
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "records_table",
+          "selector": ".routing-card .schedule-table-wrap",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            603,
+            458,
+            324,
+            258
+          ],
+          "targetCss": {
+            "x": 74.62,
+            "y": 300.27,
+            "width": 287.84,
+            "height": 229.2
+          },
+          "measured": {
+            "x": 75,
+            "y": 300.69,
+            "width": 286,
+            "height": 229.53
+          },
+          "measuredViewport": {
+            "x": 75,
+            "y": 300.69,
+            "width": 286,
+            "height": 229.53
+          },
+          "deltaPx": {
+            "x": 0.38,
+            "y": 0.41,
+            "width": -1.84,
+            "height": 0.33
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "source_details_row",
+          "selector": ".routing-card .schedule-source",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            603,
+            727,
+            324,
+            43
+          ],
+          "targetCss": {
+            "x": 74.62,
+            "y": 539.25,
+            "width": 287.84,
+            "height": 38.2
+          },
+          "measured": {
+            "x": 75,
+            "y": 538.22,
+            "width": 286,
+            "height": 40
+          },
+          "measuredViewport": {
+            "x": 75,
+            "y": 538.22,
+            "width": 286,
+            "height": 40
+          },
+          "deltaPx": {
+            "x": 0.38,
+            "y": -1.03,
+            "width": -1.84,
+            "height": 1.8
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "batch_action",
+          "selector": ".routing-batch",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            589,
+            799,
+            218,
+            48
+          ],
+          "targetCss": {
+            "x": 62.19,
+            "y": 603.21,
+            "width": 193.67,
+            "height": 42.64
+          },
+          "measured": {
+            "x": 62,
+            "y": 601.22,
+            "width": 194,
+            "height": 44
+          },
+          "measuredViewport": {
+            "x": 62,
+            "y": 601.22,
+            "width": 194,
+            "height": 44
+          },
+          "deltaPx": {
+            "x": -0.19,
+            "y": -1.99,
+            "width": 0.33,
+            "height": 1.36
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "integrity_note",
+          "selector": ".routing-integrity-note",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            589,
+            860,
+            352,
+            42
+          ],
+          "targetCss": {
+            "x": 62.19,
+            "y": 657.4,
+            "width": 312.71,
+            "height": 37.31
+          },
+          "measured": {
+            "x": 62,
+            "y": 655.72,
+            "width": 312,
+            "height": 37
+          },
+          "measuredViewport": {
+            "x": 62,
+            "y": 655.72,
+            "width": 312,
+            "height": 37
+          },
+          "deltaPx": {
+            "x": -0.19,
+            "y": -1.68,
+            "width": -0.71,
+            "height": -0.31
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "fixed_input",
+          "selector": "#input",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            536,
+            944,
+            405,
+            58
+          ],
+          "targetCss": {
+            "x": 15.1,
+            "y": 732.03,
+            "width": 359.79,
+            "height": 51.53
+          },
+          "measured": {
+            "x": 15,
+            "y": 732,
+            "width": 358,
+            "height": 51
+          },
+          "measuredViewport": {
+            "x": 15,
+            "y": 732,
+            "width": 358,
+            "height": 51
+          },
+          "deltaPx": {
+            "x": -0.1,
+            "y": -0.03,
+            "width": -1.79,
+            "height": -0.53
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        }
+      ]
+    },
+    {
+      "state": "emu_routing",
+      "interaction": "open one train schedule",
+      "payload": {
+        "kind": "train_schedule_batch",
+        "trains": [
+          "C2203"
+        ],
+        "date": "2026-09-25"
+      }
+    },
+    {
+      "state": "query_loading",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1
+      },
+      "path": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/screenshots/query_loading.png",
+      "designReference": {
+        "file": "desi2.png",
+        "module": "01 / 正在查询",
+        "sourcePanelWidthPx": 458,
+        "normalizationTo390": 0.851528384279476,
+        "overlayPath": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/design-overlays/query_loading.svg",
+        "coordinateRule": "独立模块仅比较内部几何，不使用整页绝对坐标"
+      },
+      "measurements": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 87,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".mobile-statusbar": {
+          "x": 24,
+          "y": 0,
+          "width": 342,
+          "height": 35,
+          "cssWidth": "342px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "header .title": {
+          "x": 66,
+          "y": 49,
+          "width": 246,
+          "height": 33,
+          "cssWidth": "246px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        ".row.user": {
+          "x": 106.14,
+          "y": 103,
+          "width": 267.86,
+          "height": 45.19,
+          "cssWidth": "267.859px",
+          "flex": "0 0 auto",
+          "alignSelf": "flex-end"
+        },
+        ".row.user .bubble": {
+          "x": 106.14,
+          "y": 103,
+          "width": 230.86,
+          "height": 45.19,
+          "cssWidth": "230.859px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant": {
+          "x": 16,
+          "y": 156.19,
+          "width": 358,
+          "height": 156,
+          "cssWidth": "358px",
+          "flex": "0 0 auto",
+          "alignSelf": "stretch"
+        },
+        ".row.assistant .bubble": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading": {
+          "x": 16,
+          "y": 156.19,
+          "width": 358,
+          "height": 156,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-spinner": {
+          "x": 39,
+          "y": 181.19,
+          "width": 46,
+          "height": 46,
+          "cssWidth": "46px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading strong": {
+          "x": 109,
+          "y": 183.19,
+          "width": 242,
+          "height": 25,
+          "cssWidth": "242px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-stage": {
+          "x": 109,
+          "y": 215.19,
+          "width": 242,
+          "height": 18,
+          "cssWidth": "242px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-skeletons": {
+          "x": 37,
+          "y": 251.19,
+          "width": 316,
+          "height": 42,
+          "cssWidth": "316px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-foot": {
+          "x": 0,
+          "y": 788,
+          "width": 390,
+          "height": 18,
+          "cssWidth": "390px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".actions": {
+          "x": 276,
+          "y": 148.19,
+          "width": 98,
+          "height": 53,
+          "cssWidth": "98px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "#new-content-cue": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "max-content",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "footer": {
+          "x": 0,
+          "y": 721,
+          "width": 390,
+          "height": 123,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        "#input": {
+          "x": 15,
+          "y": 730,
+          "width": 290,
+          "height": 51,
+          "cssWidth": "290px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        "#send": {
+          "x": 321,
+          "y": 729,
+          "width": 52,
+          "height": 52,
+          "cssWidth": "52px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        }
+      },
+      "iconInventory": [
+        {
+          "asset": "status-signal.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 296,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-wifi.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 318,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-battery.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 340,
+          "y": 11,
+          "width": 26,
+          "height": 13,
+          "visible": true
+        },
+        {
+          "asset": "back.svg",
+          "parent": "icon-btn menu-btn",
+          "x": 16,
+          "y": 55.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "history.svg",
+          "parent": "icon-btn history-btn",
+          "x": 56,
+          "y": 56.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "train-logo.svg",
+          "parent": "title",
+          "x": 138.72,
+          "y": 43.97,
+          "width": 27,
+          "height": 40.26,
+          "visible": true
+        },
+        {
+          "asset": "add.svg",
+          "parent": "icon-btn new-chat-top",
+          "x": 345,
+          "y": 56.5,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": 115.59,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": 154.19,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "stop.svg",
+          "parent": "stop",
+          "x": 321,
+          "y": 744,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        }
+      ],
+      "visibleText": {
+        "body": "＋ 新对话\n正在查询\n1 条 · 刚刚\n⋯\n9:41\nRailFanAI\n查一下 G8932 今天的时刻表\n复制\n编辑\n正在查询列车数据…\n已识别 G8932 · 正在连接 12306\n可停止生成，已返回内容会保留",
+        "placeholders": [
+          "搜索对话…",
+          "继续追问…"
+        ],
+        "values": [
+          "再看看明天的"
+        ]
+      },
+      "copyChecks": [
+        {
+          "selector": ".query-loading strong",
+          "mode": "text",
+          "expected": "正在查询列车数据…",
+          "actual": "正在查询列车数据…",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".query-loading-stage",
+          "mode": "text",
+          "expected": "已识别 G8932 · 正在连接 12306",
+          "actual": "已识别 G8932 · 正在连接 12306",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": "#input",
+          "mode": "value",
+          "expected": "再看看明天的",
+          "actual": "再看看明天的",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": "#send",
+          "mode": "aria-label",
+          "expected": "停止生成",
+          "actual": "停止生成",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".query-loading-foot",
+          "mode": "text",
+          "expected": "可停止生成，已返回内容会保留",
+          "actual": "可停止生成，已返回内容会保留",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        }
+      ],
+      "stateSnapshots": [
+        {
+          "button": "停止生成",
+          "interrupted": false,
+          "recognized": "已识别 G8932 · 正在连接 12306"
+        }
+      ],
+      "checks": [
+        {
+          "element": "loading_card",
+          "selector": ".query-loading",
+          "semanticBasis": "element box",
+          "coordinateBasis": "loading_card component-local coordinates",
+          "targetRaw": [
+            64,
+            155,
+            419,
+            183
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 356.79,
+            "height": 155.83
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 358,
+            "height": 156
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 156.19,
+            "width": 358,
+            "height": 156
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": 1.21,
+            "height": 0.17
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "spinner",
+          "selector": "{\"selectors\":[\".query-spinner\"],\"layout\":true}",
+          "semanticBasis": "element box",
+          "coordinateBasis": "loading_card component-local coordinates",
+          "targetRaw": [
+            91,
+            184,
+            54,
+            54
+          ],
+          "targetCss": {
+            "x": 22.99,
+            "y": 24.69,
+            "width": 45.98,
+            "height": 45.98
+          },
+          "measured": {
+            "x": 23,
+            "y": 25,
+            "width": 46,
+            "height": 46
+          },
+          "measuredViewport": {
+            "x": 39,
+            "y": 181.19,
+            "width": 46,
+            "height": 46
+          },
+          "deltaPx": {
+            "x": 0.01,
+            "y": 0.31,
+            "width": 0.02,
+            "height": 0.02
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "loading_title_and_stage",
+          "selector": "{\"selectors\":[\".query-loading strong\",\".query-loading-stage\"],\"text\":true}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "loading_card component-local coordinates",
+          "targetRaw": [
+            172,
+            187,
+            220,
+            54
+          ],
+          "targetCss": {
+            "x": 91.97,
+            "y": 27.25,
+            "width": 187.34,
+            "height": 45.98
+          },
+          "measured": {
+            "x": 93,
+            "y": 29,
+            "width": 189.13,
+            "height": 47
+          },
+          "measuredViewport": {
+            "x": 109,
+            "y": 185.19,
+            "width": 189.13,
+            "height": 47
+          },
+          "deltaPx": {
+            "x": 1.03,
+            "y": 1.75,
+            "width": 1.79,
+            "height": 1.02
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "skeletons",
+          "selector": "[\".query-skeletons > *\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "loading_card component-local coordinates",
+          "targetRaw": [
+            88,
+            267,
+            370,
+            49
+          ],
+          "targetCss": {
+            "x": 20.44,
+            "y": 95.37,
+            "width": 315.07,
+            "height": 41.72
+          },
+          "measured": {
+            "x": 21,
+            "y": 95,
+            "width": 316,
+            "height": 42
+          },
+          "measuredViewport": {
+            "x": 37,
+            "y": 251.19,
+            "width": 316,
+            "height": 42
+          },
+          "deltaPx": {
+            "x": 0.56,
+            "y": -0.37,
+            "width": 0.93,
+            "height": 0.28
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "editable_input_and_stop",
+          "selector": "{\"selectors\":[\"#input\",\"#send\"],\"origin\":\"self\"}",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "component-local dimensions",
+          "targetRaw": [
+            64,
+            368,
+            419,
+            60
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 356.79,
+            "height": 51.09
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 358,
+            "height": 52
+          },
+          "measuredViewport": {
+            "x": 15,
+            "y": 729,
+            "width": 358,
+            "height": 52
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": 1.21,
+            "height": 0.91
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "preserve_note",
+          "selector": "{\"selectors\":[\".query-loading-foot\"],\"text\":true,\"origin\":\"self\"}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "component-local dimensions",
+          "targetRaw": [
+            164,
+            450,
+            218,
+            20
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 185.63,
+            "height": 17.03
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 184.81,
+            "height": 16
+          },
+          "measuredViewport": {
+            "x": 102.59,
+            "y": 789,
+            "width": 184.81,
+            "height": 16
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": -0.82,
+            "height": -1.03
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        }
+      ]
+    },
+    {
+      "state": "query_loading",
+      "interaction": "stop",
+      "result": "request aborted; query remains in conversation"
+    },
+    {
+      "state": "batch_partial",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1
+      },
+      "path": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/screenshots/batch_partial.png",
+      "designReference": {
+        "file": "desi2.png",
+        "module": "02 / 部分查询成功",
+        "sourcePanelWidthPx": 454,
+        "normalizationTo390": 0.8590308370044053,
+        "overlayPath": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/design-overlays/batch_partial.svg",
+        "coordinateRule": "独立模块仅比较内部几何，不使用整页绝对坐标"
+      },
+      "measurements": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 87,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".mobile-statusbar": {
+          "x": 24,
+          "y": 0,
+          "width": 342,
+          "height": 35,
+          "cssWidth": "342px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "header .title": {
+          "x": 66,
+          "y": 49,
+          "width": 246,
+          "height": 33,
+          "cssWidth": "246px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        ".row.user": {
+          "x": 149,
+          "y": 103,
+          "width": 225,
+          "height": 45.19,
+          "cssWidth": "225px",
+          "flex": "0 0 auto",
+          "alignSelf": "flex-end"
+        },
+        ".row.user .bubble": {
+          "x": 149,
+          "y": 103,
+          "width": 188,
+          "height": 45.19,
+          "cssWidth": "188px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant": {
+          "x": 16,
+          "y": 156.19,
+          "width": 358,
+          "height": 258,
+          "cssWidth": "358px",
+          "flex": "0 0 auto",
+          "alignSelf": "stretch"
+        },
+        ".row.assistant .bubble": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-card": {
+          "x": 16,
+          "y": 156.19,
+          "width": 358,
+          "height": 176,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-head": {
+          "x": 29,
+          "y": 167.69,
+          "width": 332,
+          "height": 27,
+          "cssWidth": "332px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".routing-batch": {
+          "x": 16,
+          "y": 342.19,
+          "width": 358,
+          "height": 44,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-spinner": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "54px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading strong": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-stage": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-skeletons": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-foot": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".batch-card": {
+          "x": 16,
+          "y": 156.19,
+          "width": 358,
+          "height": 176,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".batch-item": {
+          "x": 29,
+          "y": 203.19,
+          "width": 332,
+          "height": 42,
+          "cssWidth": "332px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".batch-card + .routing-batch": {
+          "x": 16,
+          "y": 342.19,
+          "width": 358,
+          "height": 44,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".batch-retain": {
+          "x": 16,
+          "y": 393.19,
+          "width": 358,
+          "height": 21,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".actions": {
+          "x": 276,
+          "y": 148.19,
+          "width": 98,
+          "height": 53,
+          "cssWidth": "98px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".followups": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "#new-content-cue": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "max-content",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "footer": {
+          "x": 0,
+          "y": 722,
+          "width": 390,
+          "height": 122,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        "#input": {
+          "x": 15,
+          "y": 730,
+          "width": 358,
+          "height": 51,
+          "cssWidth": "358px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        "#send": {
+          "x": 329,
+          "y": 737,
+          "width": 44,
+          "height": 44,
+          "cssWidth": "44px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        }
+      },
+      "iconInventory": [
+        {
+          "asset": "status-signal.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 296,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-wifi.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 318,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-battery.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 340,
+          "y": 11,
+          "width": 26,
+          "height": 13,
+          "visible": true
+        },
+        {
+          "asset": "back.svg",
+          "parent": "icon-btn menu-btn",
+          "x": 16,
+          "y": 55.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "history.svg",
+          "parent": "icon-btn history-btn",
+          "x": 56,
+          "y": 56.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "train-logo.svg",
+          "parent": "title",
+          "x": 138.72,
+          "y": 43.97,
+          "width": 27,
+          "height": 40.26,
+          "visible": true
+        },
+        {
+          "asset": "add.svg",
+          "parent": "icon-btn new-chat-top",
+          "x": 345,
+          "y": 56.5,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": 115.59,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": 154.19,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "check.svg",
+          "parent": "batch-ok",
+          "x": 240,
+          "y": 211.19,
+          "width": 25,
+          "height": 25,
+          "visible": true
+        },
+        {
+          "asset": "check.svg",
+          "parent": "batch-ok",
+          "x": 240,
+          "y": 253.19,
+          "width": 25,
+          "height": 25,
+          "visible": true
+        },
+        {
+          "asset": "warning.svg",
+          "parent": "batch-failed",
+          "x": 240,
+          "y": 293.69,
+          "width": 23,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "send.svg",
+          "parent": "",
+          "x": 340,
+          "y": 744.5,
+          "width": 19,
+          "height": 20,
+          "visible": true
+        }
+      ],
+      "visibleText": {
+        "body": "＋ 新对话\nbatch_partial\n2 条 · 刚刚\n⋯\n9:41\nRailFanAI\n查询这三趟车的时刻表\n复制\n编辑\n时刻查询\n2 / 3 已返回\nC2203\n已查到\nG8927\n已查到\nG8928\n暂未返回\n仅重试 G8928\n保留已查到的结果",
+        "placeholders": [
+          "搜索对话…",
+          "继续追问…"
+        ],
+        "values": []
+      },
+      "copyChecks": [
+        {
+          "selector": ".batch-card .schedule-head strong",
+          "mode": "text",
+          "expected": "时刻查询",
+          "actual": "时刻查询",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".batch-card .batch-count",
+          "mode": "text",
+          "expected": "2 / 3 已返回",
+          "actual": "2 / 3 已返回",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".batch-item:nth-of-type(2) > span:first-child",
+          "mode": "text",
+          "expected": "C2203",
+          "actual": "C2203",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".batch-item:nth-of-type(2) .batch-ok",
+          "mode": "text",
+          "expected": "已查到",
+          "actual": "已查到",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".batch-item:nth-of-type(3) > span:first-child",
+          "mode": "text",
+          "expected": "G8927",
+          "actual": "G8927",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".batch-item:nth-of-type(3) .batch-ok",
+          "mode": "text",
+          "expected": "已查到",
+          "actual": "已查到",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".batch-item:nth-of-type(4) > span:first-child",
+          "mode": "text",
+          "expected": "G8928",
+          "actual": "G8928",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".batch-item:nth-of-type(4) .batch-failed",
+          "mode": "text",
+          "expected": "暂未返回",
+          "actual": "暂未返回",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".batch-card + .routing-batch",
+          "mode": "text",
+          "expected": "仅重试 G8928",
+          "actual": "仅重试 G8928",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".batch-retain",
+          "mode": "text",
+          "expected": "保留已查到的结果",
+          "actual": "保留已查到的结果",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        }
+      ],
+      "stateSnapshots": [],
+      "checks": [
+        {
+          "element": "batch_card",
+          "selector": ".batch-card",
+          "semanticBasis": "element box",
+          "coordinateBasis": "batch_card component-local coordinates",
+          "targetRaw": [
+            560,
+            152,
+            418,
+            203
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 359.07,
+            "height": 174.38
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 358,
+            "height": 176
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 156.19,
+            "width": 358,
+            "height": 176
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": -1.07,
+            "height": 1.62
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "retry_failed_only",
+          "selector": ".batch-card + .routing-batch",
+          "semanticBasis": "element box",
+          "coordinateBasis": "batch_card component-local coordinates",
+          "targetRaw": [
+            561,
+            367,
+            415,
+            51
+          ],
+          "targetCss": {
+            "x": 0.86,
+            "y": 184.69,
+            "width": 356.5,
+            "height": 43.81
+          },
+          "measured": {
+            "x": 0,
+            "y": 186,
+            "width": 358,
+            "height": 44
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 342.19,
+            "width": 358,
+            "height": 44
+          },
+          "deltaPx": {
+            "x": -0.86,
+            "y": 1.31,
+            "width": 1.5,
+            "height": 0.19
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "retain_success_note",
+          "selector": ".batch-retain",
+          "semanticBasis": "element box",
+          "coordinateBasis": "batch_card component-local coordinates",
+          "targetRaw": [
+            560,
+            428,
+            418,
+            25
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 237.09,
+            "width": 359.07,
+            "height": 21.48
+          },
+          "measured": {
+            "x": 0,
+            "y": 237,
+            "width": 358,
+            "height": 21
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 393.19,
+            "width": 358,
+            "height": 21
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": -0.09,
+            "width": -1.07,
+            "height": -0.48
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        }
+      ]
+    },
+    {
+      "state": "batch_partial",
+      "interaction": "retry failed rows",
+      "payload": {
+        "kind": "train_schedule_batch",
+        "trains": [
+          "G8928"
+        ],
+        "date": "2026-09-25"
+      },
+      "result": "successful rows retained"
+    },
+    {
+      "state": "routing_empty",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1
+      },
+      "path": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/screenshots/routing_empty.png",
+      "designReference": {
+        "file": "desi2.png",
+        "module": "03 / 暂无记录",
+        "sourcePanelWidthPx": 462,
+        "normalizationTo390": 0.8441558441558441,
+        "overlayPath": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/design-overlays/routing_empty.svg",
+        "coordinateRule": "独立模块仅比较内部几何，不使用整页绝对坐标"
+      },
+      "measurements": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 87,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".mobile-statusbar": {
+          "x": 24,
+          "y": 0,
+          "width": 342,
+          "height": 35,
+          "cssWidth": "342px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "header .title": {
+          "x": 66,
+          "y": 49,
+          "width": 246,
+          "height": 33,
+          "cssWidth": "246px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        ".row.user": {
+          "x": 109.11,
+          "y": 103,
+          "width": 264.89,
+          "height": 45.19,
+          "cssWidth": "264.891px",
+          "flex": "0 0 auto",
+          "alignSelf": "flex-end"
+        },
+        ".row.user .bubble": {
+          "x": 109.11,
+          "y": 103,
+          "width": 227.89,
+          "height": 45.19,
+          "cssWidth": "227.891px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant": {
+          "x": 16,
+          "y": 156.19,
+          "width": 358,
+          "height": 287,
+          "cssWidth": "358px",
+          "flex": "0 0 auto",
+          "alignSelf": "stretch"
+        },
+        ".row.assistant .bubble": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-card": {
+          "x": 0,
+          "y": 156.19,
+          "width": 390,
+          "height": 287,
+          "cssWidth": "390px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".routing-batch": {
+          "x": 19,
+          "y": 369.19,
+          "width": 169.45,
+          "height": 40,
+          "cssWidth": "169.453px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-spinner": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "54px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading strong": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-stage": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-skeletons": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-foot": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".empty-routing-card": {
+          "x": 0,
+          "y": 156.19,
+          "width": 390,
+          "height": 287,
+          "cssWidth": "390px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".empty-routing-mark": {
+          "x": 32,
+          "y": 178.19,
+          "width": 352,
+          "height": 74,
+          "cssWidth": "352px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".empty-routing-title": {
+          "x": 19,
+          "y": 259.69,
+          "width": 352,
+          "height": 22,
+          "cssWidth": "352px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".empty-routing-copy": {
+          "x": 20.5,
+          "y": 286.69,
+          "width": 352,
+          "height": 20,
+          "cssWidth": "352px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".empty-routing-date": {
+          "x": 122.38,
+          "y": 318.19,
+          "width": 145.23,
+          "height": 39,
+          "cssWidth": "145.234px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".empty-routing-actions": {
+          "x": 19,
+          "y": 369.19,
+          "width": 356,
+          "height": 40,
+          "cssWidth": "356px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".empty-routing-actions .routing-batch": {
+          "x": 19,
+          "y": 369.19,
+          "width": 169.45,
+          "height": 40,
+          "cssWidth": "169.453px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".empty-routing-actions .routing-recent": {
+          "x": 200.45,
+          "y": 369.19,
+          "width": 174.55,
+          "height": 40,
+          "cssWidth": "174.547px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".actions": {
+          "x": 276,
+          "y": 148.19,
+          "width": 98,
+          "height": 53,
+          "cssWidth": "98px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".followups": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "#new-content-cue": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "max-content",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "footer": {
+          "x": 0,
+          "y": 722,
+          "width": 390,
+          "height": 122,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        "#input": {
+          "x": 15,
+          "y": 730,
+          "width": 358,
+          "height": 51,
+          "cssWidth": "358px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        "#send": {
+          "x": 329,
+          "y": 737,
+          "width": 44,
+          "height": 44,
+          "cssWidth": "44px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        }
+      },
+      "iconInventory": [
+        {
+          "asset": "status-signal.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 296,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-wifi.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 318,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-battery.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 340,
+          "y": 11,
+          "width": 26,
+          "height": 13,
+          "visible": true
+        },
+        {
+          "asset": "back.svg",
+          "parent": "icon-btn menu-btn",
+          "x": 16,
+          "y": 55.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "history.svg",
+          "parent": "icon-btn history-btn",
+          "x": 56,
+          "y": 56.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "train-logo.svg",
+          "parent": "title",
+          "x": 138.72,
+          "y": 43.97,
+          "width": 27,
+          "height": 40.26,
+          "visible": true
+        },
+        {
+          "asset": "add.svg",
+          "parent": "icon-btn new-chat-top",
+          "x": 345,
+          "y": 56.5,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": 115.59,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": 154.19,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "train-empty.svg",
+          "parent": "empty-routing-mark",
+          "x": 164.5,
+          "y": 178.19,
+          "width": 48,
+          "height": 64,
+          "visible": true
+        },
+        {
+          "asset": "search-empty.svg",
+          "parent": "empty-routing-mark",
+          "x": 217.71,
+          "y": 205.39,
+          "width": 32.98,
+          "height": 34,
+          "visible": true
+        },
+        {
+          "asset": "calendar.svg",
+          "parent": "empty-routing-date",
+          "x": 151.38,
+          "y": 328.69,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "send.svg",
+          "parent": "",
+          "x": 340,
+          "y": 744.5,
+          "width": 19,
+          "height": 20,
+          "visible": true
+        }
+      ],
+      "visibleText": {
+        "body": "＋ 新对话\nrouting_empty\n2 条 · 刚刚\n⋯\n9:41\nRailFanAI\nCR400BF-5033 今天的交路\n复制\n编辑\n未找到当天交路记录\n暂无记录，不能据此判断停运。\n09月25日\n更换日期\n查看最近记录\n历史记录将单独标注日期",
+        "placeholders": [
+          "搜索对话…",
+          "继续追问…"
+        ],
+        "values": [
+          "2026-09-25"
+        ]
+      },
+      "copyChecks": [
+        {
+          "selector": ".empty-routing-title",
+          "mode": "text",
+          "expected": "未找到当天交路记录",
+          "actual": "未找到当天交路记录",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".empty-routing-copy",
+          "mode": "text",
+          "expected": "暂无记录，不能据此判断停运。",
+          "actual": "暂无记录，不能据此判断停运。",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".empty-routing-date",
+          "mode": "text",
+          "expected": "09月25日",
+          "actual": "09月25日",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".empty-routing-actions .routing-batch",
+          "mode": "text",
+          "expected": "更换日期",
+          "actual": "更换日期",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".empty-routing-actions .routing-recent",
+          "mode": "text",
+          "expected": "查看最近记录",
+          "actual": "查看最近记录",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".empty-routing-foot",
+          "mode": "text",
+          "expected": "历史记录将单独标注日期",
+          "actual": "历史记录将单独标注日期",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        }
+      ],
+      "stateSnapshots": [],
+      "checks": [
+        {
+          "element": "empty_icon_group",
+          "selector": "[\".empty-routing-mark img\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            1228,
+            162,
+            104,
+            76
+          ],
+          "targetCss": {
+            "x": 163.77,
+            "y": 21.95,
+            "width": 87.79,
+            "height": 64.16
+          },
+          "measured": {
+            "x": 164.5,
+            "y": 22,
+            "width": 86.19,
+            "height": 64
+          },
+          "measuredViewport": {
+            "x": 164.5,
+            "y": 178.19,
+            "width": 86.19,
+            "height": 64
+          },
+          "deltaPx": {
+            "x": 0.73,
+            "y": 0.05,
+            "width": -1.6,
+            "height": -0.16
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "empty_title",
+          "selector": "{\"selectors\":[\".empty-routing-title\"],\"text\":true}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            1158,
+            259,
+            217,
+            28
+          ],
+          "targetCss": {
+            "x": 104.68,
+            "y": 103.83,
+            "width": 183.18,
+            "height": 23.64
+          },
+          "measured": {
+            "x": 102.75,
+            "y": 102.5,
+            "width": 184.5,
+            "height": 24
+          },
+          "measuredViewport": {
+            "x": 102.75,
+            "y": 258.69,
+            "width": 184.5,
+            "height": 24
+          },
+          "deltaPx": {
+            "x": -1.93,
+            "y": -1.33,
+            "width": 1.32,
+            "height": 0.36
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "empty_message",
+          "selector": "{\"selectors\":[\".empty-routing-copy\"],\"text\":true}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            1144,
+            292,
+            247,
+            23
+          ],
+          "targetCss": {
+            "x": 92.86,
+            "y": 131.69,
+            "width": 208.51,
+            "height": 19.42
+          },
+          "measured": {
+            "x": 91.5,
+            "y": 131.5,
+            "width": 210,
+            "height": 18
+          },
+          "measuredViewport": {
+            "x": 91.5,
+            "y": 287.69,
+            "width": 210,
+            "height": 18
+          },
+          "deltaPx": {
+            "x": -1.36,
+            "y": -0.19,
+            "width": 1.49,
+            "height": -1.42
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "date_pill",
+          "selector": ".empty-routing-date",
+          "semanticBasis": "element box",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            1180,
+            328,
+            173,
+            45
+          ],
+          "targetCss": {
+            "x": 123.25,
+            "y": 162.08,
+            "width": 146.04,
+            "height": 37.99
+          },
+          "measured": {
+            "x": 122.38,
+            "y": 162,
+            "width": 145.23,
+            "height": 39
+          },
+          "measuredViewport": {
+            "x": 122.38,
+            "y": 318.19,
+            "width": 145.23,
+            "height": 39
+          },
+          "deltaPx": {
+            "x": -0.87,
+            "y": -0.08,
+            "width": -0.8,
+            "height": 1.01
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "change_date_action",
+          "selector": ".empty-routing-actions .routing-batch",
+          "semanticBasis": "element box",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            1055,
+            387,
+            203,
+            48
+          ],
+          "targetCss": {
+            "x": 17.73,
+            "y": 211.88,
+            "width": 171.36,
+            "height": 40.52
+          },
+          "measured": {
+            "x": 19,
+            "y": 213,
+            "width": 169.45,
+            "height": 40
+          },
+          "measuredViewport": {
+            "x": 19,
+            "y": 369.19,
+            "width": 169.45,
+            "height": 40
+          },
+          "deltaPx": {
+            "x": 1.27,
+            "y": 1.12,
+            "width": -1.91,
+            "height": -0.52
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "recent_records_action",
+          "selector": ".empty-routing-actions .routing-recent",
+          "semanticBasis": "element box",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            1271,
+            387,
+            208,
+            48
+          ],
+          "targetCss": {
+            "x": 200.06,
+            "y": 211.88,
+            "width": 175.58,
+            "height": 40.52
+          },
+          "measured": {
+            "x": 200.45,
+            "y": 213,
+            "width": 174.55,
+            "height": 40
+          },
+          "measuredViewport": {
+            "x": 200.45,
+            "y": 369.19,
+            "width": 174.55,
+            "height": 40
+          },
+          "deltaPx": {
+            "x": 0.39,
+            "y": 1.12,
+            "width": -1.04,
+            "height": -0.52
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "history_note",
+          "selector": "{\"selectors\":[\".empty-routing-foot\"],\"text\":true}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            1180,
+            448,
+            182,
+            20
+          ],
+          "targetCss": {
+            "x": 123.25,
+            "y": 263.38,
+            "width": 153.64,
+            "height": 16.88
+          },
+          "measured": {
+            "x": 123,
+            "y": 263,
+            "width": 154,
+            "height": 17
+          },
+          "measuredViewport": {
+            "x": 123,
+            "y": 419.19,
+            "width": 154,
+            "height": 17
+          },
+          "deltaPx": {
+            "x": -0.25,
+            "y": -0.38,
+            "width": 0.36,
+            "height": 0.12
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        }
+      ]
+    },
+    {
+      "state": "routing_empty",
+      "interaction": "change date and recent records",
+      "payloads": [
+        {
+          "kind": "emu_routing",
+          "query": "CR400BF-5033",
+          "date": "2026-09-26"
+        },
+        {
+          "kind": "emu_routing",
+          "query": "CR400BF-5033",
+          "date": null
+        }
+      ]
+    },
+    {
+      "state": "connection_error",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1
+      },
+      "path": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/screenshots/connection_error.png",
+      "designReference": {
+        "file": "desi2.png",
+        "module": "04 / 连接失败",
+        "sourcePanelWidthPx": 458,
+        "normalizationTo390": 0.851528384279476,
+        "overlayPath": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/design-overlays/connection_error.svg",
+        "coordinateRule": "独立模块仅比较内部几何，不使用整页绝对坐标"
+      },
+      "measurements": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 87,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".mobile-statusbar": {
+          "x": 24,
+          "y": 0,
+          "width": 342,
+          "height": 35,
+          "cssWidth": "342px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "header .title": {
+          "x": 66,
+          "y": 49,
+          "width": 246,
+          "height": 33,
+          "cssWidth": "246px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        ".row.user": {
+          "x": 222.33,
+          "y": 103,
+          "width": 151.67,
+          "height": 45.19,
+          "cssWidth": "151.672px",
+          "flex": "0 0 auto",
+          "alignSelf": "flex-end"
+        },
+        ".row.user .bubble": {
+          "x": 222.33,
+          "y": 103,
+          "width": 114.67,
+          "height": 45.19,
+          "cssWidth": "114.672px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant": {
+          "x": 16,
+          "y": 156.19,
+          "width": 358,
+          "height": 414.45,
+          "cssWidth": "358px",
+          "flex": "0 0 auto",
+          "alignSelf": "stretch"
+        },
+        ".row.assistant .bubble": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-spinner": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "54px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading strong": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-stage": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-skeletons": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-foot": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".connection-error": {
+          "x": 0,
+          "y": 169.19,
+          "width": 390,
+          "height": 342.45,
+          "cssWidth": "390px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".connection-title-row": {
+          "x": 17,
+          "y": 204.19,
+          "width": 356,
+          "height": 54,
+          "cssWidth": "356px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".connection-error-copy": {
+          "x": 117,
+          "y": 231.19,
+          "width": 256,
+          "height": 24.94,
+          "cssWidth": "256px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".connection-error-actions": {
+          "x": 17,
+          "y": 274.13,
+          "width": 350,
+          "height": 40,
+          "cssWidth": "350px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".connection-error details": {
+          "x": 17,
+          "y": 327.63,
+          "width": 353,
+          "height": 44.08,
+          "cssWidth": "353px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".connection-key-label": {
+          "x": 17,
+          "y": 393.7,
+          "width": 356,
+          "height": 22.36,
+          "cssWidth": "356px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".connection-key-invalid": {
+          "x": 17,
+          "y": 416.06,
+          "width": 356,
+          "height": 44,
+          "cssWidth": "356px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".connection-key-error": {
+          "x": 17,
+          "y": 464.06,
+          "width": 356,
+          "height": 24.58,
+          "cssWidth": "356px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".actions": {
+          "x": 276,
+          "y": 148.19,
+          "width": 98,
+          "height": 53,
+          "cssWidth": "98px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "#new-content-cue": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "max-content",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "footer": {
+          "x": 0,
+          "y": 722,
+          "width": 390,
+          "height": 122,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        "#input": {
+          "x": 15,
+          "y": 730,
+          "width": 358,
+          "height": 51,
+          "cssWidth": "358px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        "#send": {
+          "x": 329,
+          "y": 737,
+          "width": 44,
+          "height": 44,
+          "cssWidth": "44px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        }
+      },
+      "iconInventory": [
+        {
+          "asset": "status-signal.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 296,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-wifi.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 318,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-battery.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 340,
+          "y": 11,
+          "width": 26,
+          "height": 13,
+          "visible": true
+        },
+        {
+          "asset": "back.svg",
+          "parent": "icon-btn menu-btn",
+          "x": 16,
+          "y": 55.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "history.svg",
+          "parent": "icon-btn history-btn",
+          "x": 56,
+          "y": 56.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "train-logo.svg",
+          "parent": "title",
+          "x": 138.72,
+          "y": 43.97,
+          "width": 27,
+          "height": 40.26,
+          "visible": true
+        },
+        {
+          "asset": "add.svg",
+          "parent": "icon-btn new-chat-top",
+          "x": 345,
+          "y": 56.5,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": 115.59,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": 154.19,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "cloud-error.svg",
+          "parent": "connection-title-row",
+          "x": 30,
+          "y": 204.19,
+          "width": 54,
+          "height": 54,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 27,
+          "y": 523.64,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "refresh.svg",
+          "parent": "",
+          "x": 79,
+          "y": 523.64,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "send.svg",
+          "parent": "",
+          "x": 327.5,
+          "y": 744.5,
+          "width": 19,
+          "height": 20,
+          "visible": true
+        }
+      ],
+      "visibleText": {
+        "body": "＋ 新对话\nconnection_error\n2 条 · 刚刚\n⋯\n9:41\nRailFanAI\n查询 G8932\n复制\n编辑\n暂时无法连接模型服务\n你的提问已保留，可稍后重试。\n重试\n检查模型设置\n错误详情\nAPI Key\n密钥无效，请检查后重试\n复制\n重新生成",
+        "placeholders": [
+          "搜索对话…",
+          "继续追问…"
+        ],
+        "values": [
+          "••••••••••••••••"
+        ]
+      },
+      "copyChecks": [
+        {
+          "selector": ".connection-error-title",
+          "mode": "text",
+          "expected": "暂时无法连接模型服务",
+          "actual": "暂时无法连接模型服务",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".connection-error-copy",
+          "mode": "text",
+          "expected": "你的提问已保留，可稍后重试。",
+          "actual": "你的提问已保留，可稍后重试。",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".connection-retry",
+          "mode": "text",
+          "expected": "重试",
+          "actual": "重试",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".connection-settings",
+          "mode": "text",
+          "expected": "检查模型设置",
+          "actual": "检查模型设置",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".connection-error details > summary",
+          "mode": "text",
+          "expected": "错误详情",
+          "actual": "错误详情",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".connection-key-label",
+          "mode": "text",
+          "expected": "API Key",
+          "actual": "API Key",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".connection-key-error",
+          "mode": "text",
+          "expected": "密钥无效，请检查后重试",
+          "actual": "密钥无效，请检查后重试",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        }
+      ],
+      "stateSnapshots": [],
+      "checks": [
+        {
+          "element": "error_icon_and_title",
+          "selector": "{\"selectors\":[\".connection-title-row\"],\"content\":true}",
+          "semanticBasis": "button content union",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            80,
+            576,
+            325,
+            63
+          ],
+          "targetCss": {
+            "x": 30.66,
+            "y": 34.06,
+            "width": 276.75,
+            "height": 53.65
+          },
+          "measured": {
+            "x": 30,
+            "y": 35,
+            "width": 277,
+            "height": 54
+          },
+          "measuredViewport": {
+            "x": 30,
+            "y": 204.19,
+            "width": 277,
+            "height": 54
+          },
+          "deltaPx": {
+            "x": -0.66,
+            "y": 0.94,
+            "width": 0.25,
+            "height": 0.35
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "error_explanation",
+          "selector": "{\"selectors\":[\".connection-error-copy\"],\"text\":true}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            182,
+            612,
+            239,
+            20
+          ],
+          "targetCss": {
+            "x": 117.51,
+            "y": 64.72,
+            "width": 203.52,
+            "height": 17.03
+          },
+          "measured": {
+            "x": 117,
+            "y": 65,
+            "width": 203,
+            "height": 17
+          },
+          "measuredViewport": {
+            "x": 117,
+            "y": 234.19,
+            "width": 203,
+            "height": 17
+          },
+          "deltaPx": {
+            "x": -0.51,
+            "y": 0.28,
+            "width": -0.52,
+            "height": -0.03
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "retry_action",
+          "selector": ".connection-retry",
+          "semanticBasis": "element box",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            65,
+            661,
+            191,
+            46
+          ],
+          "targetCss": {
+            "x": 17.88,
+            "y": 106.44,
+            "width": 162.64,
+            "height": 39.17
+          },
+          "measured": {
+            "x": 17,
+            "y": 104.94,
+            "width": 163.88,
+            "height": 40
+          },
+          "measuredViewport": {
+            "x": 17,
+            "y": 274.13,
+            "width": 163.88,
+            "height": 40
+          },
+          "deltaPx": {
+            "x": -0.88,
+            "y": -1.5,
+            "width": 1.23,
+            "height": 0.83
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "settings_action",
+          "selector": ".connection-settings",
+          "semanticBasis": "element box",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            270,
+            661,
+            210,
+            46
+          ],
+          "targetCss": {
+            "x": 192.45,
+            "y": 106.44,
+            "width": 178.82,
+            "height": 39.17
+          },
+          "measured": {
+            "x": 192.38,
+            "y": 104.94,
+            "width": 178.13,
+            "height": 40
+          },
+          "measuredViewport": {
+            "x": 192.38,
+            "y": 274.13,
+            "width": 178.13,
+            "height": 40
+          },
+          "deltaPx": {
+            "x": -0.07,
+            "y": -1.5,
+            "width": -0.7,
+            "height": 0.83
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "error_details_collapsed",
+          "selector": ".connection-error details",
+          "semanticBasis": "element box",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            65,
+            723,
+            415,
+            53
+          ],
+          "targetCss": {
+            "x": 17.88,
+            "y": 159.24,
+            "width": 353.38,
+            "height": 45.13
+          },
+          "measured": {
+            "x": 17,
+            "y": 158.44,
+            "width": 353,
+            "height": 44.08
+          },
+          "measuredViewport": {
+            "x": 17,
+            "y": 327.63,
+            "width": 353,
+            "height": 44.08
+          },
+          "deltaPx": {
+            "x": -0.88,
+            "y": -0.8,
+            "width": -0.38,
+            "height": -1.05
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "api_key_label",
+          "selector": "{\"selectors\":[\".connection-key-label\"],\"text\":true}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            66,
+            802,
+            55,
+            19
+          ],
+          "targetCss": {
+            "x": 18.73,
+            "y": 226.51,
+            "width": 46.83,
+            "height": 16.18
+          },
+          "measured": {
+            "x": 17,
+            "y": 227.52,
+            "width": 46.05,
+            "height": 16
+          },
+          "measuredViewport": {
+            "x": 17,
+            "y": 396.7,
+            "width": 46.05,
+            "height": 16
+          },
+          "deltaPx": {
+            "x": -1.73,
+            "y": 1.01,
+            "width": -0.79,
+            "height": -0.18
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "api_key_field",
+          "selector": ".connection-key-invalid",
+          "semanticBasis": "element box",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            65,
+            826,
+            417,
+            52
+          ],
+          "targetCss": {
+            "x": 17.88,
+            "y": 246.94,
+            "width": 355.09,
+            "height": 44.28
+          },
+          "measured": {
+            "x": 17,
+            "y": 246.88,
+            "width": 356,
+            "height": 44
+          },
+          "measuredViewport": {
+            "x": 17,
+            "y": 416.06,
+            "width": 356,
+            "height": 44
+          },
+          "deltaPx": {
+            "x": -0.88,
+            "y": -0.07,
+            "width": 0.91,
+            "height": -0.28
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "field_error",
+          "selector": "{\"selectors\":[\".connection-key-error\"],\"text\":true}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "module_frame component-local coordinates",
+          "targetRaw": [
+            66,
+            885,
+            185,
+            20
+          ],
+          "targetCss": {
+            "x": 18.73,
+            "y": 297.18,
+            "width": 157.53,
+            "height": 17.03
+          },
+          "measured": {
+            "x": 17,
+            "y": 297.88,
+            "width": 157.31,
+            "height": 17
+          },
+          "measuredViewport": {
+            "x": 17,
+            "y": 467.06,
+            "width": 157.31,
+            "height": 17
+          },
+          "deltaPx": {
+            "x": -1.73,
+            "y": 0.69,
+            "width": -0.22,
+            "height": -0.03
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        }
+      ]
+    },
+    {
+      "state": "connection_error",
+      "interaction": "retry",
+      "result": "same original message resent"
+    },
+    {
+      "state": "connection_error",
+      "interaction": "settings",
+      "result": {
+        "route": "settings",
+        "apiKeyFieldInvalid": true,
+        "fieldMessage": "密钥无效，请检查后重试",
+        "secretExposed": false
+      }
+    },
+    {
+      "state": "reading_followup",
+      "interaction": "date follow-up fills draft without request",
+      "result": {
+        "visible": true,
+        "input": "已有草稿\n查一下这趟车的余票\n换个日期查询这趟车的时刻",
+        "focused": true,
+        "requestsBefore": 0,
+        "requestsAfter": 0
+      }
+    },
+    {
+      "state": "reading_followup",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1
+      },
+      "path": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/screenshots/reading_followup.png",
+      "designReference": {
+        "file": "desi2.png",
+        "module": "05 / 阅读与追问",
+        "sourcePanelWidthPx": 454,
+        "normalizationTo390": 0.8590308370044053,
+        "overlayPath": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/design-overlays/reading_followup.svg",
+        "coordinateRule": "独立模块仅比较内部几何，不使用整页绝对坐标"
+      },
+      "measurements": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 87,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".mobile-statusbar": {
+          "x": 24,
+          "y": 0,
+          "width": 342,
+          "height": 35,
+          "cssWidth": "342px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "header .title": {
+          "x": 66,
+          "y": 49,
+          "width": 246,
+          "height": 33,
+          "cssWidth": "246px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        ".row.user": {
+          "x": 101,
+          "y": -206,
+          "width": 273,
+          "height": 45.19,
+          "cssWidth": "273px",
+          "flex": "0 0 auto",
+          "alignSelf": "flex-end"
+        },
+        ".row.user .bubble": {
+          "x": 101,
+          "y": -206,
+          "width": 236,
+          "height": 45.19,
+          "cssWidth": "236px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant": {
+          "x": 16,
+          "y": -152.81,
+          "width": 358,
+          "height": 164.7,
+          "cssWidth": "358px",
+          "flex": "0 0 auto",
+          "alignSelf": "stretch"
+        },
+        ".row.assistant .bubble": {
+          "x": 62,
+          "y": -152.81,
+          "width": 312,
+          "height": 105.7,
+          "cssWidth": "312px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-spinner": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "54px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading strong": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-stage": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-skeletons": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-foot": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".actions": {
+          "x": 276,
+          "y": -160.81,
+          "width": 98,
+          "height": 53,
+          "cssWidth": "98px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".followups": {
+          "x": 16,
+          "y": 516.75,
+          "width": 358,
+          "height": 32,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant.has-table-answer .table-wrap": {
+          "x": 26,
+          "y": 338.63,
+          "width": 334,
+          "height": 156.13,
+          "cssWidth": "334px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant.has-table-answer table": {
+          "x": 26,
+          "y": 338.63,
+          "width": 334,
+          "height": 154.13,
+          "cssWidth": "334px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "#new-content-cue": {
+          "x": 96.6,
+          "y": 641,
+          "width": 196.8,
+          "height": 38,
+          "cssWidth": "196.797px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "footer": {
+          "x": 0,
+          "y": 722,
+          "width": 390,
+          "height": 122,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        "#input": {
+          "x": 15,
+          "y": 730,
+          "width": 358,
+          "height": 51,
+          "cssWidth": "358px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        "#send": {
+          "x": 329,
+          "y": 737,
+          "width": 44,
+          "height": 44,
+          "cssWidth": "44px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        }
+      },
+      "iconInventory": [
+        {
+          "asset": "status-signal.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 296,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-wifi.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 318,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-battery.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 340,
+          "y": 11,
+          "width": 26,
+          "height": 13,
+          "visible": true
+        },
+        {
+          "asset": "back.svg",
+          "parent": "icon-btn menu-btn",
+          "x": 16,
+          "y": 55.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "history.svg",
+          "parent": "icon-btn history-btn",
+          "x": 56,
+          "y": 56.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "train-logo.svg",
+          "parent": "title",
+          "x": 138.72,
+          "y": 43.97,
+          "width": 27,
+          "height": 40.26,
+          "visible": true
+        },
+        {
+          "asset": "add.svg",
+          "parent": "icon-btn new-chat-top",
+          "x": 345,
+          "y": 56.5,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": -193.41,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": -154.81,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 73,
+          "y": -35.11,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "refresh.svg",
+          "parent": "",
+          "x": 125,
+          "y": -35.11,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": 32.48,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": 71.08,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 73,
+          "y": 190.78,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "refresh.svg",
+          "parent": "",
+          "x": 125,
+          "y": 190.78,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": 258.38,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": 296.97,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "search.svg",
+          "parent": "followup",
+          "x": 27.25,
+          "y": 523.75,
+          "width": 16,
+          "height": 16,
+          "visible": true
+        },
+        {
+          "asset": "calendar.svg",
+          "parent": "followup",
+          "x": 127.75,
+          "y": 523.75,
+          "width": 16,
+          "height": 16,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 27,
+          "y": 560.75,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "refresh.svg",
+          "parent": "",
+          "x": 79,
+          "y": 560.75,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": 628.34,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": 666.94,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "down.svg",
+          "parent": "",
+          "x": 113.1,
+          "y": 652.5,
+          "width": 22,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "up.svg",
+          "parent": "",
+          "x": 324,
+          "y": 748,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        }
+      ],
+      "visibleText": {
+        "body": "＋ 新对话\nreading_followup\n8 条 · 刚刚\n⋯\n9:41\nRailFanAI\n秦皇岛到北京南有哪些车次？\n复制\n编辑\n可以先查看直达列车的时刻信息。\n流程日志（意图 / 抽取 / 检索 / 生成）\n复制\n重新生成\n我想看 G8932 的经停站。\n复制\n编辑\n下面列出该车次的站点与时刻。\n流程日志（意图 / 抽取 / 检索 / 生成）\n复制\n重新生成\n以下是 G8932 次列车的时刻信息\n复制\n编辑\n以下是 G8932 次列车的时刻信息：\n\n站次\t车站\t到达\t出发\t停留\n1\t秦皇岛\t--\t20:42\t—\n2\t唐山\t21:10\t21:22\t停12分钟\n3\t天津\t21:55\t21:58\t停3分钟\n4\t北京南\t22:34\t--\t—\n查余票\n换个日期\n复制\n重新生成\n上滑阅读时暂停自动滚动；点选追问先填入输入框\n继续追问阅读测试\n复制\n编辑\n固定验收回复\n读取位置保持验收内容 1\n读取位置保持验收内容 2\n读取位置保持验收内容 3\n读取位置保持验收内容 4\n读取位置保持验收内容 5\n读取位置保持验收内容 6\n读取位置保持验收内容 7\n读取位置保持验收内容 8\n读取位置保持验收内容 9\n读取位置保持验收内容 10\n读取位置保持验收内容 11\n读取位置保持验收内容 12\n读取位置保持验收内容 13\n读取位置保持验收内容 14\n读取位置保持验收内容 15\n读取位置保持验收内容 16\n读取位置保持验收内容 17\n读取位置保持验收内容 18\n可停止生成，已返回内容会保留\n有新内容 · 回到底部",
+        "placeholders": [
+          "搜索对话…",
+          "继续追问…"
+        ],
+        "values": []
+      },
+      "copyChecks": [
+        {
+          "selector": ".row.assistant.has-table-answer .md",
+          "mode": "firstText",
+          "expected": "以下是 G8932 次列车的时刻信息：",
+          "actual": "以下是 G8932 次列车的时刻信息：",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-table-answer thead th:nth-child(1)",
+          "mode": "text",
+          "expected": "站次",
+          "actual": "站次",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-table-answer thead th:nth-child(2)",
+          "mode": "text",
+          "expected": "车站",
+          "actual": "车站",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-table-answer thead th:nth-child(3)",
+          "mode": "text",
+          "expected": "到达",
+          "actual": "到达",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-table-answer thead th:nth-child(4)",
+          "mode": "text",
+          "expected": "出发",
+          "actual": "出发",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-table-answer thead th:nth-child(5)",
+          "mode": "text",
+          "expected": "停留",
+          "actual": "停留",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": "#new-content-cue",
+          "mode": "text",
+          "expected": "有新内容 · 回到底部",
+          "actual": "有新内容 · 回到底部",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-table-answer .followups > button:nth-child(1)",
+          "mode": "text",
+          "expected": "查余票",
+          "actual": "查余票",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".row.assistant.has-table-answer .followups > button:nth-child(2)",
+          "mode": "text",
+          "expected": "换个日期",
+          "actual": "换个日期",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": "#input",
+          "mode": "placeholder",
+          "expected": "继续追问…",
+          "actual": "继续追问…",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".reading-guidance",
+          "mode": "text",
+          "expected": "上滑阅读时暂停自动滚动；点选追问先填入输入框",
+          "actual": "上滑阅读时暂停自动滚动；点选追问先填入输入框",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        }
+      ],
+      "stateSnapshots": [],
+      "checks": [
+        {
+          "element": "answer_intro",
+          "selector": "{\"selectors\":[\".row.assistant.has-table-answer .md\"],\"firstText\":true}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "answer_intro component-local coordinates",
+          "targetRaw": [
+            581,
+            554,
+            283,
+            23
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 243.11,
+            "height": 19.76
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 243.23,
+            "height": 18
+          },
+          "measuredViewport": {
+            "x": 32,
+            "y": 307.97,
+            "width": 243.23,
+            "height": 18
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": 0.13,
+            "height": -1.76
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "schedule_table",
+          "selector": ".row.assistant.has-table-answer .table-wrap",
+          "semanticBasis": "element box",
+          "coordinateBasis": "answer_intro component-local coordinates",
+          "targetRaw": [
+            574,
+            589,
+            389,
+            181
+          ],
+          "targetCss": {
+            "x": -6.01,
+            "y": 30.07,
+            "width": 334.16,
+            "height": 155.48
+          },
+          "measured": {
+            "x": -6,
+            "y": 30.66,
+            "width": 334,
+            "height": 156.13
+          },
+          "measuredViewport": {
+            "x": 26,
+            "y": 338.63,
+            "width": 334,
+            "height": 156.13
+          },
+          "deltaPx": {
+            "x": 0.01,
+            "y": 0.59,
+            "width": -0.16,
+            "height": 0.64
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "return_to_bottom_cue",
+          "selector": "{\"selectors\":[\"#new-content-cue\"],\"origin\":\"self\"}",
+          "semanticBasis": "element box",
+          "coordinateBasis": "component-local dimensions",
+          "targetRaw": [
+            653,
+            736,
+            229,
+            44
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 196.72,
+            "height": 37.8
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 196.8,
+            "height": 38
+          },
+          "measuredViewport": {
+            "x": 96.6,
+            "y": 641,
+            "width": 196.8,
+            "height": 38
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": 0.08,
+            "height": 0.2
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "followup_actions",
+          "selector": "[\".row.assistant.has-table-answer .followups > button\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "answer_intro component-local coordinates",
+          "targetRaw": [
+            562,
+            797,
+            241,
+            37
+          ],
+          "targetCss": {
+            "x": -16.32,
+            "y": 208.74,
+            "width": 207.03,
+            "height": 31.78
+          },
+          "measured": {
+            "x": -16,
+            "y": 208.78,
+            "width": 207,
+            "height": 32
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 516.75,
+            "width": 207,
+            "height": 32
+          },
+          "deltaPx": {
+            "x": 0.32,
+            "y": 0.04,
+            "width": -0.03,
+            "height": 0.22
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "fixed_input_and_send",
+          "selector": "{\"selectors\":[\"#input\",\"#send\"],\"origin\":\"self\"}",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "component-local dimensions",
+          "targetRaw": [
+            562,
+            846,
+            414,
+            50
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 355.64,
+            "height": 42.95
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 358,
+            "height": 51
+          },
+          "measuredViewport": {
+            "x": 15,
+            "y": 730,
+            "width": 358,
+            "height": 51
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": 2.36,
+            "height": 8.05
+          },
+          "result": "design_conflict",
+          "reason": "desi1 full-phone footer height 51.41 CSS px conflicts with desi2 module height 42.95 CSS px",
+          "tolerancePx": 2
+        },
+        {
+          "element": "reading_hint",
+          "selector": "{\"selectors\":[\".reading-guidance\"],\"text\":true,\"origin\":\"self\"}",
+          "semanticBasis": "text ink",
+          "coordinateBasis": "component-local dimensions",
+          "targetRaw": [
+            596,
+            909,
+            326,
+            18
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 280.04,
+            "height": 15.46
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 279.41,
+            "height": 15
+          },
+          "measuredViewport": {
+            "x": 55.3,
+            "y": 810,
+            "width": 279.41,
+            "height": 15
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": -0.64,
+            "height": -0.46
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        }
+      ]
+    },
+    {
+      "state": "reading_followup",
+      "interaction": "scroll pause/follow-up/return to bottom",
+      "result": {
+        "reading": {
+          "before": 309,
+          "after": 309,
+          "anchorText": "下面列出该车次的站点与时刻。\n流程日志（意图 / 抽取 / 检索 / 生成）\n复制\n重新生成",
+          "anchorTop": 73.078125,
+          "anchorDeltaPx": 0,
+          "cue": true,
+          "positionPreserved": true,
+          "cueVisible": true
+        },
+        "bottom": true,
+        "draftPreserved": true,
+        "followupDidNotSend": true
+      }
+    },
+    {
+      "state": "query_details",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1
+      },
+      "path": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/screenshots/query_details.png",
+      "designReference": {
+        "file": "desi2.png",
+        "module": "06 / 来源与查询详情",
+        "sourcePanelWidthPx": 462,
+        "normalizationTo390": 0.8441558441558441,
+        "overlayPath": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/design-overlays/query_details.svg",
+        "coordinateRule": "独立模块仅比较内部几何，不使用整页绝对坐标"
+      },
+      "measurements": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 87,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".mobile-statusbar": {
+          "x": 24,
+          "y": 0,
+          "width": 342,
+          "height": 35,
+          "cssWidth": "342px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "header .title": {
+          "x": 66,
+          "y": 49,
+          "width": 246,
+          "height": 33,
+          "cssWidth": "246px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        ".row.user": {
+          "x": 106.14,
+          "y": -203,
+          "width": 267.86,
+          "height": 45.19,
+          "cssWidth": "267.859px",
+          "flex": "0 0 auto",
+          "alignSelf": "flex-end"
+        },
+        ".row.user .bubble": {
+          "x": 106.14,
+          "y": -203,
+          "width": 230.86,
+          "height": 45.19,
+          "cssWidth": "230.859px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant": {
+          "x": 16,
+          "y": -143.81,
+          "width": 358,
+          "height": 849.88,
+          "cssWidth": "358px",
+          "flex": "0 0 auto",
+          "alignSelf": "stretch"
+        },
+        ".row.assistant .bubble": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-card": {
+          "x": 62,
+          "y": -143.81,
+          "width": 312,
+          "height": 467.88,
+          "cssWidth": "312px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-head": {
+          "x": 77,
+          "y": -130.81,
+          "width": 284,
+          "height": 28,
+          "cssWidth": "284px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-route": {
+          "x": 77,
+          "y": -101.81,
+          "width": 284,
+          "height": 27,
+          "cssWidth": "284px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-meta": {
+          "x": 75,
+          "y": -67.31,
+          "width": 286,
+          "height": 34,
+          "cssWidth": "286px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-table-wrap": {
+          "x": 73,
+          "y": -21.31,
+          "width": 290,
+          "height": 238.38,
+          "cssWidth": "290px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-note": {
+          "x": 73,
+          "y": 231.06,
+          "width": 290,
+          "height": 36,
+          "cssWidth": "290px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".schedule-source": {
+          "x": 73,
+          "y": 275.06,
+          "width": 290,
+          "height": 38,
+          "cssWidth": "290px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".request-details": {
+          "x": 16,
+          "y": 331.06,
+          "width": 358,
+          "height": 289,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".request-details[open] > summary": {
+          "x": 16,
+          "y": 331.06,
+          "width": 358,
+          "height": 42,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".request-detail-row": {
+          "x": 16,
+          "y": 373.06,
+          "width": 359,
+          "height": 49,
+          "cssWidth": "359px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-spinner": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "54px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading strong": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-stage": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-skeletons": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-foot": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".actions": {
+          "x": 276,
+          "y": -157.81,
+          "width": 98,
+          "height": 53,
+          "cssWidth": "98px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".followups": {
+          "x": 84,
+          "y": 667.06,
+          "width": 312,
+          "height": 39,
+          "cssWidth": "312px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "#new-content-cue": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "max-content",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "footer": {
+          "x": 0,
+          "y": 722,
+          "width": 390,
+          "height": 122,
+          "cssWidth": "390px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        "#input": {
+          "x": 15,
+          "y": 730,
+          "width": 358,
+          "height": 51,
+          "cssWidth": "358px",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        "#send": {
+          "x": 329,
+          "y": 737,
+          "width": 44,
+          "height": 44,
+          "cssWidth": "44px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        }
+      },
+      "iconInventory": [
+        {
+          "asset": "status-signal.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 296,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-wifi.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 318,
+          "y": 10.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-battery.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 340,
+          "y": 11,
+          "width": 26,
+          "height": 13,
+          "visible": true
+        },
+        {
+          "asset": "back.svg",
+          "parent": "icon-btn menu-btn",
+          "x": 16,
+          "y": 55.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "history.svg",
+          "parent": "icon-btn history-btn",
+          "x": 56,
+          "y": 56.5,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "train-logo.svg",
+          "parent": "title",
+          "x": 138.72,
+          "y": 43.97,
+          "width": 27,
+          "height": 40.26,
+          "visible": true
+        },
+        {
+          "asset": "add.svg",
+          "parent": "icon-btn new-chat-top",
+          "x": 345,
+          "y": 56.5,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        },
+        {
+          "asset": "person.svg",
+          "parent": "user-avatar",
+          "x": 346,
+          "y": -190.41,
+          "width": 20,
+          "height": 20,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 287,
+          "y": -151.81,
+          "width": 24,
+          "height": 24,
+          "visible": true
+        },
+        {
+          "asset": "calendar.svg",
+          "parent": "",
+          "x": 87.3,
+          "y": -61.89,
+          "width": 18,
+          "height": 20.16,
+          "visible": true
+        },
+        {
+          "asset": "clock.svg",
+          "parent": "",
+          "x": 219.8,
+          "y": -60.81,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "info.svg",
+          "parent": "schedule-note",
+          "x": 85,
+          "y": 238.86,
+          "width": 18,
+          "height": 18,
+          "visible": true
+        },
+        {
+          "asset": "link.svg",
+          "parent": "",
+          "x": 82.9,
+          "y": 281.66,
+          "width": 14.4,
+          "height": 23.4,
+          "visible": true
+        },
+        {
+          "asset": "link.svg",
+          "parent": "request-source-icon",
+          "x": 35.3,
+          "y": 380.06,
+          "width": 20,
+          "height": 34,
+          "visible": true
+        },
+        {
+          "asset": "copy.svg",
+          "parent": "",
+          "x": 66,
+          "y": 631.06,
+          "width": 16,
+          "height": 16,
+          "visible": true
+        },
+        {
+          "asset": "refresh.svg",
+          "parent": "",
+          "x": 153.2,
+          "y": 631.36,
+          "width": 16,
+          "height": 16,
+          "visible": true
+        },
+        {
+          "asset": "send.svg",
+          "parent": "",
+          "x": 340,
+          "y": 744.5,
+          "width": 19,
+          "height": 20,
+          "visible": true
+        }
+      ],
+      "visibleText": {
+        "body": "＋ 新对话\nquery_details\n2 条 · 刚刚\n⋯\n9:41\nRailFanAI\n查一下 G8932 今天的时刻表\n复制\n编辑\nG8932\n图定时刻 · 示例数据\n秦皇岛 → 北京南\n09月25日\n1小时52分\n车站\t到达\t出发\n\n秦皇岛\n\t--\t20:42\n\n唐山\n停12分钟\n\t21:10\t21:22\n\n天津\n停3分钟\n\t21:55\t21:58\n\n北京南\n\t22:34\t--\n图定时刻不代表实际正晚点。\n12306 · 列车时刻\n查询详情\n查询详情\n12306 · 列车时刻\n示例数据\n数据日期\n09月25日\n时间口径\n图定时刻\n查询耗时\n5.8 秒\n用量\n1,555 Token\n查看技术日志\n复制\n重新生成\n查票价\n查担当车组",
+        "placeholders": [
+          "搜索对话…",
+          "继续追问…"
+        ],
+        "values": []
+      },
+      "copyChecks": [
+        {
+          "selector": ".request-details > summary",
+          "mode": "text",
+          "expected": "查询详情",
+          "actual": "查询详情",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-source-row strong",
+          "mode": "text",
+          "expected": "12306 · 列车时刻",
+          "actual": "12306 · 列车时刻",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-sample-badge",
+          "mode": "text",
+          "expected": "示例数据",
+          "actual": "示例数据",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-detail-row:nth-child(2) span",
+          "mode": "text",
+          "expected": "数据日期",
+          "actual": "数据日期",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-detail-row:nth-child(2) strong",
+          "mode": "text",
+          "expected": "09月25日",
+          "actual": "09月25日",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-detail-row:nth-child(3) span",
+          "mode": "text",
+          "expected": "时间口径",
+          "actual": "时间口径",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-detail-row:nth-child(3) strong",
+          "mode": "text",
+          "expected": "图定时刻",
+          "actual": "图定时刻",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-detail-row:nth-child(4) span",
+          "mode": "text",
+          "expected": "查询耗时",
+          "actual": "查询耗时",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-detail-row:nth-child(4) strong",
+          "mode": "text",
+          "expected": "5.8 秒",
+          "actual": "5.8 秒",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-detail-row:nth-child(5) span",
+          "mode": "text",
+          "expected": "用量",
+          "actual": "用量",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-detail-row:nth-child(5) strong",
+          "mode": "text",
+          "expected": "1,555 Token",
+          "actual": "1,555 Token",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".request-tech > summary",
+          "mode": "text",
+          "expected": "查看技术日志",
+          "actual": "查看技术日志",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        }
+      ],
+      "stateSnapshots": [],
+      "checks": [
+        {
+          "element": "details_panel",
+          "selector": "[\".request-details > summary\",\".request-details-body\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "details_panel component-local coordinates",
+          "targetRaw": [
+            1053,
+            553,
+            425,
+            275
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 358.77,
+            "height": 232.14
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 358,
+            "height": 234
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 331.06,
+            "width": 358,
+            "height": 234
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": -0.77,
+            "height": 1.86
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "details_heading_and_source",
+          "selector": "[\".request-details > summary\",\".request-details-body > .request-detail-row:first-child\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "details_panel component-local coordinates",
+          "targetRaw": [
+            1053,
+            553,
+            425,
+            107
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 0,
+            "width": 358.77,
+            "height": 90.32
+          },
+          "measured": {
+            "x": 0,
+            "y": 0,
+            "width": 359,
+            "height": 91
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 331.06,
+            "width": 359,
+            "height": 91
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0,
+            "width": 0.23,
+            "height": 0.68
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "date_row",
+          "selector": ".request-details-body > .request-detail-row:nth-child(2)",
+          "semanticBasis": "element box",
+          "coordinateBasis": "details_panel component-local coordinates",
+          "targetRaw": [
+            1053,
+            660,
+            425,
+            42
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 90.32,
+            "width": 358.77,
+            "height": 35.45
+          },
+          "measured": {
+            "x": 0,
+            "y": 91,
+            "width": 359,
+            "height": 35.5
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 422.06,
+            "width": 359,
+            "height": 35.5
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0.68,
+            "width": 0.23,
+            "height": 0.05
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "time_basis_row",
+          "selector": ".request-details-body > .request-detail-row:nth-child(3)",
+          "semanticBasis": "element box",
+          "coordinateBasis": "details_panel component-local coordinates",
+          "targetRaw": [
+            1053,
+            702,
+            425,
+            42
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 125.78,
+            "width": 358.77,
+            "height": 35.45
+          },
+          "measured": {
+            "x": 0,
+            "y": 126.5,
+            "width": 359,
+            "height": 35.5
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 457.56,
+            "width": 359,
+            "height": 35.5
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0.72,
+            "width": 0.23,
+            "height": 0.05
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "latency_row",
+          "selector": ".request-details-body > .request-detail-row:nth-child(4)",
+          "semanticBasis": "element box",
+          "coordinateBasis": "details_panel component-local coordinates",
+          "targetRaw": [
+            1053,
+            744,
+            425,
+            42
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 161.23,
+            "width": 358.77,
+            "height": 35.45
+          },
+          "measured": {
+            "x": 0,
+            "y": 162,
+            "width": 359,
+            "height": 35.5
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 493.06,
+            "width": 359,
+            "height": 35.5
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0.77,
+            "width": 0.23,
+            "height": 0.05
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "usage_row",
+          "selector": ".request-details-body > .request-detail-row:nth-child(5)",
+          "semanticBasis": "element box",
+          "coordinateBasis": "details_panel component-local coordinates",
+          "targetRaw": [
+            1053,
+            786,
+            425,
+            42
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 196.69,
+            "width": 358.77,
+            "height": 35.45
+          },
+          "measured": {
+            "x": 0,
+            "y": 197.5,
+            "width": 359,
+            "height": 35.5
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 528.56,
+            "width": 359,
+            "height": 35.5
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0.81,
+            "width": 0.23,
+            "height": 0.05
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "technical_log_action",
+          "selector": ".request-tech",
+          "semanticBasis": "element box",
+          "coordinateBasis": "details_panel component-local coordinates",
+          "targetRaw": [
+            1053,
+            842,
+            425,
+            53
+          ],
+          "targetCss": {
+            "x": 0,
+            "y": 243.96,
+            "width": 358.77,
+            "height": 44.74
+          },
+          "measured": {
+            "x": 0,
+            "y": 244,
+            "width": 358,
+            "height": 45
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 575.06,
+            "width": 358,
+            "height": 45
+          },
+          "deltaPx": {
+            "x": 0,
+            "y": 0.04,
+            "width": -0.77,
+            "height": 0.26
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        }
+      ]
+    },
+    {
+      "state": "query_details",
+      "interaction": "request details metadata",
+      "result": {
+        "expected": [
+          "12306 · 列车时刻",
+          "09月25日",
+          "图定时刻",
+          "5.8",
+          "1,555"
+        ],
+        "fromFixture": true,
+        "visible": true
+      }
+    },
+    {
+      "state": "history",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1
+      },
+      "path": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/screenshots/history.png",
+      "designReference": {
+        "file": "desi1.png",
+        "phoneWidthPx": 441,
+        "normalizationTo390": 0.8843537414965986,
+        "overlayPath": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/design-overlays/history.svg",
+        "coordinateRule": "手机画面坐标按宽度换算到390px"
+      },
+      "measurements": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".mobile-statusbar": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "header .title": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        ".row.user": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 0 auto",
+          "alignSelf": "flex-end"
+        },
+        ".row.user .bubble": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".row.assistant": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 0 auto",
+          "alignSelf": "stretch"
+        },
+        ".row.assistant .bubble": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "100%",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-spinner": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "54px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading strong": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-stage": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-skeletons": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".query-loading-foot": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".history-page": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "cssWidth": "390px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".history-search": {
+          "x": 16,
+          "y": 96,
+          "width": 358,
+          "height": 41,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".history-create": {
+          "x": 16,
+          "y": 145,
+          "width": 358,
+          "height": 44,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".history-action-panel": {
+          "x": 16,
+          "y": 541,
+          "width": 358,
+          "height": 136,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".history-footer": {
+          "x": 16,
+          "y": 739,
+          "width": 358,
+          "height": 54,
+          "cssWidth": "358px",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".actions": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        ".followups": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "#new-content-cue": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "max-content",
+          "flex": "0 1 auto",
+          "alignSelf": "auto"
+        },
+        "footer": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        },
+        "#input": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "auto",
+          "flex": "1 1 0%",
+          "alignSelf": "auto"
+        },
+        "#send": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "cssWidth": "44px",
+          "flex": "0 0 auto",
+          "alignSelf": "auto"
+        }
+      },
+      "iconInventory": [
+        {
+          "asset": "status-signal.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 296,
+          "y": 12.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-wifi.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 318,
+          "y": 12.5,
+          "width": 18,
+          "height": 14,
+          "visible": true
+        },
+        {
+          "asset": "status-battery.svg",
+          "parent": "mobile-statusbar-icons",
+          "x": 340,
+          "y": 13,
+          "width": 26,
+          "height": 13,
+          "visible": true
+        },
+        {
+          "asset": "back.svg",
+          "parent": "history-back",
+          "x": 18,
+          "y": 55.96,
+          "width": 22,
+          "height": 25.08,
+          "visible": true
+        },
+        {
+          "asset": "close.svg",
+          "parent": "history-close",
+          "x": 350.7,
+          "y": 57.23,
+          "width": 22,
+          "height": 23.54,
+          "visible": true
+        },
+        {
+          "asset": "add.svg",
+          "parent": "history-create",
+          "x": 146,
+          "y": 156,
+          "width": 22,
+          "height": 22,
+          "visible": true
+        },
+        {
+          "asset": "more.svg",
+          "parent": "history-more",
+          "x": 334,
+          "y": 254.25,
+          "width": 25,
+          "height": 25,
+          "visible": true
+        },
+        {
+          "asset": "more.svg",
+          "parent": "history-more",
+          "x": 334,
+          "y": 324.75,
+          "width": 25,
+          "height": 25,
+          "visible": true
+        },
+        {
+          "asset": "more.svg",
+          "parent": "history-more",
+          "x": 334,
+          "y": 395.25,
+          "width": 25,
+          "height": 25,
+          "visible": true
+        },
+        {
+          "asset": "more.svg",
+          "parent": "history-more",
+          "x": 334,
+          "y": 503.5,
+          "width": 25,
+          "height": 25,
+          "visible": true
+        },
+        {
+          "asset": "settings.svg",
+          "parent": "",
+          "x": 44.4,
+          "y": 753,
+          "width": 23,
+          "height": 23,
+          "visible": true
+        },
+        {
+          "asset": "help.svg",
+          "parent": "",
+          "x": 255,
+          "y": 753,
+          "width": 23,
+          "height": 23,
+          "visible": true
+        },
+        {
+          "asset": "edit.svg",
+          "parent": "history-rename",
+          "x": 39.7,
+          "y": 591,
+          "width": 25,
+          "height": 25,
+          "visible": true
+        },
+        {
+          "asset": "trash.svg",
+          "parent": "danger",
+          "x": 40,
+          "y": 639,
+          "width": 25,
+          "height": 25,
+          "visible": true
+        }
+      ],
+      "visibleText": {
+        "body": "＋ 新对话\n北京南到上海虹桥票价\n2 条 · 刚刚\n⋯\nCR400BF-5033 今日交路\n2 条 · 2 分钟前\n⋯\nG8932 列车时刻\n2 条 · 4 分钟前\n⋯\n京沪线沿线车站\n2 条 · 1 天前\n⋯\n9:41\n对话历史\n新建对话\n今天\n北京南到上海虹桥票价\nG1 · 明天出发\nCR400BF-5033 今日交路\n3 条交路记录\nG8932 列车时刻\n秦皇岛 → 北京南\n昨天\n京沪线沿线车站\n模型与设置\n使用帮助\n对话操作\n重命名\n删除对话\n取消",
+        "placeholders": [
+          "搜索对话…",
+          "继续追问…",
+          "搜索对话…"
+        ],
+        "values": []
+      },
+      "copyChecks": [
+        {
+          "selector": ".history-header strong",
+          "mode": "text",
+          "expected": "对话历史",
+          "actual": "对话历史",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-search",
+          "mode": "placeholder",
+          "expected": "搜索对话…",
+          "actual": "搜索对话…",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-create",
+          "mode": "text",
+          "expected": "新建对话",
+          "actual": "新建对话",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-group-title:nth-of-type(1)",
+          "mode": "text",
+          "expected": "今天",
+          "actual": "今天",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-item:nth-of-type(1) .history-select strong",
+          "mode": "text",
+          "expected": "北京南到上海虹桥票价",
+          "actual": "北京南到上海虹桥票价",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-item:nth-of-type(1) .history-select span",
+          "mode": "text",
+          "expected": "G1 · 明天出发",
+          "actual": "G1 · 明天出发",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-item:nth-of-type(2) .history-select strong",
+          "mode": "text",
+          "expected": "CR400BF-5033 今日交路",
+          "actual": "CR400BF-5033 今日交路",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-item:nth-of-type(2) .history-select span",
+          "mode": "text",
+          "expected": "3 条交路记录",
+          "actual": "3 条交路记录",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-item:nth-of-type(3) .history-select strong",
+          "mode": "text",
+          "expected": "G8932 列车时刻",
+          "actual": "G8932 列车时刻",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-item:nth-of-type(3) .history-select span",
+          "mode": "text",
+          "expected": "秦皇岛 → 北京南",
+          "actual": "秦皇岛 → 北京南",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-group-title:nth-of-type(2)",
+          "mode": "text",
+          "expected": "昨天",
+          "actual": "昨天",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-item:nth-of-type(4) .history-select strong",
+          "mode": "text",
+          "expected": "京沪线沿线车站",
+          "actual": "京沪线沿线车站",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-action-title",
+          "mode": "text",
+          "expected": "对话操作",
+          "actual": "对话操作",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-rename",
+          "mode": "text",
+          "expected": "重命名",
+          "actual": "重命名",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-action-panel button.danger",
+          "mode": "text",
+          "expected": "删除对话",
+          "actual": "删除对话",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-action-cancel",
+          "mode": "text",
+          "expected": "取消",
+          "actual": "取消",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-footer button:nth-child(1)",
+          "mode": "text",
+          "expected": "模型与设置",
+          "actual": "模型与设置",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        },
+        {
+          "selector": ".history-footer button:nth-child(2)",
+          "mode": "text",
+          "expected": "使用帮助",
+          "actual": "使用帮助",
+          "visible": true,
+          "result": "pass",
+          "firstDifference": null
+        }
+      ],
+      "stateSnapshots": [],
+      "checks": [
+        {
+          "selector": ".history-search",
+          "target": {
+            "x": 17,
+            "y": 96,
+            "width": 357,
+            "height": 41
+          },
+          "measured": {
+            "x": 16,
+            "y": 96,
+            "width": 358,
+            "height": 41
+          },
+          "deltaPx": {
+            "x": -1,
+            "y": 0,
+            "width": 1,
+            "height": 0
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "selector": ".history-create",
+          "target": {
+            "x": 17,
+            "y": 145,
+            "width": 357,
+            "height": 44
+          },
+          "measured": {
+            "x": 16,
+            "y": 145,
+            "width": 358,
+            "height": 44
+          },
+          "deltaPx": {
+            "x": -1,
+            "y": 0,
+            "width": 1,
+            "height": 0
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "topbar",
+          "selector": ".history-header",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            1005,
+            174,
+            406,
+            42
+          ],
+          "targetCss": {
+            "x": 15.92,
+            "y": 47.76,
+            "width": 359.05,
+            "height": 37.14
+          },
+          "measured": {
+            "x": 16,
+            "y": 48,
+            "width": 358,
+            "height": 38
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 48,
+            "width": 358,
+            "height": 38
+          },
+          "deltaPx": {
+            "x": 0.08,
+            "y": 0.24,
+            "width": -1.05,
+            "height": 0.86
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "search",
+          "selector": ".history-search",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            1007,
+            228,
+            403,
+            47
+          ],
+          "targetCss": {
+            "x": 17.69,
+            "y": 95.51,
+            "width": 356.39,
+            "height": 41.56
+          },
+          "measured": {
+            "x": 16,
+            "y": 96,
+            "width": 358,
+            "height": 41
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 96,
+            "width": 358,
+            "height": 41
+          },
+          "deltaPx": {
+            "x": -1.69,
+            "y": 0.49,
+            "width": 1.61,
+            "height": -0.56
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "create_action",
+          "selector": ".history-create",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            1007,
+            284,
+            403,
+            50
+          ],
+          "targetCss": {
+            "x": 17.69,
+            "y": 145.03,
+            "width": 356.39,
+            "height": 44.22
+          },
+          "measured": {
+            "x": 16,
+            "y": 145,
+            "width": 358,
+            "height": 44
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 145,
+            "width": 358,
+            "height": 44
+          },
+          "deltaPx": {
+            "x": -1.69,
+            "y": -0.03,
+            "width": 1.61,
+            "height": -0.22
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "today_group_and_rows",
+          "selector": "[\".history-list > :nth-child(1)\",\".history-list > :nth-child(2)\",\".history-list > :nth-child(3)\",\".history-list > :nth-child(4)\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            1004,
+            353,
+            406,
+            267
+          ],
+          "targetCss": {
+            "x": 15.03,
+            "y": 206.05,
+            "width": 359.05,
+            "height": 236.12
+          },
+          "measured": {
+            "x": 16,
+            "y": 205,
+            "width": 358,
+            "height": 235.5
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 205,
+            "width": 358,
+            "height": 235.5
+          },
+          "deltaPx": {
+            "x": 0.97,
+            "y": -1.05,
+            "width": -1.05,
+            "height": -0.62
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "yesterday_group_and_rows",
+          "selector": "[\".history-list > :nth-child(5)\",\".history-list > :nth-child(6)\"]",
+          "semanticBasis": "union of matching elements",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            1004,
+            647,
+            406,
+            75
+          ],
+          "targetCss": {
+            "x": 15.03,
+            "y": 466.05,
+            "width": 359.05,
+            "height": 66.33
+          },
+          "measured": {
+            "x": 16,
+            "y": 467.5,
+            "width": 358,
+            "height": 68
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 467.5,
+            "width": 358,
+            "height": 68
+          },
+          "deltaPx": {
+            "x": 0.97,
+            "y": 1.45,
+            "width": -1.05,
+            "height": 1.67
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "action_panel",
+          "selector": ".history-action-panel",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            1006,
+            731,
+            405,
+            154
+          ],
+          "targetCss": {
+            "x": 16.8,
+            "y": 540.34,
+            "width": 358.16,
+            "height": 136.19
+          },
+          "measured": {
+            "x": 16,
+            "y": 541,
+            "width": 358,
+            "height": 136
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 541,
+            "width": 358,
+            "height": 136
+          },
+          "deltaPx": {
+            "x": -0.8,
+            "y": 0.66,
+            "width": -0.16,
+            "height": -0.19
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "cancel_action",
+          "selector": ".history-action-cancel",
+          "semanticBasis": "element box",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            1006,
+            893,
+            405,
+            57
+          ],
+          "targetCss": {
+            "x": 16.8,
+            "y": 683.61,
+            "width": 358.16,
+            "height": 50.41
+          },
+          "measured": {
+            "x": 16,
+            "y": 685,
+            "width": 358,
+            "height": 50
+          },
+          "measuredViewport": {
+            "x": 16,
+            "y": 685,
+            "width": 358,
+            "height": 50
+          },
+          "deltaPx": {
+            "x": -0.8,
+            "y": 1.39,
+            "width": -0.16,
+            "height": -0.41
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        },
+        {
+          "element": "fixed_bottom_links",
+          "selector": "{\"selectors\":[\".history-footer > button\"],\"content\":true}",
+          "semanticBasis": "button content union",
+          "coordinateBasis": "phone viewport",
+          "targetRaw": [
+            1037,
+            972,
+            344,
+            27
+          ],
+          "targetCss": {
+            "x": 44.22,
+            "y": 753.47,
+            "width": 304.22,
+            "height": 23.88
+          },
+          "measured": {
+            "x": 44.4,
+            "y": 753,
+            "width": 302.6,
+            "height": 23
+          },
+          "measuredViewport": {
+            "x": 44.4,
+            "y": 753,
+            "width": 302.6,
+            "height": 23
+          },
+          "deltaPx": {
+            "x": 0.18,
+            "y": -0.47,
+            "width": -1.62,
+            "height": -0.88
+          },
+          "result": "pass",
+          "tolerancePx": 2
+        }
+      ]
+    },
+    {
+      "state": "history",
+      "interaction": "search/date groups/select/new/rename/delete/cancel",
+      "result": {
+        "cancelled": true,
+        "selected": "#/c/history_today",
+        "searchCount": 1,
+        "groupLabels": [
+          "今天",
+          "昨天"
+        ],
+        "newId": "mum4o7y0bys9fn",
+        "renamed": "验收重命名",
+        "deleted": true
+      }
+    }
+  ]
+}

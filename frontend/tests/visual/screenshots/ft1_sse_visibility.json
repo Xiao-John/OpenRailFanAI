@@ -1,0 +1,26 @@
+{
+  "cases": [
+    {
+      "case": "tool_success",
+      "event_types": [
+        "stage",
+        "stage",
+        "done"
+      ],
+      "answer_events": 0,
+      "thinking_length": 0,
+      "unsafe_fact_text_in_events": false
+    },
+    {
+      "case": "tool_failure",
+      "event_types": [
+        "stage",
+        "stage",
+        "done"
+      ],
+      "answer_events": 0,
+      "thinking_length": 0,
+      "unsafe_fact_text_in_events": false
+    }
+  ]
+}

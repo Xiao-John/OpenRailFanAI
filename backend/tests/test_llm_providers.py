@@ -23,6 +23,7 @@ import inspect
 import json
 import os
 import tempfile
+from unittest.mock import patch
 from pathlib import Path
 
 from app.config import Settings
@@ -292,8 +293,13 @@ def test_api_key_cleaning():
 
 # ---------------------------------------------------------------- 2. 注册表
 def test_builtin_catalog():
-    providers = pv.load_providers(_settings())
-    assert "deepseek" in providers and "ollama" in providers
+    with patch.dict(os.environ, {"APP_VARIANT": "main"}):
+        providers = pv.load_providers(_settings())
+    assert "deepseek" in providers
+    assert not {"ollama", "lmstudio", "vllm"}.intersection(providers)
+    with patch.dict(os.environ, {"APP_VARIANT": "lm"}):
+        local = pv.load_providers(_settings())
+    assert {"ollama", "lmstudio", "vllm"}.issubset(local)
     assert providers["deepseek"].base_url == "https://api.deepseek.com/v1"
     # 内置目录必须**不含任何 Key**（这是能安全开源的前提）
     for p in providers.values():
@@ -414,7 +420,8 @@ def test_public_view_never_leaks_key():
 
 def test_keyless_local_provider():
     """Ollama / LM Studio / 内网网关不填 Key 也应可用。"""
-    ollama = pv.resolve_provider("ollama", {"model": "qwen2.5:7b"}, settings=_settings())
+    with patch.dict(os.environ, {"APP_VARIANT": "lm"}):
+        ollama = pv.resolve_provider("ollama", {"model": "qwen2.5:7b"}, settings=_settings())
     assert ollama.needs_key is False
     assert ollama.api_key == "" and ollama.ready
     assert ollama.sdk_api_key == pv.KEYLESS_PLACEHOLDER
@@ -529,7 +536,7 @@ def test_auto_dialect_switch_to_responses_and_cache():
     assert metrics["prompt_tokens"] == 20 and metrics["completion_tokens"] == 10
 
     provider = pv.resolve_provider("fake", settings=s)
-    assert llm._DIALECT_CACHE[provider.cache_key()] == "responses", "方言探测结论未缓存"
+    assert llm._DIALECT_CACHE[llm._dialect_key(provider)] == "responses", "方言探测结论未缓存"
 
     # 第二次调用应**直接**走 responses（不再白试 chat）
     fake.calls.clear()
@@ -666,7 +673,7 @@ def test_stream_auto_switch_on_first_event():
     assert items == [("text", "没问题")], items
     assert fake.calls[0][0] == "chat" and fake.calls[1][0] == "responses", fake.calls
     assert broken.closed, "切换方言时应关闭已废弃的上游流"
-    assert llm._DIALECT_CACHE[pv.resolve_provider("fake", settings=s).cache_key()] == "responses"
+    assert llm._DIALECT_CACHE[llm._dialect_key(pv.resolve_provider("fake", settings=s))] == "responses"
     _reset_dialect_cache()
     print("[PASS] 流式首事件失败也能切方言，并关闭废弃的上游流")
 
@@ -860,6 +867,61 @@ def test_output_budget_respects_context_window():
     print("[PASS] 输出预算按窗口收窄，请求级覆盖优先，0=不约束")
 
 
+def test_stream_requests_usage():
+    """**流式请求必须显式索取 usage**（`stream_options.include_usage`）。
+
+    为什么这是一条回归测试而不是细节：OpenAI 兼容规范下流式响应的 usage
+    **默认不下发**（末块只有一个空的 choices），于是 `done` 事件里三个 token 数
+    恒为 0，界面上显示「本次 token used: 0（输入 0 / 输出 0）」——
+    它看起来像"模型没算 token"，其实是**我们从来没要过**。实测为此困惑了一整轮。
+
+    同时钉住反向情况：**非流式**请求不该带 stream_options（有些上游会因此报错，
+    而且那边本来就返回 usage）。
+    """
+    _reset_dialect_cache()
+    s = _settings(llm_provider="fake", llm_providers=json.dumps(
+        {"fake": {"base_url": "https://x.example.com/v1", "api_key": "k", "model": "m",
+                  "api": "chat_completions"}}))
+    _use(s)
+
+    # 1) 流式：必须带
+    stream = _FakeStream([_StreamEvent2("你好")])
+    fc = _FakeClient(chat_stream=stream)
+    with _Ctx(**{"app.llm.client.get_client": lambda p=None: fc}):
+        async def drain():
+            async for _ in llm.stream_completion("hi", model="m"):
+                pass
+        asyncio.run(drain())
+    sent = [kw for kind, kw in fc.calls if kind == "chat"]
+    assert sent, "流式请求没发出去"
+    assert sent[-1].get("stream_options") == {"include_usage": True}, (
+        "流式请求没带 stream_options.include_usage —— 上游不会回 usage，"
+        f"界面上的 token 计数会永远是 0。实际下发的是：{sent[-1]}"
+    )
+
+    # 2) 关掉开关就不带（逃生口，应对个别网关对未知参数直接 5xx）
+    _use(_settings(llm_provider="fake", llm_stream_usage=False, llm_providers=json.dumps(
+        {"fake": {"base_url": "https://x.example.com/v1", "api_key": "k", "model": "m",
+                  "api": "chat_completions"}})))
+    fc2 = _FakeClient(chat_stream=_FakeStream([_StreamEvent2("你好")]))
+    with _Ctx(**{"app.llm.client.get_client": lambda p=None: fc2}):
+        async def drain2():
+            async for _ in llm.stream_completion("hi", model="m"):
+                pass
+        asyncio.run(drain2())
+    sent2 = [kw for kind, kw in fc2.calls if kind == "chat"]
+    assert "stream_options" not in sent2[-1], "LLM_STREAM_USAGE=false 没生效"
+
+    # 3) 非流式：不该带（带了对某些上游是纯粹的风险）
+    _use(s)
+    fc3 = _FakeClient(chat=lambda **kw: _ChatResp("答案"))
+    with _Ctx(**{"app.llm.client.get_client": lambda p=None: fc3}):
+        asyncio.run(llm.chat("hi", model="m"))
+    sent3 = [kw for kind, kw in fc3.calls if kind == "chat"]
+    assert "stream_options" not in sent3[-1], "非流式请求不该带 stream_options"
+    print("[PASS] 流式请求索取 usage（非流式不带），且有显式开关可关")
+
+
 def main():
     test_base_url_normalization()
     test_api_key_cleaning()
@@ -886,6 +948,7 @@ def main():
     test_truncation_flag_follows_finish_reason()
     test_truncation_flag_in_stream()
     test_output_budget_respects_context_window()
+    test_stream_requests_usage()
     test_request_base_url_ssrf_guard()
     print("\nLLM 多供应商 / 双方言回归测试全部通过 ✔")
 

@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "source": "frontend/tests/visual/native-icon-targets.json",
+  "states": {
+    "train_schedule": [
+      "main-history-icon",
+      "main-brand-icon",
+      "main-new-icon",
+      "main-back-icon",
+      "main-user-avatar",
+      "main-user-avatar-icon",
+      "main-assistant-avatar",
+      "main-assistant-avatar-icon",
+      "schedule-date-icon",
+      "schedule-duration-icon",
+      "icon-info",
+      "details-source-icon",
+      "query-details-chevron",
+      "result-copy-icon",
+      "result-regenerate-icon",
+      "main-send-icon",
+      "main-back-control",
+      "main-history-control",
+      "main-new-control",
+      "main-safe-content",
+      "main-page-content"
+    ],
+    "history": [
+      "history-back-icon",
+      "history-close-icon",
+      "history-search-icon",
+      "icon-plus",
+      "history-more-icon-selected",
+      "history-more-icon-tomorrow",
+      "history-more-icon-schedule",
+      "history-more-icon-yesterday",
+      "icon-edit",
+      "icon-trash",
+      "history-settings-icon",
+      "history-help-icon",
+      "history-content"
+    ],
+    "query_loading": [
+      "query-loading-spinner",
+      "main-stop-icon",
+      "main-safe-content",
+      "main-page-content"
+    ],
+    "batch_partial": [
+      "batch-status-icon-C2203",
+      "batch-card",
+      "batch-status-icon-G8927",
+      "batch-status-icon-G8928",
+      "main-safe-content",
+      "main-page-content"
+    ],
+    "routing_empty": [
+      "empty-icon-group",
+      "routing-empty",
+      "empty-date-icon",
+      "main-safe-content",
+      "main-page-content"
+    ],
+    "connection_error": [
+      "error-icon",
+      "connection-error",
+      "error-details-chevron",
+      "api-key-error-icon",
+      "main-safe-content",
+      "main-page-content"
+    ],
+    "reading_followup": [
+      "return-to-bottom-icon",
+      "return-to-bottom-visual",
+      "icon-search",
+      "result-suggestions",
+      "icon-calendar",
+      "main-send-icon",
+      "main-fixed-input",
+      "main-safe-content",
+      "main-page-content"
+    ],
+    "query_details": [
+      "query-details-chevron",
+      "query-details",
+      "details-source-icon",
+      "technical-log-file-icon",
+      "technical-log-toggle",
+      "technical-log-chevron",
+      "main-safe-content",
+      "main-page-content"
+    ],
+    "emu_routing": [
+      "main-safe-content",
+      "main-page-content"
+    ]
+  }
+}

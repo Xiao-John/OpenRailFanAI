@@ -1,0 +1,575 @@
+{
+  "source": "desi1.png + desi2.png",
+  "comparison": "exact text, value, placeholder, or aria-label on a specified visible element",
+  "states": {
+    "train_schedule": [
+      {
+        "selector": ".row.user .bubble",
+        "mode": "text",
+        "expected": "查一下 G8932 今天的时刻表"
+      },
+      {
+        "selector": ".schedule-card .schedule-code",
+        "mode": "text",
+        "expected": "G8932"
+      },
+      {
+        "selector": ".schedule-card .schedule-example",
+        "mode": "text",
+        "expected": "图定时刻 · 示例数据"
+      },
+      {
+        "selector": ".schedule-card .schedule-route",
+        "mode": "text",
+        "expected": "秦皇岛 → 北京南"
+      },
+      {
+        "selector": ".schedule-card .schedule-meta span:nth-child(1)",
+        "mode": "text",
+        "expected": "09月25日"
+      },
+      {
+        "selector": ".schedule-card .schedule-meta span:nth-child(2)",
+        "mode": "text",
+        "expected": "1小时52分"
+      },
+      {
+        "selector": ".schedule-card thead th:nth-child(1)",
+        "mode": "text",
+        "expected": "车站"
+      },
+      {
+        "selector": ".schedule-card thead th:nth-child(2)",
+        "mode": "text",
+        "expected": "到达"
+      },
+      {
+        "selector": ".schedule-card thead th:nth-child(3)",
+        "mode": "text",
+        "expected": "出发"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(1) .schedule-station-name",
+        "mode": "text",
+        "expected": "秦皇岛"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(2) .schedule-station-name",
+        "mode": "text",
+        "expected": "唐山"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(2) .schedule-stopover",
+        "mode": "text",
+        "expected": "停12分钟"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(3) .schedule-station-name",
+        "mode": "text",
+        "expected": "天津"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(3) .schedule-stopover",
+        "mode": "text",
+        "expected": "停3分钟"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(4) .schedule-station-name",
+        "mode": "text",
+        "expected": "北京南"
+      },
+      {
+        "selector": ".schedule-card .schedule-note",
+        "mode": "text",
+        "expected": "图定时刻不代表实际正晚点。"
+      },
+      {
+        "selector": ".schedule-card .schedule-source a",
+        "mode": "text",
+        "expected": "12306 · 列车时刻"
+      },
+      {
+        "selector": ".schedule-card .schedule-detail-label",
+        "mode": "text",
+        "expected": "查询详情"
+      },
+      {
+        "selector": ".row.assistant.has-schedule-result > .actions > button:nth-child(1)",
+        "mode": "text",
+        "expected": "复制"
+      },
+      {
+        "selector": ".row.assistant.has-schedule-result > .actions > button:nth-child(3)",
+        "mode": "text",
+        "expected": "重新生成"
+      },
+      {
+        "selector": ".row.assistant.has-schedule-result > .followups > button:nth-child(1)",
+        "mode": "text",
+        "expected": "查票价"
+      },
+      {
+        "selector": ".row.assistant.has-schedule-result > .followups > button:nth-child(2)",
+        "mode": "text",
+        "expected": "查担当车组"
+      },
+      {
+        "selector": "#input",
+        "mode": "placeholder",
+        "expected": "继续追问…"
+      }
+    ],
+    "emu_routing": [
+      {
+        "selector": ".row.user .bubble",
+        "mode": "text",
+        "expected": "CR400BF-5033 今天的交路"
+      },
+      {
+        "selector": ".routing-card .schedule-code",
+        "mode": "text",
+        "expected": "CR400BF-5033"
+      },
+      {
+        "selector": ".routing-card .routing-date",
+        "mode": "text",
+        "expected": "09月25日 · 交路记录"
+      },
+      {
+        "selector": ".routing-card .schedule-note",
+        "mode": "text",
+        "expected": "以下为记录时间，不是列车到发时间。"
+      },
+      {
+        "selector": ".routing-card thead th:nth-child(1)",
+        "mode": "text",
+        "expected": "车次"
+      },
+      {
+        "selector": ".routing-card thead th:nth-child(2)",
+        "mode": "text",
+        "expected": "记录时间"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(1) .routing-jump",
+        "mode": "text",
+        "expected": "C2203"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(1) .routing-record-time",
+        "mode": "text",
+        "expected": "07:42"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(2) .routing-jump",
+        "mode": "text",
+        "expected": "G8927"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(2) .routing-record-time",
+        "mode": "text",
+        "expected": "11:06"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(3) .routing-jump",
+        "mode": "text",
+        "expected": "G8928"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(3) .routing-record-time",
+        "mode": "text",
+        "expected": "13:26"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(1) .routing-record-link",
+        "mode": "text",
+        "expected": "查看该车次时刻"
+      },
+      {
+        "selector": ".routing-card .schedule-source a",
+        "mode": "text",
+        "expected": "rail.re · 交路记录"
+      },
+      {
+        "selector": ".routing-card + .request-details + .routing-batch",
+        "mode": "text",
+        "expected": "查询这三趟车的时刻表"
+      },
+      {
+        "selector": ".routing-integrity-note",
+        "mode": "text",
+        "expected": "记录可能不完整，以实际运行情况为准。"
+      },
+      {
+        "selector": "#input",
+        "mode": "placeholder",
+        "expected": "继续追问…"
+      }
+    ],
+    "query_loading": [
+      {
+        "selector": ".query-loading strong",
+        "mode": "text",
+        "expected": "正在查询列车数据…"
+      },
+      {
+        "selector": ".query-loading-stage",
+        "mode": "text",
+        "expected": "已识别 G8932 · 正在连接 12306"
+      },
+      {
+        "selector": "#input",
+        "mode": "value",
+        "expected": "再看看明天的"
+      },
+      {
+        "selector": "#send",
+        "mode": "aria-label",
+        "expected": "停止生成"
+      },
+      {
+        "selector": ".query-loading-foot",
+        "mode": "text",
+        "expected": "可停止生成，已返回内容会保留"
+      }
+    ],
+    "batch_partial": [
+      {
+        "selector": ".batch-card .schedule-head strong",
+        "mode": "text",
+        "expected": "时刻查询"
+      },
+      {
+        "selector": ".batch-card .batch-count",
+        "mode": "text",
+        "expected": "2 / 3 已返回"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(2) > span:first-child",
+        "mode": "text",
+        "expected": "C2203"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(2) .batch-ok",
+        "mode": "text",
+        "expected": "已查到"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(3) > span:first-child",
+        "mode": "text",
+        "expected": "G8927"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(3) .batch-ok",
+        "mode": "text",
+        "expected": "已查到"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(4) > span:first-child",
+        "mode": "text",
+        "expected": "G8928"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(4) .batch-failed",
+        "mode": "text",
+        "expected": "暂未返回"
+      },
+      {
+        "selector": ".batch-card + .routing-batch",
+        "mode": "text",
+        "expected": "仅重试 G8928"
+      },
+      {
+        "selector": ".batch-retain",
+        "mode": "text",
+        "expected": "保留已查到的结果"
+      }
+    ],
+    "routing_empty": [
+      {
+        "selector": ".empty-routing-title",
+        "mode": "text",
+        "expected": "未找到当天交路记录"
+      },
+      {
+        "selector": ".empty-routing-copy",
+        "mode": "text",
+        "expected": "暂无记录，不能据此判断停运。"
+      },
+      {
+        "selector": ".empty-routing-date",
+        "mode": "text",
+        "expected": "09月25日"
+      },
+      {
+        "selector": ".empty-routing-actions .routing-batch",
+        "mode": "text",
+        "expected": "更换日期"
+      },
+      {
+        "selector": ".empty-routing-actions .routing-recent",
+        "mode": "text",
+        "expected": "查看最近记录"
+      },
+      {
+        "selector": ".empty-routing-foot",
+        "mode": "text",
+        "expected": "历史记录将单独标注日期"
+      }
+    ],
+    "connection_error": [
+      {
+        "selector": ".connection-error-title",
+        "mode": "text",
+        "expected": "暂时无法连接模型服务"
+      },
+      {
+        "selector": ".connection-error-copy",
+        "mode": "text",
+        "expected": "你的提问已保留，可稍后重试。"
+      },
+      {
+        "selector": ".connection-retry",
+        "mode": "text",
+        "expected": "重试"
+      },
+      {
+        "selector": ".connection-settings",
+        "mode": "text",
+        "expected": "检查模型设置"
+      },
+      {
+        "selector": ".connection-error details > summary",
+        "mode": "text",
+        "expected": "错误详情"
+      },
+      {
+        "selector": ".connection-key-label",
+        "mode": "text",
+        "expected": "API Key"
+      },
+      {
+        "selector": ".connection-key-error",
+        "mode": "text",
+        "expected": "密钥无效，请检查后重试"
+      }
+    ],
+    "reading_followup": [
+      {
+        "selector": ".row.assistant.has-table-answer .md",
+        "mode": "firstText",
+        "expected": "以下是 G8932 次列车的时刻信息："
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(1)",
+        "mode": "text",
+        "expected": "站次",
+        "applicability": "excluded_by_user_resolution",
+        "exclusion_reason": "用户2026-10-01确认沿用完整时刻卡片，不实现补充稿五列表格。"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(2)",
+        "mode": "text",
+        "expected": "车站"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(3)",
+        "mode": "text",
+        "expected": "到达"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(4)",
+        "mode": "text",
+        "expected": "出发"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(5)",
+        "mode": "text",
+        "expected": "停留",
+        "applicability": "excluded_by_user_resolution",
+        "exclusion_reason": "用户2026-10-01确认沿用完整时刻卡片，不实现补充稿五列表格。"
+      },
+      {
+        "selector": "#new-content-cue",
+        "mode": "text",
+        "expected": "有新内容 · 回到底部"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer .followups > button:nth-child(1)",
+        "mode": "text",
+        "expected": "查余票"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer .followups > button:nth-child(2)",
+        "mode": "text",
+        "expected": "换个日期"
+      },
+      {
+        "selector": "#input",
+        "mode": "placeholder",
+        "expected": "继续追问…"
+      },
+      {
+        "selector": ".reading-guidance",
+        "mode": "text",
+        "expected": "上滑阅读时暂停自动滚动；点选追问先填入输入框",
+        "applicability": "excluded_by_user_resolution",
+        "exclusion_reason": "依用户设备示意与设计标注排除规则，此句为阅读行为说明，不作为固定应用文案；自动滚动暂停和追问只填草稿仍须实操验收。"
+      }
+    ],
+    "query_details": [
+      {
+        "selector": ".request-details > summary",
+        "mode": "text",
+        "expected": "查询详情"
+      },
+      {
+        "selector": ".request-source-row strong",
+        "mode": "text",
+        "expected": "12306 · 列车时刻"
+      },
+      {
+        "selector": ".request-sample-badge",
+        "mode": "text",
+        "expected": "示例数据"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(2) span",
+        "mode": "text",
+        "expected": "数据日期"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(2) strong",
+        "mode": "text",
+        "expected": "09月25日"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(3) span",
+        "mode": "text",
+        "expected": "时间口径"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(3) strong",
+        "mode": "text",
+        "expected": "图定时刻"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(4) span",
+        "mode": "text",
+        "expected": "查询耗时"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(4) strong",
+        "mode": "text",
+        "expected": "5.8 秒"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(5) span",
+        "mode": "text",
+        "expected": "用量"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(5) strong",
+        "mode": "text",
+        "expected": "1,555 Token"
+      },
+      {
+        "selector": ".request-tech > summary",
+        "mode": "text",
+        "expected": "查看技术日志"
+      }
+    ],
+    "history": [
+      {
+        "selector": ".history-header strong",
+        "mode": "text",
+        "expected": "对话历史"
+      },
+      {
+        "selector": ".history-search",
+        "mode": "placeholder",
+        "expected": "搜索对话…"
+      },
+      {
+        "selector": ".history-create",
+        "mode": "text",
+        "expected": "新建对话"
+      },
+      {
+        "selector": ".history-group-title:nth-of-type(1)",
+        "mode": "text",
+        "expected": "今天"
+      },
+      {
+        "selector": ".history-item:nth-of-type(1) .history-select strong",
+        "mode": "text",
+        "expected": "北京南到上海虹桥票价"
+      },
+      {
+        "selector": ".history-item:nth-of-type(1) .history-select span",
+        "mode": "text",
+        "expected": "G1 · 明天出发"
+      },
+      {
+        "selector": ".history-item:nth-of-type(2) .history-select strong",
+        "mode": "text",
+        "expected": "CR400BF-5033 今日交路"
+      },
+      {
+        "selector": ".history-item:nth-of-type(2) .history-select span",
+        "mode": "text",
+        "expected": "3 条交路记录"
+      },
+      {
+        "selector": ".history-item:nth-of-type(3) .history-select strong",
+        "mode": "text",
+        "expected": "G8932 列车时刻"
+      },
+      {
+        "selector": ".history-item:nth-of-type(3) .history-select span",
+        "mode": "text",
+        "expected": "秦皇岛 → 北京南"
+      },
+      {
+        "selector": ".history-group-title:nth-of-type(2)",
+        "mode": "text",
+        "expected": "昨天"
+      },
+      {
+        "selector": ".history-item:nth-of-type(4) .history-select strong",
+        "mode": "text",
+        "expected": "京沪线沿线车站"
+      },
+      {
+        "selector": ".history-action-title",
+        "mode": "text",
+        "expected": "对话操作"
+      },
+      {
+        "selector": ".history-rename",
+        "mode": "text",
+        "expected": "重命名"
+      },
+      {
+        "selector": ".history-action-panel button.danger",
+        "mode": "text",
+        "expected": "删除对话"
+      },
+      {
+        "selector": ".history-action-cancel",
+        "mode": "text",
+        "expected": "取消"
+      },
+      {
+        "selector": ".history-footer button:nth-child(1)",
+        "mode": "text",
+        "expected": "模型与设置"
+      },
+      {
+        "selector": ".history-footer button:nth-child(2)",
+        "mode": "text",
+        "expected": "使用帮助"
+      }
+    ]
+  }
+}

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest.mock as mock
+from datetime import date
 
 from app.pipeline import extract, generate, intent, orchestrator
 from app.pipeline import planner as planner_mod
@@ -25,9 +26,19 @@ def _disable_fastpath():
     return mock.patch("app.pipeline.fastpath.plan_with_reason", new=mock.AsyncMock(return_value=(None, None)))
 
 
-def _patch_llm():
+def _patch_llm(*, structured=False):
     """把三层用到的 LLM 函数替换为可控假实现。"""
     patches = [
+        mock.patch.object(orchestrator.retrieve, "retrieve", new=mock.AsyncMock(return_value={
+            "data": [{"tool": "emu.routing", "data": {"focus_date": date.today().isoformat(),
+                "query": "CR400AF", "records": [{"train_code": "G1", "date": date.today().isoformat(), "time": "08:00"}]},
+                "text": "本日交路记录", "sources": ["https://rail.re/"], "note": "记录时间不是列车到发时间"}]
+                if structured else [{"tool": "station.lookup", "text": "吉林车站位于吉林市。",
+                                     "data": {}, "sources": [], "note": "本地站点字典"}],
+            "sources": ["https://rail.re/"] if structured else [],
+            "tool_trace": ["emu.routing: ok"] if structured else ["station.lookup: ok"],
+            "display_errors": [],
+        })),
         # 决策层已合并为一次调用（perf P0-2）：假数据要打在**新的接缝** planner 上
         mock.patch.object(
             planner_mod,
@@ -95,9 +106,9 @@ async def test_degradation_without_llm():
     print("[PASS] LLM 未配置时友好降级，不抛异常")
 
 
-async def test_stream_pipeline():
+async def test_stream_pipeline(*, structured=False):
     """流式 SSE 路径：确认 stage/think/answer/done 事件链完整，日志与 usage 透传。"""
-    patches = _patch_llm() + [_disable_fastpath()]  # intent / extract 仍用 chat_structured 假数据
+    patches = _patch_llm(structured=structured) + [_disable_fastpath()]
 
     # 额外 patch 流式生成：用假的 async generator 模拟 stream_completion
     async def _mock_stream(*a, **k):
@@ -122,13 +133,19 @@ async def test_stream_pipeline():
     types = [e["type"] for e in events]
     # 检查必需的事件类型
     assert "stage" in types, f"缺 stage 事件: {types}"
-    assert "think" in types, f"缺 think 事件: {types}"
+    if structured:
+        assert "think" not in types and types.count("answer") == 1, types
+    else:
+        assert "think" in types, f"缺 think 事件: {types}"
     assert "answer" in types, f"缺 answer 事件: {types}"
     done_events = [e for e in events if e["type"] == "done"]
     assert len(done_events) == 1, f"done 事件应为 1，实际: {len(done_events)}"
     d = done_events[0]
     assert d.get("intent"), "done 缺 intent"
     assert isinstance(d.get("usage"), dict), "done 缺 usage"
+    if structured:
+        assert d["thinking"] == "" and d["display_results"][0]["kind"] == "emu_routing", d
+        assert d["display_results"][0]["schema_version"] == 1, d
     assert isinstance(d.get("process_logs"), list) and len(d["process_logs"]) >= 5, (
         f"process_logs 条目过少: {d.get('process_logs')}"
     )
@@ -139,6 +156,7 @@ async def main():
     await test_full_pipeline()
     await test_degradation_without_llm()
     await test_stream_pipeline()
+    await test_stream_pipeline(structured=True)
     print("\n全部测试通过 ✔")
 
 

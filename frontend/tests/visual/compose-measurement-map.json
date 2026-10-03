@@ -1,0 +1,1362 @@
+{
+  "version": 20,
+  "coordinateUnit": "physical_px at capture density 1 and fontScale 1",
+  "designCoordinates": "design-targets.json desi1 page-state rectangles use the full screen-surface frame and scale to the 390px app canvas while preserving screen-internal page whitespace; desi2 component states keep their module-local geometry and frames.",
+  "rules": {
+    "tolerance_px": 2,
+    "touch_minimum": "Explicit project minimum is 44x44px at capture density 1 and remains independent of reference scaling; visual rectangles are compared separately with the existing 2px tolerance. A visible header content union can be smaller than its touch parent and must have its own semantic mapping.",
+    "comparison": "Only same-semantic kind rectangles compare; local entries subtract both their actual anchor and design anchor before comparison",
+    "diff_px": "Maximum absolute x/y/width/height delta among measured mapped geometry entries only; not full-image difference",
+    "unmapped": "Every design target element without a mapping is reported unmeasured, never inferred from a parent rectangle",
+    "vertical_anchor": "Explicit safe_bottom entries preserve width-scaled design size and distance from the application frame bottom; only y is anchored to the verified Android safe content bottom. Other entries retain their existing coordinate rules.",
+    "painted_size": "Explicit text leaves compare original-pixel ink width/height using identical dark/muted/red foreground masks on source and capture, all three profile pairs, valid capture basis and measured clip containment. Text line-box/source-region deltas remain diagnostic only; tolerance stays 2px."
+  },
+  "unmeasured_evidence": [
+    "图标证据按 native-icon-targets.json 的明确对象逐项记录；尚未列入清单的应用图标不视为已验收。"
+  ],
+  "states": {
+    "train_schedule": {
+      "coordinate_mode": "app_canvas",
+      "elements": [
+        {
+          "selector": "main-topbar-visible-union",
+          "designElement": "topbar",
+          "kind": "visible_content_union",
+          "comparison": "diagnostic_only",
+          "unmeasured_reason": "The visible child/glyph union has no same-semantic measured target yet; map and measure that union before visual acceptance. Do not substitute the 44px touch parent."
+        },
+        {
+          "selector": "main-topbar",
+          "designElement": "topbar",
+          "kind": "container",
+          "comparison": "diagnostic_only",
+          "unmeasured_reason": "The 44px clickable parent includes touch area beyond the approximately 37px scaled visual header. Keep this full-parent geometry diagnostic; a same-semantic visible child/glyph union is pending measurement and cannot be inferred from the parent."
+        },
+        {
+          "selector": "main-user-prompt-frame",
+          "designElement": "prompt",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "schedule-G8932-success",
+          "designElement": "result_card",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "schedule-title-row",
+          "designElement": "title",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "schedule-route-summary",
+          "designElement": "route_summary",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "schedule-meta",
+          "designElement": "date_duration",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "schedule-stations",
+          "designElement": "station_timeline_table",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "schedule-source-note",
+          "designElement": "source_note",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "query-details-host",
+          "designElement": "source_details_row",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "result-actions-visible",
+          "designElement": "result_actions",
+          "kind": "visible_content",
+          "comparison": "diagnostic_only",
+          "unmeasured_reason": "Design region includes blank margins; actual child semantics union is a layout bound rather than painted pixels. Same-semantic acceptance target remains undefined."
+        },
+        {
+          "selector": "result-suggestions-visible-union",
+          "designElement": "suggestions",
+          "kind": "visible_content",
+          "comparison": "rect",
+          "vertical_anchor": "safe_bottom",
+          "measurement_note": "Union of the two measured visible capsule bounds; independent 44dp hit targets remain separate."
+        },
+        {
+          "selector": "main-fixed-input",
+          "designElement": "fixed_input",
+          "kind": "touch_target",
+          "comparison": "rect",
+          "vertical_anchor": "safe_bottom",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "schedule-title",
+          "designElement": "train_code_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "G8932",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-route",
+          "designElement": "route_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "秦皇岛 → 北京南",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-header-station",
+          "designElement": "station_header_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "muted",
+          "expected_text": "车站",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-header-arrival",
+          "designElement": "arrival_header_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "muted",
+          "expected_text": "到达",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-header-departure",
+          "designElement": "departure_header_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "muted",
+          "expected_text": "出发",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-station-1",
+          "designElement": "station_1_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "秦皇岛",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-station-2",
+          "designElement": "station_2_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "唐山",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-station-3",
+          "designElement": "station_3_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "天津",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-station-4",
+          "designElement": "station_4_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "北京南",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-stopover-2",
+          "designElement": "stopover_2_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "muted",
+          "expected_text": "停12分钟",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-stopover-3",
+          "designElement": "stopover_3_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "muted",
+          "expected_text": "停3分钟",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-arrival-1",
+          "designElement": "arrival_1_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "--",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-departure-1",
+          "designElement": "departure_1_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "20:42",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-arrival-2",
+          "designElement": "arrival_2_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "21:10",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-departure-2",
+          "designElement": "departure_2_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "21:22",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-arrival-3",
+          "designElement": "arrival_3_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "21:55",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-departure-3",
+          "designElement": "departure_3_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "21:58",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-arrival-4",
+          "designElement": "arrival_4_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "22:34",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "schedule-departure-4",
+          "designElement": "departure_4_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "foreground_class": "dark",
+          "expected_text": "--",
+          "actual_clip_tag": "main-message-list"
+        }
+      ],
+      "copy_expected": [
+        "查一下 G8932 今天的时刻表",
+        "G8932",
+        "图定时刻 · 示例数据",
+        "秦皇岛 → 北京南",
+        "09月25日",
+        "1小时52分",
+        "车站",
+        "到达",
+        "出发",
+        "图定时刻不代表实际正晚点。",
+        "12306 · 列车时刻",
+        "查询详情",
+        "复制",
+        "重新生成",
+        "查票价",
+        "查担当车组",
+        "继续追问…"
+      ],
+      "interaction_expected": [
+        "copy:",
+        "regenerate:"
+      ],
+      "actual_origin_tag": "main-safe-content",
+      "scale_basis": {
+        "mode": "application_window",
+        "actual_canvas_tag": "main-safe-content"
+      }
+    },
+    "emu_routing": {
+      "coordinate_mode": "app_canvas",
+      "elements": [
+        {
+          "selector": "main-topbar-visible-union",
+          "designElement": "topbar",
+          "kind": "visible_content_union",
+          "comparison": "diagnostic_only",
+          "unmeasured_reason": "The visible child/glyph union has no same-semantic measured target yet; map and measure that union before visual acceptance. Do not substitute the 44px touch parent."
+        },
+        {
+          "selector": "main-topbar",
+          "designElement": "topbar",
+          "kind": "container",
+          "comparison": "diagnostic_only",
+          "unmeasured_reason": "The 44px clickable parent includes touch area beyond the approximately 37px scaled visual header. Keep this full-parent geometry diagnostic; a same-semantic visible child/glyph union is pending measurement and cannot be inferred from the parent."
+        },
+        {
+          "selector": "main-user-prompt-frame",
+          "designElement": "prompt",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "routing-result",
+          "designElement": "result_card",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "routing-title-row",
+          "designElement": "title_date",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "routing-time-semantics",
+          "designElement": "time_semantics_note",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "routing-records",
+          "designElement": "records_table",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "query-details-host",
+          "designElement": "source_details_row",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "routing-batch",
+          "designElement": "batch_action",
+          "kind": "touch_target",
+          "comparison": "rect",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "routing-integrity-note",
+          "designElement": "integrity_note",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "main-fixed-input",
+          "designElement": "fixed_input",
+          "kind": "touch_target",
+          "comparison": "rect",
+          "vertical_anchor": "safe_bottom",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "routing-title",
+          "designElement": "leaf_routing_title_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "CR400BF-5033",
+          "foreground_class": "dark",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-date-record",
+          "designElement": "leaf_routing_date_record_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "09月25日 · 交路记录",
+          "foreground_class": "muted",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-time-semantics-text",
+          "designElement": "leaf_routing_time_semantics_text_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "以下为记录时间，不是列车到发时间。",
+          "foreground_class": "muted",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-train-C2203",
+          "designElement": "leaf_routing_train_C2203_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "C2203",
+          "foreground_class": "dark",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-time-C2203",
+          "designElement": "leaf_routing_time_C2203_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "07:42",
+          "foreground_class": "dark",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-record-link-C2203",
+          "designElement": "leaf_routing_record_link_C2203_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "查看该车次时刻",
+          "foreground_class": "muted",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-train-G8927",
+          "designElement": "leaf_routing_train_G8927_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "G8927",
+          "foreground_class": "dark",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-time-G8927",
+          "designElement": "leaf_routing_time_G8927_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "11:06",
+          "foreground_class": "dark",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-record-link-G8927",
+          "designElement": "leaf_routing_record_link_G8927_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "查看该车次时刻",
+          "foreground_class": "muted",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-train-G8928",
+          "designElement": "leaf_routing_train_G8928_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "G8928",
+          "foreground_class": "dark",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-time-G8928",
+          "designElement": "leaf_routing_time_G8928_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "13:26",
+          "foreground_class": "dark",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-record-link-G8928",
+          "designElement": "leaf_routing_record_link_G8928_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "查看该车次时刻",
+          "foreground_class": "muted",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "routing-batch-label",
+          "designElement": "leaf_routing_batch_label_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "expected_text": "查询这三趟车的时刻表",
+          "foreground_class": "muted",
+          "actual_clip_tag": "main-message-list"
+        }
+      ],
+      "copy_expected": [
+        "CR400BF-5033 今天的交路",
+        "CR400BF-5033",
+        "09月25日 · 交路记录",
+        "以下为记录时间，不是列车到发时间。",
+        "C2203",
+        "07:42",
+        "G8927",
+        "11:06",
+        "G8928",
+        "13:26",
+        "查看该车次时刻",
+        "rail.re · 交路记录",
+        "查询这三趟车的时刻表",
+        "记录可能不完整，以实际运行情况为准。"
+      ],
+      "interaction_expected": [
+        "action:train_schedule_batch"
+      ],
+      "actual_origin_tag": "main-safe-content",
+      "scale_basis": {
+        "mode": "application_window",
+        "actual_canvas_tag": "main-safe-content"
+      }
+    },
+    "history": {
+      "coordinate_mode": "app_canvas",
+      "elements": [
+        {
+          "selector": "history-header",
+          "designElement": "topbar",
+          "kind": "container",
+          "comparison": "diagnostic_only",
+          "unmeasured_reason": "The 44px clickable-control parent is larger than the approximately 37.4px visual target after the full 438px screen-surface frame maps to 390px. Keep parent bounds diagnostic; visible header/glyph targets remain unmeasured and must not be inferred from or substituted with the touch parent."
+        },
+        {
+          "selector": "history-search-box",
+          "designElement": "search",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "history-create",
+          "designElement": "create_action",
+          "kind": "touch_target",
+          "comparison": "rect",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "history-today-group",
+          "designElement": "today_group_and_rows",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "history-yesterday-group",
+          "designElement": "yesterday_group_and_rows",
+          "kind": "container",
+          "comparison": "rect"
+        },
+        {
+          "selector": "history-actions-panel",
+          "designElement": "action_panel",
+          "kind": "container",
+          "comparison": "rect",
+          "vertical_anchor": "safe_bottom"
+        },
+        {
+          "selector": "history-actions-cancel",
+          "designElement": "cancel_action",
+          "kind": "touch_target",
+          "comparison": "rect",
+          "vertical_anchor": "safe_bottom",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "history-title-selected",
+          "designElement": "leaf_history_title_selected_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "compare_fields": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "expected_text": "北京南到上海虹桥票价",
+          "foreground_class": "dark",
+          "actual_clip_tag": "history-scroll-container"
+        },
+        {
+          "selector": "history-subtitle-selected",
+          "designElement": "leaf_history_subtitle_selected_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "compare_fields": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "expected_text": "G1 · 明天出发",
+          "foreground_class": "muted",
+          "actual_clip_tag": "history-scroll-container"
+        },
+        {
+          "selector": "history-title-tomorrow",
+          "designElement": "leaf_history_title_tomorrow_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "compare_fields": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "expected_text": "CR400BF-5033 今日交路",
+          "foreground_class": "dark",
+          "actual_clip_tag": "history-scroll-container"
+        },
+        {
+          "selector": "history-subtitle-tomorrow",
+          "designElement": "leaf_history_subtitle_tomorrow_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "compare_fields": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "expected_text": "3 条交路记录",
+          "foreground_class": "muted",
+          "actual_clip_tag": "history-scroll-container"
+        },
+        {
+          "selector": "history-title-schedule",
+          "designElement": "leaf_history_title_schedule_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "compare_fields": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "expected_text": "G8932 列车时刻",
+          "foreground_class": "dark",
+          "actual_clip_tag": "history-scroll-container"
+        },
+        {
+          "selector": "history-subtitle-schedule",
+          "designElement": "leaf_history_subtitle_schedule_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "compare_fields": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "expected_text": "秦皇岛 → 北京南",
+          "foreground_class": "muted",
+          "actual_clip_tag": "history-scroll-container"
+        },
+        {
+          "selector": "history-title-yesterday",
+          "designElement": "leaf_history_title_yesterday_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "compare_fields": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "expected_text": "京沪线沿线车站",
+          "foreground_class": "dark",
+          "actual_clip_tag": "history-scroll-container"
+        },
+        {
+          "selector": "history-group-今天",
+          "designElement": "leaf_history_group_今天_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "compare_fields": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "expected_text": "今天",
+          "foreground_class": "dark",
+          "actual_clip_tag": "history-scroll-container"
+        },
+        {
+          "selector": "history-group-昨天",
+          "designElement": "leaf_history_group_昨天_ink_region",
+          "kind": "painted_text",
+          "comparison": "painted_rect",
+          "compare_fields": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "expected_text": "昨天",
+          "foreground_class": "dark",
+          "actual_clip_tag": "history-scroll-container"
+        }
+      ],
+      "copy_expected": [
+        "对话历史",
+        "搜索对话…",
+        "新建对话",
+        "今天",
+        "昨天",
+        "北京南到上海虹桥票价",
+        "CR400BF-5033 今日交路",
+        "G8932 列车时刻",
+        "京沪线沿线车站",
+        "对话操作",
+        "重命名",
+        "删除对话",
+        "取消",
+        "模型与设置",
+        "使用帮助",
+        "对话操作",
+        "重命名",
+        "删除对话",
+        "取消"
+      ],
+      "interaction_expected": [
+        "history:actions-open",
+        "history:rename-saved",
+        "history:delete-cancelled",
+        "history:new",
+        "history:select:selected"
+      ],
+      "diagnostic_elements": [
+        {
+          "selector": "history-fixed-bottom-links",
+          "kind": "layout_container",
+          "purpose": "record parent layout bounds only; fixed_bottom_links design content uses the safe-bottom reference in HR13-history-bottom-contract.yaml, not this full-width parent"
+        },
+        {
+          "selector": "history-settings-label",
+          "kind": "visible_text",
+          "purpose": "record text layout bounds and separately prove viewport containment and absence of opaque-overlay occlusion"
+        },
+        {
+          "selector": "history-help-label",
+          "kind": "visible_text",
+          "purpose": "record text layout bounds and separately prove viewport containment and absence of opaque-overlay occlusion"
+        },
+        {
+          "selector": "history-settings-icon",
+          "kind": "icon_layout",
+          "purpose": "record icon layout bounds and occlusion separately; layout bounds are not painted-ink bounds"
+        },
+        {
+          "selector": "history-help-icon",
+          "kind": "icon_layout",
+          "purpose": "record icon layout bounds and occlusion separately; layout bounds are not painted-ink bounds"
+        },
+        {
+          "selector": "history-footer-divider",
+          "kind": "divider_layout",
+          "purpose": "record separator bounds and action-panel/cancel occlusion"
+        },
+        {
+          "selector": "history-settings-hit-target",
+          "kind": "touch_target",
+          "purpose": "record clickable bounds separately from label bounds"
+        },
+        {
+          "selector": "history-help-hit-target",
+          "kind": "touch_target",
+          "purpose": "record clickable bounds separately from label bounds"
+        },
+        {
+          "selector": "history-row-<stable-id>",
+          "kind": "session_row",
+          "purpose": "record each fixture ID and actual bounds, viewport intersection, and action-panel overlap"
+        },
+        {
+          "selector": "history-scroll-container",
+          "kind": "continuous_scroll",
+          "purpose": "record actual ScrollState offset and viewport; item indexes are not applicable"
+        }
+      ],
+      "actual_origin_tag": "history-content",
+      "unmeasured_evidence": [
+        "The fixed_bottom_links design target is a visible-content group, while history-fixed-bottom-links is a full-width layout row; their rectangles are not comparable. The HR13 safe-bottom reference does not establish a measured painted-content union or icon silhouette acceptance.",
+        "History uses a continuous verticalScroll Column. ScrollState offset and viewport are recorded separately; LazyList item-index fields are not applicable."
+      ],
+      "scale_basis": {
+        "mode": "application_window",
+        "actual_canvas_tag": "history-content"
+      }
+    },
+    "query_loading": {
+      "coordinate_mode": "component_local",
+      "elements": [
+        {
+          "selector": "query-loading",
+          "designElement": "loading_card",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "query-loading-spinner",
+          "designElement": "spinner",
+          "kind": "canvas",
+          "comparison": "diagnostic_only",
+          "unmeasured_reason": "设计spinner矩形表示原图完整环形墨迹区域，实测query-loading-spinner是43x43 Compose绘制Canvas bounds；二者不是同类矩形。完整墨迹轮廓由native icon target loading-spinner-54按原图ROI和三档阈值独立测量，Canvas尺寸只作诊断。",
+          "actual_anchor": "query-loading",
+          "design_anchor": "loading_card"
+        },
+        {
+          "selector": "main-fixed-input",
+          "designElement": "editable_input_and_stop",
+          "kind": "touch_target",
+          "comparison": "size",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "query-preserve-note",
+          "designElement": "preserve_note",
+          "kind": "painted_text",
+          "comparison": "painted_size",
+          "foreground_class": "muted",
+          "expected_text": "可停止生成，已返回内容会保留",
+          "actual_clip_tag": "main-safe-content"
+        },
+        {
+          "selector": "query-loading-title-and-stage",
+          "designElement": "loading_title_and_stage",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "query-loading-skeletons",
+          "designElement": "skeletons",
+          "kind": "container",
+          "comparison": "size"
+        }
+      ],
+      "copy_expected": [
+        "正在查询列车数据…",
+        "已识别 G8932 · 正在连接 12306",
+        "再看看明天的",
+        "停止生成",
+        "可停止生成，已返回内容会保留"
+      ],
+      "interaction_expected": [
+        "query:stop"
+      ],
+      "unmeasured_evidence": [
+        "The module-frame union has no single product semantics node; component children are measured separately."
+      ],
+      "scale_basis": {
+        "mode": "component_canvas",
+        "actual_canvas_tag": "main-page-content"
+      }
+    },
+    "batch_partial": {
+      "coordinate_mode": "component_local",
+      "elements": [
+        {
+          "selector": "batch-card",
+          "designElement": "batch_card",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "batch-retry-failed",
+          "designElement": "retry_failed_only",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "batch-retain-success",
+          "designElement": "retain_success_note",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "batch-retry-failed-visual",
+          "designElement": "retry_failed_only",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "batch-retain-success-text",
+          "designElement": "retain_success_note",
+          "kind": "painted_text",
+          "comparison": "painted_size",
+          "foreground_class": "muted",
+          "expected_text": "保留已查到的结果",
+          "actual_clip_tag": "main-message-list"
+        }
+      ],
+      "copy_expected": [
+        "时刻查询",
+        "2 / 3 已返回",
+        "C2203",
+        "G8927",
+        "G8928",
+        "已查到",
+        "暂未返回",
+        "仅重试 G8928",
+        "保留已查到的结果"
+      ],
+      "interaction_expected": [
+        "action:train_schedule_batch:[\"G8928\"]:true"
+      ],
+      "scale_basis": {
+        "mode": "component_canvas",
+        "actual_canvas_tag": "main-page-content"
+      }
+    },
+    "routing_empty": {
+      "coordinate_mode": "component_local",
+      "elements": [
+        {
+          "selector": "routing-empty",
+          "designElement": "module_frame",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "empty-icon-group",
+          "designElement": "empty_icon_group",
+          "kind": "canvas",
+          "comparison": "diagnostic_only",
+          "unmeasured_reason": "设计empty_icon_group矩形表示原图列车与搜索glyph的完整墨迹包络，实测empty-icon-group是Compose语义Canvas bounds；二者不是同类矩形。完整组合墨迹由native icon target routing-empty-train-search按原图ROI和三档阈值独立测量，Canvas尺寸只作诊断。"
+        },
+        {
+          "selector": "empty-title",
+          "designElement": "empty_title",
+          "kind": "painted_text",
+          "comparison": "painted_size",
+          "foreground_class": "dark",
+          "expected_text": "未找到当天交路记录",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "empty-message",
+          "designElement": "empty_message",
+          "kind": "painted_text",
+          "comparison": "painted_size",
+          "foreground_class": "muted",
+          "expected_text": "暂无记录，不能据此判断停运。",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "empty-date-pill",
+          "designElement": "date_pill",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "empty-change-date",
+          "designElement": "change_date_action",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "empty-recent",
+          "designElement": "recent_records_action",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "empty-history-note",
+          "designElement": "history_note",
+          "kind": "painted_text",
+          "comparison": "painted_size",
+          "foreground_class": "muted",
+          "expected_text": "历史记录将单独标注日期",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "empty-change-date-visual",
+          "designElement": "change_date_action",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "empty-recent-visual",
+          "designElement": "recent_records_action",
+          "kind": "container",
+          "comparison": "size"
+        }
+      ],
+      "copy_expected": [
+        "未找到当天交路记录",
+        "暂无记录，不能据此判断停运。",
+        "09月25日",
+        "更换日期",
+        "查看最近记录",
+        "历史记录将单独标注日期"
+      ],
+      "interaction_expected": [
+        "action:emu_routing",
+        "date-picker-opened"
+      ],
+      "scale_basis": {
+        "mode": "component_canvas",
+        "actual_canvas_tag": "main-page-content"
+      }
+    },
+    "connection_error": {
+      "coordinate_mode": "component_local",
+      "elements": [
+        {
+          "selector": "connection-error",
+          "designElement": "module_frame",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "error-explanation",
+          "designElement": "error_explanation",
+          "kind": "painted_text",
+          "comparison": "painted_size",
+          "foreground_class": "muted",
+          "expected_text": "你的提问已保留，可稍后重试。",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "connection-retry",
+          "designElement": "retry_action",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "connection-settings",
+          "designElement": "settings_action",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "error-details-toggle",
+          "designElement": "error_details_collapsed",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "api-key-label",
+          "designElement": "api_key_label",
+          "kind": "painted_text",
+          "comparison": "painted_size",
+          "foreground_class": "dark",
+          "expected_text": "API Key",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "api-key-field-visual",
+          "designElement": "api_key_field",
+          "kind": "visible_content",
+          "comparison": "size"
+        },
+        {
+          "selector": "api-key-error",
+          "designElement": "field_error",
+          "kind": "painted_text",
+          "comparison": "painted_size",
+          "foreground_class": "red",
+          "expected_text": "密钥无效，请检查后重试",
+          "actual_clip_tag": "main-message-list"
+        },
+        {
+          "selector": "connection-retry-visual",
+          "designElement": "retry_action",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "connection-settings-visual",
+          "designElement": "settings_action",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "error-details-toggle-visual",
+          "designElement": "error_details_collapsed",
+          "kind": "visible_content",
+          "comparison": "size"
+        }
+      ],
+      "copy_expected": [
+        "暂时无法连接模型服务",
+        "你的提问已保留，可稍后重试。",
+        "重试",
+        "检查模型设置",
+        "错误详情",
+        "API Key",
+        "密钥无效，请检查后重试"
+      ],
+      "interaction_expected": [
+        "query:retry",
+        "settings:auth"
+      ],
+      "scale_basis": {
+        "mode": "component_canvas",
+        "actual_canvas_tag": "main-page-content"
+      }
+    },
+    "reading_followup": {
+      "coordinate_mode": "component_local",
+      "elements": [
+        {
+          "selector": "return-to-bottom",
+          "designElement": "return_to_bottom_cue",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "return-to-bottom-visual",
+          "designElement": "return_to_bottom_cue",
+          "kind": "container",
+          "comparison": "size"
+        },
+        {
+          "selector": "reading-followup-visual-union",
+          "designElement": "followup_actions",
+          "kind": "visible_layout_union",
+          "comparison": "size",
+          "measurement_note": "Union of the two measured painted capsule bounds; use this same-semantic visible union as the follow-up icon registration origin. The 44dp result-suggestions and individual follow-up hit targets remain separate touch measurements."
+        },
+        {
+          "selector": "main-fixed-input",
+          "designElement": "fixed_input_and_send",
+          "kind": "touch_target",
+          "comparison": "size",
+          "compare_fields": [
+            "height"
+          ],
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          },
+          "design_reference": {
+            "state": "train_schedule",
+            "element": "fixed_input",
+            "conflict": "reading_followup.fixed_input_and_send"
+          }
+        },
+        {
+          "selector": "result-followup-1",
+          "designElement": "followup_actions",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "result-followup-2",
+          "designElement": "followup_actions",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        }
+      ],
+      "copy_expected": [
+        "以下是 G8932 次列车的时刻信息：",
+        "有新内容 · 回到底部",
+        "查余票",
+        "换个日期",
+        "继续追问…"
+      ],
+      "interaction_expected": [
+        "reading:false",
+        "followup:draft:查一下 G8932 其他日期的时刻表"
+      ],
+      "unmeasured_evidence": [],
+      "user_resolution": {
+        "confirmed_at": "2026-10-01",
+        "choice": "retain_full_schedule_card",
+        "description": "用户明确阅读状态沿用完整时刻卡片；补充稿五列站次/停留样式不作为新增实现要求。",
+        "schedule_design_reference": "train_schedule"
+      },
+      "scale_basis": {
+        "mode": "component_canvas",
+        "actual_canvas_tag": "main-page-content"
+      }
+    },
+    "query_details": {
+      "coordinate_mode": "component_local",
+      "elements": [
+        {
+          "selector": "query-details",
+          "designElement": "details_panel",
+          "kind": "container",
+          "comparison": "size",
+          "compare_fields": [
+            "height"
+          ]
+        },
+        {
+          "selector": "details-heading-and-source",
+          "designElement": "details_heading_and_source",
+          "kind": "container",
+          "comparison": "size",
+          "compare_fields": [
+            "height"
+          ]
+        },
+        {
+          "selector": "details-date",
+          "designElement": "date_row",
+          "kind": "container",
+          "comparison": "size",
+          "compare_fields": [
+            "height"
+          ]
+        },
+        {
+          "selector": "details-time-basis",
+          "designElement": "time_basis_row",
+          "kind": "container",
+          "comparison": "size",
+          "compare_fields": [
+            "height"
+          ]
+        },
+        {
+          "selector": "details-latency",
+          "designElement": "latency_row",
+          "kind": "container",
+          "comparison": "size",
+          "compare_fields": [
+            "height"
+          ]
+        },
+        {
+          "selector": "details-usage",
+          "designElement": "usage_row",
+          "kind": "container",
+          "comparison": "size",
+          "compare_fields": [
+            "height"
+          ]
+        },
+        {
+          "selector": "technical-log-toggle",
+          "designElement": "technical_log_action",
+          "kind": "touch_target",
+          "comparison": "touch_only",
+          "compare_fields": [
+            "height"
+          ],
+          "size_rule": "minimum",
+          "minimum_touch_px": {
+            "width": 44,
+            "height": 44
+          }
+        },
+        {
+          "selector": "technical-log-visual",
+          "designElement": "technical_log_action",
+          "kind": "visible_content",
+          "comparison": "size",
+          "compare_fields": [
+            "height"
+          ]
+        }
+      ],
+      "copy_expected": [
+        "查询详情",
+        "12306 · 列车时刻",
+        "示例数据",
+        "数据日期",
+        "09月25日",
+        "时间口径",
+        "图定时刻",
+        "查询耗时",
+        "5.8 秒",
+        "用量",
+        "1,555 Token",
+        "查看技术日志"
+      ],
+      "interaction_expected": [
+        "details-expanded"
+      ],
+      "unmeasured_evidence": [
+        "Query details is captured inside the schedule card; current component mappings compare height only. Panel/source/data-row/technical-log visual widths remain unmeasured against the standalone design module. Touch compliance does not prove visual width alignment."
+      ],
+      "scale_basis": {
+        "mode": "component_canvas",
+        "actual_canvas_tag": "main-page-content"
+      }
+    }
+  }
+}

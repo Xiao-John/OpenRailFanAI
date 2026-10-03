@@ -1,0 +1,465 @@
+{
+  "schema": "intent-evaluation-codebook",
+  "version": "1.2",
+  "date": "2026-10-01",
+  "namespace": "intent-evaluation-only",
+  "runtime_contract_changed": false,
+  "requested_fields_rules": {
+    "ordering": "lexicographic_unique",
+    "scope": "per_operation",
+    "known_result_request_must_be_nonempty": true,
+    "generic_field_is_automatic": false,
+    "unknown_codes": "pending_fields_only"
+  },
+  "time_basis": {
+    "scheduled": "图定、公布或计划时刻/历时，包括图定经停站表",
+    "actual": "实际时刻、位置、正晚点、实际历时或预计实际到达",
+    "mixed": "同一完整单元明确要求图定与实际两种口径",
+    "unspecified": "涉及运行时刻/历时但口径未确定",
+    "not_applicable": "请求结果不涉及上述运行时刻/历时口径，允许事实随日期变化"
+  },
+  "disallowed_time_basis": [
+    "reference",
+    "retrieved_fact",
+    "model_knowledge",
+    "unresolved"
+  ],
+  "operations": {
+    "train.stops": {
+      "intent": "schedule",
+      "generic_field": "stop_sequence",
+      "generic_time_basis": "scheduled",
+      "requested_fields": {
+        "stop_sequence": "完整经停站列表及站序",
+        "stop_membership": "指定车站是否为经停站",
+        "stopover_time": "指定站停站时长"
+      }
+    },
+    "train.timetable": {
+      "intent": "schedule",
+      "generic_field": "timetable",
+      "generic_time_basis": "scheduled",
+      "requested_fields": {
+        "timetable": "泛指公布时刻表",
+        "train_list": "符合车次或区间条件的服务列表",
+        "departure_time": "指定车次在指定站或查询区间起点的开点",
+        "arrival_time": "指定车次在指定站或查询区间终点的到点",
+        "departure_station": "所问服务的发站",
+        "arrival_station": "所问服务的到站",
+        "schedule_change": "指定服务是否改点或时刻变更情况"
+      }
+    },
+    "train.duration": {
+      "intent": "schedule",
+      "generic_field": "duration",
+      "generic_time_basis": "scheduled",
+      "requested_fields": {
+        "duration": "指定旅程或区间历时",
+        "remaining_duration": "到所问地点的剩余历时"
+      }
+    },
+    "train.operating_status": {
+      "intent": "schedule",
+      "generic_field": "operating_status",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "operating_status": "指定日是否开行或停运",
+        "operating_days": "开行日期或周期",
+        "operating_frequency": "开行频率"
+      }
+    },
+    "train.actual_status": {
+      "intent": "schedule",
+      "generic_field": "actual_status",
+      "generic_time_basis": "actual",
+      "requested_fields": {
+        "actual_status": "泛指实际运行状况；具体位置或正晚点请求使用相应具体字段",
+        "position": "实际运行位置；仅泛指现在到哪里时使用",
+        "delay": "实际正晚点状态或晚点量",
+        "actual_arrival_time": "实际到达时刻或已到达状态",
+        "actual_departure_time": "实际出发时刻或已出发状态",
+        "eta": "预计实际到达时刻",
+        "remaining_duration": "基于实际运行的剩余历时"
+      }
+    },
+    "emu.assignment": {
+      "intent": "emu_routing",
+      "generic_field": "assignment",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "assignment": "泛指车次的担当信息",
+        "model": "担当车型",
+        "emu_no": "担当具体车组号",
+        "coupled_status": "是否重联及重联情况",
+        "formation": "担当编组形式或辆数",
+        "operator_bureau": "担当运营局；不能据此猜测车组号"
+      }
+    },
+    "emu.routing": {
+      "intent": "emu_routing",
+      "generic_field": "routing",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "routing": "泛指车型或车组的交路",
+        "assigned_trains": "车型或车组担当的车次列表",
+        "route_membership": "车型或车组是否运行于指定线路或走廊"
+      }
+    },
+    "emu.affiliation": {
+      "intent": "emu_routing",
+      "generic_field": "affiliation",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "affiliation": "泛指具体车组配属",
+        "operator_bureau": "配属铁路局",
+        "depot": "配属段所"
+      }
+    },
+    "rail.route": {
+      "intent": "rail_line",
+      "generic_field": "route",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "route": "区间铁路径路",
+        "endpoints": "所问线路或径路起终点"
+      }
+    },
+    "rail.mileage": {
+      "intent": "rail_line",
+      "generic_field": "mileage",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "mileage": "线路或区间距离",
+        "segment_count": "线路或区间段数；不是距离",
+        "mileage_basis": "所检索里程的计量口径"
+      }
+    },
+    "rail.stations": {
+      "intent": "rail_line",
+      "generic_field": "station_list",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "station_list": "线路沿线车站列表",
+        "station_membership": "指定站是否位于所问线路"
+      }
+    },
+    "station.profile": {
+      "intent": "station",
+      "generic_field": "profile",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "profile": "泛指单站档案",
+        "telegraph_code": "车站电报码",
+        "station_grade": "车站等级",
+        "platform_count": "站台数量",
+        "floor_layout": "车站楼层或空间布局",
+        "transfer_facility": "换乘设施或通道",
+        "transfer_rule": "车站具体换乘规则",
+        "distance_to_city": "车站与所指城区地点的距离",
+        "identity_check": "车站名称或身份确认"
+      }
+    },
+    "station.screen": {
+      "intent": "station",
+      "generic_field": "screen",
+      "generic_time_basis": "unspecified",
+      "requested_fields": {
+        "screen": "泛指到发屏信息",
+        "train_list": "到发屏所列车次",
+        "departure_time": "到发屏所列开点，口径另填 time_basis",
+        "arrival_time": "到发屏所列到点，口径另填 time_basis",
+        "gate": "检票口",
+        "platform": "所问车次对应站台",
+        "boarding_start_time": "开始检票或进站乘车时刻",
+        "delay_notice": "屏上正晚点提示"
+      }
+    },
+    "ticket.availability": {
+      "intent": "ticket",
+      "generic_field": "availability",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "availability": "指定条件下是否可售或有票",
+        "remaining_count": "余票数量",
+        "waitlist_status": "候补是否可用或候补状态"
+      }
+    },
+    "ticket.fare": {
+      "intent": "ticket",
+      "generic_field": "fare",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "fare": "指定服务、区间、席别的价格"
+      }
+    },
+    "photo.spot": {
+      "intent": "photo_spot",
+      "generic_field": "spot_options",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "spot_options": "候选拍摄机位或位置",
+        "shooting_suitability": "指定地点或机位是否适合所问拍摄",
+        "best_time_window": "所问拍摄位置或目标的适宜时段",
+        "emu_types": "所问地点可拍车型",
+        "spot_status": "机位现状或是否可用；不宣称安全性已验证"
+      }
+    },
+    "news.update": {
+      "intent": "news",
+      "generic_field": "news_list",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "news_list": "泛指相关近期消息",
+        "opening_status": "项目或线路开通进展/是否开通",
+        "timetable_change": "运行图调整动态",
+        "announcement": "公告内容",
+        "future_service_plan": "公布或询问的未来开行计划；不伪造预测",
+        "service_change": "服务变更动态"
+      }
+    },
+    "knowledge.explain": {
+      "intent": "general",
+      "generic_field": "explanation",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "explanation": "泛指知识解释、原理或概念",
+        "specification": "泛指技术规格；明确主题在 constraints 保留",
+        "naming": "命名来源或命名含义",
+        "history": "历史背景或发展",
+        "capacity": "容量或运能知识",
+        "freight_types": "货物种类知识",
+        "identity_check": "知识对象身份或名称确认",
+        "mileage_calculation_basis": "里程如何计算的原理；区别于检索某段里程",
+        "model_type": "车型类别知识",
+        "operational_speed": "技术或运营速度知识"
+      }
+    },
+    "knowledge.compare": {
+      "intent": "general",
+      "generic_field": "comparison",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "comparison": "成对知识对象或概念的比较；比较主题在 constraints 保留"
+      }
+    },
+    "transport.nonrail": {
+      "intent": "general",
+      "generic_field": "route_options",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "route_options": "非铁路交通路线或出行选择",
+        "departure_station": "非铁路乘车出发地点",
+        "fare": "非铁路费用或票价",
+        "availability": "非铁路交通可售或可用状态",
+        "duration": "非铁路行程耗时",
+        "comparison": "非铁路交通选择比较；比较对象保持成对角色"
+      }
+    },
+    "journey.transfer": {
+      "intent": "general",
+      "generic_field": "transfer_plan",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "transfer_plan": "明确要求的中转或接续方案",
+        "transfer_feasibility": "给定关系能否接续或换乘",
+        "transfer_required": "是否需要换乘",
+        "transfer_count": "换乘次数",
+        "interchange_station": "应在哪里换乘",
+        "fastest_option": "明确要求的最快接续选项",
+        "full_itinerary": "明确要求完整中转行程；三段行程背景不自动触发"
+      }
+    },
+    "general.chat": {
+      "intent": "general",
+      "generic_field": "reply",
+      "generic_time_basis": "not_applicable",
+      "requested_fields": {
+        "reply": "明确闲聊或非查询交互的回复；不用于掩盖未知铁路操作"
+      }
+    }
+  },
+  "legacy_aliases": [
+    {
+      "operation": "train.stops",
+      "from": "stop_list",
+      "to": "stop_sequence",
+      "condition": "原文要求经停站列表，不是是否停某站"
+    },
+    {
+      "operation": "rail.mileage",
+      "from": "length",
+      "to": "mileage",
+      "condition": "原文要求距离，不是段数或计量原理"
+    },
+    {
+      "operation": "emu.routing",
+      "from": "train_list",
+      "to": "assigned_trains",
+      "condition": "原文问车型或车组担当哪些车次，不是在哪些线路上运行"
+    },
+    {
+      "operation": "emu.routing",
+      "from": "assignment_list",
+      "to": "assigned_trains",
+      "condition": "原文明确要求担当车次列表；泛指交路改用 routing"
+    },
+    {
+      "operation": "photo.spot",
+      "from": "photo_spots",
+      "to": "spot_options",
+      "condition": "原文要求候选机位，不是指定机位适宜性"
+    },
+    {
+      "operation": "photo.spot",
+      "from": "busy_window",
+      "to": "best_time_window",
+      "condition": "原文要求适宜拍摄时段；不得丢掉列车密度等具体主题"
+    },
+    {
+      "operation": "station.profile",
+      "from": "layout",
+      "to": "floor_layout",
+      "condition": "原文要求站内楼层或空间布局"
+    },
+    {
+      "operation": "station.profile",
+      "from": "distance_to_downtown",
+      "to": "distance_to_city",
+      "condition": "原文所指城区地点保留，未擅自改成另一个城市中心"
+    },
+    {
+      "operation": "station.screen",
+      "from": "boarding_time",
+      "to": "boarding_start_time",
+      "condition": "原文要求开始检票或开始乘车的时刻"
+    },
+    {
+      "operation": "train.operating_status",
+      "from": "running_frequency",
+      "to": "operating_frequency",
+      "condition": "原文明确要求开行频率"
+    },
+    {
+      "operation": "emu.assignment",
+      "from": "is_coupled",
+      "to": "coupled_status",
+      "condition": "原文明确问是否重联"
+    },
+    {
+      "operation": "news.update",
+      "from": "announcements",
+      "to": "announcement",
+      "condition": "原文要求公告"
+    },
+    {
+      "operation": "news.update",
+      "from": "open_status",
+      "to": "opening_status",
+      "condition": "原文问项目或线路开通，不是列车开行"
+    },
+    {
+      "operation": "news.update",
+      "from": "adjustment",
+      "to": "timetable_change",
+      "condition": "原文明确问调图动态"
+    },
+    {
+      "operation": "train.actual_status",
+      "from": "arrival_time",
+      "to": "actual_arrival_time",
+      "condition": "原文确为实际到达时刻/已到达状态，不是图定到点"
+    },
+    {
+      "operation": "train.actual_status",
+      "from": "remaining_time",
+      "to": "remaining_duration",
+      "condition": "原文确为实际剩余历时，不是预计到达的钟点"
+    },
+    {
+      "operation": "transport.nonrail",
+      "from": "route",
+      "to": "route_options",
+      "condition": "原文要求非铁路路线选择，保持具体交通方式"
+    },
+    {
+      "operation": "transport.nonrail",
+      "from": "transfer_route",
+      "to": "route_options",
+      "condition": "原文要求非铁路交通换乘路线，完整路线关系保留"
+    },
+    {
+      "operation": "transport.nonrail",
+      "from": "cost",
+      "to": "fare",
+      "condition": "原文明确交通费用；若是完整旅行预算则仍待分类裁决"
+    },
+    {
+      "operation": "transport.nonrail",
+      "from": "boarding_location",
+      "to": "departure_station",
+      "condition": "原文明确非铁路乘车出发地点"
+    }
+  ],
+  "non_equivalent_pairs": [
+    [
+      "stop_membership",
+      "stop_sequence"
+    ],
+    [
+      "station_membership",
+      "station_list"
+    ],
+    [
+      "segment_count",
+      "mileage"
+    ],
+    [
+      "emu_no",
+      "assignment"
+    ],
+    [
+      "operator_bureau",
+      "assignment"
+    ],
+    [
+      "shooting_suitability",
+      "spot_options"
+    ],
+    [
+      "endpoints",
+      "route"
+    ],
+    [
+      "availability",
+      "fare"
+    ],
+    [
+      "arrival_time",
+      "timetable"
+    ],
+    [
+      "departure_time",
+      "timetable"
+    ]
+  ],
+  "relation_unit_rules": {
+    "origin_destination": "同一查询区间在一个完整单元中",
+    "left_right": "同一比较关系在一个完整单元中",
+    "arriving_departing": "同一接续关系在一个完整单元中",
+    "unassigned_trains": "方向角色为 null 时，在 constraints.unassigned_trains 按提及顺序保存车次；顺序不分配角色",
+    "shared_entities": "复制到每份独立绑定，不新建共同实体单元",
+    "train_at_station": "使用 train+station，不据单站开点/到点反推全程始发终到"
+  },
+  "date_rules": {
+    "anchor": "per_input_clock",
+    "single_date": "date.resolved",
+    "range": "date.resolved_range with ISO start/end inclusive; single resolved=null",
+    "range_evidence": "preserve window_raw",
+    "raw": "input_quote"
+  },
+  "notes": [
+    "本表不更改展示协议 time_basis 的 reference/stations_only 语义。",
+    "枚举合规不等于语义正确；标签不是黄金答案。",
+    "未冻结的分类、constraints 或行程引用结构显式 pending，不计算虚假的完整准确率。"
+  ]
+}

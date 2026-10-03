@@ -30,6 +30,7 @@ class ChatRequest(BaseModel):
         default_factory=list,
         description="此前已完成的多轮对话（不含本次 message），用于上下文理解",
     )
+    display_action: Optional[dict] = Field(None, description="由界面发起的结构化展示动作参数")
 
     # ---- 供应商选择（BYOK：用户自备 Key；同一个后端可服务多套 Key）----
     # 这些字段允许前端按请求指定 LLM 供应商，覆盖服务端配置。
@@ -120,11 +121,23 @@ class PipelineResult(BaseModel):
         description="回答是否因输出长度上限被截断（模型 finish_reason=length / 响应 incomplete）。"
                     "为 True 时前端必须如实提示，不能让用户以为是内容写完了。",
     )
+    truncate_reason: str | None = Field(
+        None,
+        description="截断原因：length（长度上限）/ repetition（模型退化成连续重复）。"
+                    "两者对用户的意义相反 —— 前者调大上限可解决，后者调大只会重复更久，"
+                    "所以必须分开，不能混成一句提示。",
+    )
     planner: str = Field(
         "llm-legacy",
         description="决策来源：deterministic（确定性快路径）/ llm-merged（合并调用）/ llm-legacy（两次调用）",
+    )
+    degraded: bool = Field(
+        False,
+        description="回答是否由**确定性规则排版**降级产出（模型不可用但检索已完成）。"
+                    "为 True 时 answer 不是模型输出、正文首行已自报，客户端必须据此如实标注。",
     )
     usage: dict = Field(default_factory=lambda: {
         "total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0,
     })                                                    # 本请求累计 token（输入/输出/总）
     latency_ms: float = Field(default=0.0, description="本次流水线整体耗时（毫秒）")
+    display_results: list[dict] = Field(default_factory=list, description="由工具结构化数据投影的展示结果；旧会话可为空")

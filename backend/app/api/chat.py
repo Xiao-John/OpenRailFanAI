@@ -68,7 +68,7 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     history = _to_history(req)
 
     async def gen():
-        agen = orchestrator.run_stream(req.message, history=history, llm=req.llm_spec())
+        agen = orchestrator.run_stream(req.message, history=history, llm=req.llm_spec(), display_action=req.display_action)
         completed = False
         try:
             async for event in agen:

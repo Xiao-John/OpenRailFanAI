@@ -13,7 +13,10 @@ import { applyTheme, normalizeMode, watchSystemTheme } from "./theme.js";
 
 const LS_CONVS = "railfan_conversations_v1";
 const LS_CURRENT = "railfan_current_conv_v1";
-const LS_TOTAL = "railfan_total_tokens";
+// 旧版把"累计 token"存成一个不受对话约束的全局计数器。**已废弃**：
+// 现在按当前对话的消息现算（见 totalTokens）。这个键名留着只为在迁移时**清掉它**
+// —— 不清的话它永远躺在用户存储里，将来有人看到会以为还有谁在读它。
+const LS_TOTAL_STALE = "railfan_total_tokens";
 const LS_THEME = "railfan_theme";
 // 主题偏好的一次性迁移标记（见 migrateTheme）
 const LS_THEME_MIGRATED = "railfan_theme_v2";
@@ -60,10 +63,11 @@ function nativeBackend() {
   // 这是**最后的机会**：旧版本的数据躺在某个固定端口的 localStorage 里，
   // 升级后想找回它就得靠运气，所以只要原生侧还是空的就搬一次。
   if (!Object.keys(doc).length && LS_FALLBACK) {
-    for (const k of [LS_CONVS, LS_CURRENT, LS_TOTAL, LS_THEME, LS_LLM]) {
+    for (const k of [LS_CONVS, LS_CURRENT, LS_THEME, LS_LLM]) {
       const v = LS_FALLBACK.getItem(k);
       if (v != null) doc[k] = v;
     }
+    LS_FALLBACK.removeItem(LS_TOTAL_STALE);      // 反正是死键，顺手清掉
   }
 
   let timer = null;
@@ -382,13 +386,22 @@ export const store = {
   },
 
   // ---------- 累计 token ----------
+  //
+  // **按"当前对话"求和，不再是一个全局计数器。**
+  //
+  // 旧实现把用量累加进一个 localStorage 全局值（`railfan_total_tokens`），于是：
+  //   · 新开一个对话，底部那个数**不归零**（它是历史总和，不是这次的）；
+  //   · 删消息 / 编辑重发之后，数字**只增不减** —— 它记的是"发生过什么"，
+  //     而用户读它是在问"我现在这段对话花了多少"。
+  // 从消息里现算就把这两个问题一起消掉了，并且**自愈**：删了、改了，数字自然跟着变。
+  //
+  // 配套改动（缺一不可）：后端流式请求必须显式索取 usage
+  // （`stream_options.include_usage`，见 backend/app/llm/client.py）。否则每条
+  // 消息的 usage 都是 0，求和的结果恒为 0 —— 那只是把"数字不对"换成了"数字没有"。
   totalTokens() {
-    return Number(db.getItem(LS_TOTAL) || 0);
-  },
-  bumpTotal(n) {
-    const v = this.totalTokens() + (Number(n) || 0);
-    db.setItem(LS_TOTAL, String(v));
-    return v;
+    const conv = this.current();
+    return ((conv && conv.messages) || []).reduce(
+      (s, m) => s + (((m.meta || {}).usage || {}).total_tokens || 0), 0);
   },
 
   // ---------- 外观主题 ----------

@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import logging
+import asyncio
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -97,7 +98,7 @@ async def list_provider_models(req: ProviderTestRequest) -> dict:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    _guard_base_url(provider)
+    await asyncio.to_thread(_guard_base_url, provider)
 
     _log.info("拉取模型清单：id=%s base_url=%s has_key=%s",
               provider.id, provider.base_url, bool(provider.api_key))
@@ -123,7 +124,7 @@ async def test_provider(req: ProviderTestRequest) -> dict:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    _guard_base_url(provider)
+    await asyncio.to_thread(_guard_base_url, provider)
 
     _log.info(
         "测试供应商：id=%s base_url=%s api=%s model=%s has_key=%s",

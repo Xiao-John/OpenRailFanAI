@@ -1,0 +1,1228 @@
+// RailFanAI —— 前端入口（多对话 + 设置 + 移动优先自适应）
+// 版本号不写在这里：唯一来源是仓库根的 VERSION，由 pages.loadAppVersion() 运行时取。
+//
+// 结构：
+//   store.js   本机数据层（对话与偏好，localStorage）
+//   pages.js   内容页（使用帮助、免责声明、关于）
+//   main.js    应用外壳：路由（hash）、侧栏会话列表、对话视图（SSE 流式）
+//
+// 能力（延续 M8/M10，并新增多对话）：
+//   1) 多对话：会话列表可新建/切换/重命名/删除/搜索，数据保存在本机浏览器，不再"新对话覆盖旧的"
+//   2) 多轮上下文：以当前对话的消息为准，每次把此前消息作为 history 回传
+//   3) 暂停输出：生成中「发送」变「■ 停止」，AbortController 中断并保留已生成内容
+//   4) 编辑重发 / 重新生成：丢弃目标消息之后的内容后重跑
+//   5) 三端自适应：移动优先（抽屉侧栏），≥1024px 侧栏常驻
+//   6) 无需登录：对话匿名可用，不存任何凭据
+import { store } from "./store.js";
+import { renderMarkdown } from "./markdown.js";
+import { rafThrottle } from "./throttle.js";
+import { native } from "./native.js";
+import { renderDocPage, renderSettingsPage, versionLabel, loadAppVersion,
+         ROOT_KEY_ID } from "./pages.js";
+
+// API 地址：默认与页面同源（空串 → 相对路径）；可由宿主注入 window.__API_BASE__
+const API_BASE = window.__API_BASE__ || "";
+
+// ---------- DOM ----------
+const chatEl = document.getElementById("chat");
+const inputEl = document.getElementById("input");
+const sendBtn = document.getElementById("send");
+const totalEl = document.getElementById("total-tokens");
+const ctxEl = document.getElementById("ctxinfo");
+const toastEl = document.getElementById("toast");
+const sidebarEl = document.getElementById("sidebar");
+const scrimEl = document.getElementById("scrim");
+const convListEl = document.getElementById("conv-list");
+const convSearchEl = document.getElementById("conv-search");
+const menuBtn = document.getElementById("menu-btn");
+const convTitleEl = document.getElementById("conv-title");
+const viewChat = document.getElementById("view-chat");
+const viewPage = document.getElementById("view-page");
+const pageBody = document.getElementById("page-body");
+const verBadge = document.getElementById("ver-badge");
+const llmBtn = document.getElementById("llm-btn");
+
+// ---------- 运行态 ----------
+const state = {
+  generating: false,
+  controller: null,
+  convId: null,       // 当前对话 id（与 store.currentId 同步）
+  live: null,         // {convId, index}：此刻正在流式生成的那条消息（见 renderAssistantRow）
+  providers: [],      // 服务端返回的供应商列表（用于顶栏显示名字）
+  llmReady: false,
+  // 本安装包**具备**设备端推理能力吗（含推理二进制）。
+  // 只是"能不能"，不代表已经下好模型 —— 用来决定引导条该指向哪条路。
+  localModelAvailable: false,
+  // `/api/local-model` 的最近一次响应。发热提醒要用它的 uptime_s 与 state。
+  localModel: null,
+};
+
+// 本地推理"跑多久"才值得弹一次发热提醒（分钟）。
+// 10 分钟是按"用户会开始觉得手机烫"的量级定的，不是精确阈值 —— 小于它去打扰
+// 就变成噪音，大于它用户已经把 App 关掉去查"为什么手机发烫"了。
+const LOCAL_MODEL_HEAT_MINUTES = 10;
+
+// ---------- LLM 供应商（BYOK）----------
+/**
+ * **由服务端自己拥有的**供应商：模型名 / 地址都是服务端的事实，前端回传只会过期。
+ *
+ * `ondevice` 的模型名是服务端启的 llama-server 决定的，而用户随时可能在设置页
+ * 切换档位（2B↔4B）。前端如果存了一份名字再回传，换档之后发出去的就是旧名字。
+ * 这与之前那次 SSRF 事故（前端回传 base_url → 供应商被降级成请求级 → 撞守卫）
+ * **是同一个病根**：把服务端自己的事实回传给服务端。
+ * 所以这里**显式**按 id 拉黑，而不是指望"以后没人再往里写字段"。
+ */
+const SERVER_OWNED_PROVIDERS = ["ondevice"];
+
+/** 组装随请求下发的供应商覆盖；未做任何选择时返回空对象（用服务端配置）。 */
+function llmSpec() {
+  const e = store.activeLlmEntry();
+  if (!e) return {};                       // 一条都没配 → 用服务端配置
+  const spec = {};
+  if (SERVER_OWNED_PROVIDERS.includes(e.id)) {
+    // 只下发 id：地址、模型名、Key 一概不传（服务端注册表里都有，而且是权威的）
+    spec.provider = e.id;
+    return spec;
+  }
+  if (e.custom || !e.id || e.id.startsWith("custom-")) {
+    if (e.base_url) spec.base_url = e.base_url;   // 自定义：按地址下发
+  } else {
+    spec.provider = e.id;                        // 预设：按 id 下发
+    if (e.base_url) spec.base_url = e.base_url;   // 允许覆盖地址（中转站场景）
+  }
+  if (e.model) spec.model = e.model;
+  if (e.api) spec.api = e.api;
+  if (e.key) spec.api_key = e.key;
+  if (e.max_tokens) spec.max_tokens = e.max_tokens;
+  if (e.context_tokens) spec.context_tokens = e.context_tokens;
+  return spec;
+}
+
+/**
+ * 判断"当前是否已配置可用模型"。
+ *
+ * **必须先看客户端自己的 BYOK 条目**，再看服务端 llm_ready：
+ * Android 等自备 Key 的场景下服务端根本没有 Key（返回 llm_ready=false），
+ * 若只看服务端，用户明明配好了却会被判定为"未配置"而拦下发送（实测踩到）。
+ * 本地免 Key 服务（Ollama/LM Studio/vLLM）同样算已配置。
+ */
+function llmConfigured() {
+  const e = store.activeLlmEntry();
+  if (e) {
+    // 免 Key 的本地/自建服务：有这些 id 就该认为"已配置"，否则界面会一直挂着
+    // "尚未配置模型 API"的引导条 —— 用户明明已经点过"设为当前使用"了。
+    const keyless = ["ollama", "lmstudio", "vllm", "ondevice"].includes(e.id);
+    if (e.key || keyless) return true;
+  }
+  return !!state.llmReady || !!state.llmMock;
+}
+
+/**
+ * 顶栏入口：显示"⚙️ 设置"，并把当前实际生效的供应商接在后面。
+ *
+ * 为什么还留这一截后缀：这个按钮同时是"现在到底在用谁"的唯一提示（BYOK 场景下
+ * 用户经常以为在跑 A 其实在跑 B）。按钮名字必须叫「设置」（它现在同时承载模型配置
+ * 与关于），但把供应商整段丢掉是拿功能换整洁，所以折中成「设置 · <名字>」——
+ * 后缀截断到 16 字，否则长模型名会把标题和对话名挤没。
+ */
+async function refreshProviderBadge() {
+  if (!llmBtn) return;
+  const e = store.activeLlmEntry();
+  // 没有可用供应商时沿用旧文案"未配置"：这是它变成纯「设置」入口后
+  // 唯一还留在顶栏的配置状态提示（引导条被用户关掉时全靠它）
+  let text = "未配置";
+  let title = "尚未配置模型 —— 点击选择供应商并填入 API Key";
+  if (e) {
+    text = e.model || e.label || e.id;
+    title = `当前使用：${e.label || e.id}${e.model ? " · " + e.model : ""}`
+      + `${e.base_url ? "\n" + e.base_url : ""}`;
+    if (!e.key && !(e.id === "ollama" || e.id === "lmstudio" || e.id === "vllm" || e.id === "ondevice")) {
+      text = "缺 Key";
+      title += "\n（尚未填写 API Key）";
+    }
+  } else {
+    const p = state.providers.find((x) => x.id === state.serverActive);
+    if (p) { text = p.label; title = "使用服务端配置：" + p.label; }
+  }
+  const txtEl = llmBtn.querySelector(".txt");
+  if (txtEl) {
+    if (String(text).length > 16) text = String(text).slice(0, 16) + "…";
+    txtEl.textContent = text ? " 设置 · " + text : " 设置";
+  }
+  llmBtn.title = title + "（点击修改）";
+}
+
+async function loadProviders() {
+  try {
+    const resp = await fetch(API_BASE + "/api/providers");
+    if (!resp.ok) return;
+    const body = await resp.json();
+    state.providers = body.providers || [];
+    state.serverActive = body.active || "";
+    state.llmReady = !!body.llm_ready;
+    state.llmMock = !!body.mock;
+    await refreshLocalModelState();
+  } catch {
+    /* 服务端不可达时保持空列表，顶栏退回"服务端默认" */
+  }
+  await refreshProviderBadge();
+  renderLlmNotice();
+  updateCtxInfo(null);   // 参数为空时自行取当前对话消息
+}
+
+/**
+ * 取一次本地模型状态，存进 `state.localModel`。
+ *
+ * 两件事共用它：
+ *   · 引导条要据此决定指向「一键下载」还是「填 Key」（`binary_present`）；
+ *   · **发热提醒**要据此知道"这个常驻进程已经跑了多久"（`uptime_s`）。
+ *
+ * 失败时**保持上一次的值而不清空**：网络抖一下不该让界面从"运行中"变成"没有"，
+ * 那会让提醒突然消失 —— 而提醒突然消失比它晚出现更糟。
+ */
+async function refreshLocalModelState() {
+  try {
+    const lm = await fetch(API_BASE + "/api/local-model");
+    if (!lm.ok) return state.localModel;
+    const d = await lm.json();
+    state.localModel = d;
+    state.localModelAvailable = !!d.binary_present;
+  } catch { /* 保持旧值 */ }
+  return state.localModel;
+}
+
+/**
+ * 未配置模型时给出**可操作的引导**（而不是等用户问完再报错）。
+ *
+ * 三种情形分开处理，因为用户该做的事完全不同：
+ *   - Mock 模式：能用，但回答是确定性的本地 mock，需说明清楚，避免误以为是真模型；
+ *   - 未配置任何 Key：引导去设置页填自己的 Key（社区版不内置 Key）；
+ *   - 已配置：不打扰。
+ */
+function renderLlmNotice() {
+  const box = document.getElementById("llm-notice");
+  const text = document.getElementById("llm-notice-text");
+  const go = document.getElementById("llm-notice-go");
+  if (!box || !text) return;
+
+  if (state.llmNoticeDismissed) {
+    box.classList.add("hidden");
+    return;
+  }
+
+  // **发热提醒优先**：它有时效性，而"去配置"随时都在。
+  //
+  // 为什么单独做这一条：本地推理是个常驻进程 —— App 一启动就把它拉起来
+  // （只要下过模型），之后它会一直占着内存和 CPU 线程。手机没有风扇，
+  // 表现是机身持续温热 + 掉电明显变快，而用户**根本不会把这两件事联系起来**，
+  // 只会觉得"这个 App 让手机发烫"。所以每当他回到应用、且它已经跑了很久，就说一句。
+  const lm = state.localModel;
+  const mins = lm ? Math.floor((lm.uptime_s || 0) / 60) : 0;
+  if (lm && (lm.state === "ready" || lm.state === "starting")
+      && mins >= LOCAL_MODEL_HEAT_MINUTES && llmConfigured()) {
+    text.textContent = `⚠️ 本地推理已在后台连续运行 ${mins} 分钟：它会一直占着内存和 CPU，`
+      + `手机因此持续发热、掉电变快。不用的时候到设置里点「停用」；`
+      + `确定这段时间都不用本地模型，就把文件删掉（占 ${lm.model_size_mb || 0} MB）。`;
+    go.textContent = "去停用";
+    box.classList.remove("hidden");
+  } else if (state.llmMock) {
+    text.textContent = "当前为 Mock 演示模式（LLM_MOCK=true）：回答由本地确定性规则生成，不是真实模型。";
+    go.textContent = "配置真实模型";
+    box.classList.remove("hidden");
+  } else if (!llmConfigured()) {
+    // 文案**先给免费的那条路**：本包装了设备端推理，用户完全可以不下任何 Key、
+    // 不花一分钱就把助手跑起来。旧文案只说"填你自己的 Key"，把最省事的路藏起来了 ——
+    // 实测：全新安装的用户第一步会被支去配 Key，而「一键下载本地模型」就在设置页里。
+    text.textContent = state.localModelAvailable
+      ? "还没配置模型。最省事的是去设置页点一下「一键下载并启用」：模型在手机上跑，"
+        + "不用 API Key、不产生任何费用。也可以填自己的 OpenAI 兼容接口。"
+      : "尚未配置模型 API：社区版不内置 Key，请填你自己的 OpenAI 兼容接口"
+        + "（支持 chat.completions 与 responses 两种方言，也可选本地 Ollama 等免 Key 服务）。";
+    go.textContent = state.localModelAvailable ? "去下载本地模型" : "去配置";
+    box.classList.remove("hidden");
+  } else {
+    box.classList.add("hidden");
+  }
+
+  if (!go._wired) {
+    go._wired = true;
+    go.addEventListener("click", () => navigate("#/settings"));
+    const close = document.getElementById("llm-notice-close");
+    if (close) {
+      close.addEventListener("click", () => {
+        // 关闭是会话级记忆：不要每次重绘又弹回来
+        state.llmNoticeDismissed = true;
+        box.classList.add("hidden");
+      });
+    }
+  }
+}
+
+// ---------- 小工具 ----------
+// Markdown 渲染在 ./markdown.js 里：它的规则（尤其表格）边界情况多，
+// 单独成模块才能用 node 直接跑测试，不必起浏览器。
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+function details(title, bodyNodes) {
+  const d = el("details", "fold");
+  d.appendChild(el("summary", null, title));
+  const div = el("div", "fold-body");
+  for (const n of bodyNodes) div.appendChild(n);
+  d.appendChild(div);
+  return d;
+}
+let toastTimer = null;
+/** duration 可调：默认 1.8s 够读"已复制"，但读不完一句要用户照做的长提示。 */
+function toast(msg, duration = 1800) {
+  if (!toastEl) return;
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), duration);
+}
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("已复制");
+  } catch {
+    const ta = el("textarea", null, text);
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); toast("已复制"); }
+    catch { toast("复制失败，请手动选择"); }
+    document.body.removeChild(ta);
+  }
+}
+/** 分享一条回答：正文与「复制」保持一致（避免"复制到的是 A、分享出去的是 B"），
+ *  再附上来源链接 —— 收到的人想核对出处时不必回头找。 */
+async function shareText(msg) {
+  let text = String((msg && msg.content) || "");
+  const sources = (msg && msg.meta && msg.meta.sources) || [];
+  if (Array.isArray(sources) && sources.length) text += "\n\n数据来源：\n" + sources.join("\n");
+  try {
+    const ok = await native.share(text);
+    // 返回值只表示"分享面板有没有被唤起"：用户在系统面板上按返回取消是正常操作，
+    // 弹错误只会让人以为程序坏了。
+    //
+    // 但**桌面浏览器没有分享面板**时，native.share 会退化成"复制到剪贴板" ——
+    // 那种情况下什么都不说，用户点了没反应，只会以为坏了。所以这一条要如实讲。
+    if (!native.available && !navigator.share) {
+      toast(ok ? "当前环境没有分享面板，内容已复制到剪贴板" : "复制失败：请改用「复制」按钮");
+    }
+  } catch (e) {
+    toast("分享失败：" + ((e && e.message) || "当前环境不支持分享"));
+  }
+}
+
+function scrollBottom() {
+  chatEl.scrollTop = chatEl.scrollHeight;
+  // WebView 在首帧排版后还可能调整字体和按钮高度；下一帧再对齐一次。
+  requestAnimationFrame(() => { chatEl.scrollTop = chatEl.scrollHeight; });
+}
+
+function relTime(ts) {
+  const d = Date.now() - (ts || 0);
+  if (d < 60e3) return "刚刚";
+  if (d < 3600e3) return Math.floor(d / 60e3) + " 分钟前";
+  if (d < 86400e3) return Math.floor(d / 3600e3) + " 小时前";
+  if (d < 7 * 86400e3) return Math.floor(d / 86400e3) + " 天前";
+  const dt = new Date(ts);
+  return `${dt.getMonth() + 1}月${dt.getDate()}日`;
+}
+
+// ---------- 通用弹层（确认 / 输入） ----------
+function modal({ title, message, value, okText = "确定", danger = false, withInput = false }) {
+  return new Promise((resolve) => {
+    const scrim = el("div", "modal-scrim");
+    const box = el("div", "modal");
+    box.appendChild(el("h4", null, title));
+    if (message) box.appendChild(el("p", null, message));
+    let input = null;
+    if (withInput) {
+      input = el("input");
+      input.value = value || "";
+      input.style.cssText = "width:100%;background:var(--panel-2);border:1px solid var(--line);" +
+        "color:var(--fg);border-radius:10px;padding:11px 12px;font-size:15px;outline:none;margin-bottom:12px";
+      box.appendChild(input);
+    }
+    const actions = el("div", "modal-actions");
+    const cancel = el("button", "btn", "取消");
+    const ok = el("button", "btn " + (danger ? "danger" : "primary"), okText);
+    actions.appendChild(cancel);
+    actions.appendChild(ok);
+    box.appendChild(actions);
+    scrim.appendChild(box);
+    document.body.appendChild(scrim);
+    if (input) { input.focus(); input.select(); }
+
+    const close = (v) => { document.body.removeChild(scrim); resolve(v); };
+    cancel.addEventListener("click", () => close(null));
+    ok.addEventListener("click", () => close(withInput ? (input.value || "") : true));
+    scrim.addEventListener("click", (e) => { if (e.target === scrim) close(null); });
+    document.addEventListener("keydown", function onKey(e) {
+      if (e.key === "Escape") { document.removeEventListener("keydown", onKey); close(null); }
+      if (e.key === "Enter" && withInput) { document.removeEventListener("keydown", onKey); close(input.value || ""); }
+    });
+  });
+}
+
+// ---------- 侧栏：会话列表 ----------
+function openSidebar() { sidebarEl.classList.add("open"); scrimEl.classList.add("show"); }
+function closeSidebar() { sidebarEl.classList.remove("open"); scrimEl.classList.remove("show"); }
+
+function renderConvList() {
+  convListEl.innerHTML = "";
+  const kw = convSearchEl ? convSearchEl.value : "";
+  const list = store.search(kw);
+  if (!list.length) {
+    convListEl.appendChild(el("div", "side-empty", kw ? "没有匹配的对话" : "还没有对话，点上方「＋ 新对话」开始"));
+    return;
+  }
+  for (const c of list) {
+    const item = el("div", "conv-item" + (c.id === state.convId ? " active" : ""));
+    const body = el("div", "cbody");
+    body.appendChild(el("div", "ctitle", c.title || "新对话"));
+    const sub = `${c.messages.length} 条 · ${relTime(c.updatedAt)}`;
+    body.appendChild(el("div", "ctime", sub));
+    item.appendChild(body);
+
+    const more = el("button", "cmore", "⋯");
+    more.title = "更多操作";
+    more.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const act = await modal({
+        title: c.title || "新对话",
+        message: "选择操作：",
+        okText: "重命名",
+      });
+      if (act === null) return;                       // 取消
+      const name = await modal({ title: "重命名对话", value: c.title || "", withInput: true, okText: "保存" });
+      if (name === null) return;
+      store.rename(c.id, name);
+      renderConvList();
+      if (c.id === state.convId) updateHeaderTitle();
+      toast("已重命名");
+    });
+    // 长按/右键删除（桌面右键，移动端用长按）
+    const removeConv = async () => {
+      const ok = await modal({
+        title: "删除对话",
+        message: `确定删除「${c.title || "新对话"}」？该操作不可恢复。`,
+        okText: "删除", danger: true,
+      });
+      if (!ok) return;
+      const wasCurrent = c.id === state.convId;
+      store.remove(c.id);
+      if (wasCurrent) {
+        state.convId = store.currentId;
+        renderChat();
+      }
+      renderConvList();
+      toast("已删除");
+    };
+    item.addEventListener("contextmenu", (e) => { e.preventDefault(); removeConv(); });
+    let pressTimer = null;
+    item.addEventListener("touchstart", () => { pressTimer = setTimeout(removeConv, 650); }, { passive: true });
+    item.addEventListener("touchend", () => clearTimeout(pressTimer));
+    item.addEventListener("touchmove", () => clearTimeout(pressTimer));
+    item.addEventListener("click", () => switchConv(c.id));
+
+    item.appendChild(more);
+    convListEl.appendChild(item);
+  }
+}
+
+function switchConv(id) {
+  if (state.generating) stopGeneration();
+  store.setCurrent(id);
+  state.convId = id;
+  renderConvList();
+  updateHeaderTitle();
+  renderChat();
+  closeSidebar();
+  navigate("#/c/" + id, true);
+}
+
+function newConv() {
+  if (state.generating) stopGeneration();
+  const c = store.create();
+  state.convId = c.id;
+  renderConvList();
+  updateHeaderTitle();
+  renderChat();
+  closeSidebar();
+  navigate("#/c/" + c.id, true);
+  inputEl.focus();
+}
+
+function updateHeaderTitle() {
+  const c = store.get(state.convId);
+  if (convTitleEl) convTitleEl.textContent = c && c.messages.length ? (c.title || "") : "";
+}
+
+// ---------- 路由（hash） ----------
+function showView(name) {
+  viewChat.classList.toggle("active", name === "chat");
+  viewPage.classList.toggle("active", name === "page");
+}
+function navigate(hash, replace = false) {
+  if (replace) history.replaceState(null, "", hash);
+  else location.hash = hash;
+  if (replace) handleRoute();
+}
+function handleRoute() {
+  const h = location.hash || "";
+  const mConv = h.match(/^#\/c\/([\w-]+)/);
+  const mDoc = h.match(/^#\/doc\/(\w+)/);
+  if (mDoc) {
+    // 「关于」已并入设置页：老书签/旧链接仍指向 #/doc/about，重定向过去而不是
+    // 落到"文档占位"页 —— pages.js 里已经没有这个 key 了。
+    if (mDoc[1] === "about") return navigate("#/settings", true);
+    showView("page");
+    pageBody.innerHTML = "";
+    pageBody.appendChild(renderDocPage(mDoc[1], {
+      onBack: () => navigate("#/c/" + state.convId),
+      navigate,
+    }));
+    pageBody.scrollTop = 0;
+    return;
+  }
+  if (/^#\/settings/.test(h)) {
+    showView("page");
+    pageBody.innerHTML = "";
+    pageBody.appendChild(renderSettingsPage({
+      onBack: () => navigate("#/c/" + state.convId),
+      navigate,
+      // 设置页的表单很长，卡片底部那行 .sub 提示常落在折叠线以下；
+      // 把外壳的 toast 传下去，按钮的反馈才真正可见（样式仍是同一套）。
+      toast,
+    }));
+    pageBody.scrollTop = 0;
+    void refreshProviderBadge();
+    return;
+  }
+  if (mConv && store.get(mConv[1])) {
+    state.convId = mConv[1];
+    store.setCurrent(mConv[1]);
+    showView("chat");
+    renderConvList();
+    updateHeaderTitle();
+    renderChat();
+    // 每次回到对话页都重算：用户可能刚在设置页配好了 Key，
+    // 若只在启动时算一次，配完返回仍会看到那条引导条（真实反馈过）。
+    void loadProviders();
+    return;
+  }
+  // 默认：当前对话
+  state.convId = store.currentId || store.create().id;
+  showView("chat");
+  navigate("#/c/" + state.convId, true);
+}
+window.addEventListener("hashchange", handleRoute);
+
+// ---------- 对话渲染 ----------
+/** 取 [0, upto) 的消息作为 history（不含当前待发消息）。
+ *  被中断（stopped）或出错（error）的助手消息**不进入上下文**：
+ *  把半截回答当完整历史回传会污染后续轮次。
+ */
+function buildHistory(messages, upto) {
+  return messages.slice(0, upto)
+    .filter((m) => (m.role === "user" || m.role === "assistant") && String(m.content || "").trim())
+    .filter((m) => !(m.role === "assistant" && m.meta && (m.meta.stopped || m.meta.error)))
+    .map((m) => ({ role: m.role, content: m.content }));
+}
+function updateCtxInfo(messages) {
+  if (!ctxEl) return;
+  const msgs = messages || (store.get(state.convId) || {}).messages || [];
+  const turns = msgs.filter((m) => m.role === "user").length;
+  ctxEl.textContent = turns ? `上下文：${turns} 轮` : "";
+}
+
+function actionBtn(label, title, onClick) {
+  const b = el("button", null, label);
+  b.title = title || label;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function icon(name, cls = "") {
+  const img = document.createElement("img");
+  img.className = `ui-icon ${cls}`.trim();
+  img.src = `assets/icons/${name}.svg`;
+  img.alt = "";
+  img.setAttribute("aria-hidden", "true");
+  return img;
+}
+
+function renderUserRow(msg, index) {
+  const row = el("div", "row user");
+  row.appendChild(el("div", "bubble", msg.content));
+  const actions = el("div", "actions");
+  actions.appendChild(actionBtn("复制", "复制这条提问", () => copyText(msg.content)));
+  actions.appendChild(actionBtn("编辑", "修改后重新发送（此后的消息将被丢弃）",
+    () => startEdit(index, row, msg)));
+  row.appendChild(actions);
+  return row;
+}
+
+function renderAssistantRow(msg, index) {
+  const row = el("div", "row assistant");
+  const bubble = el("div", "bubble");
+  const meta = msg.meta || {};
+
+  const intent = el("div", "intent", intentLabel(meta.intent));
+  if (meta.questionType && meta.questionType !== "realtime") {
+    intent.appendChild(el("span", "qtype " + meta.questionType,
+      meta.questionType === "knowledge" ? "知识型" : "混合型"));
+  }
+  bubble.appendChild(intent);
+
+  const progress = el("div", "progress", "");
+  bubble.appendChild(progress);
+
+  const ans = el("div", "md");
+  ans.innerHTML = renderMarkdown(msg.content || "");
+  bubble.appendChild(ans);
+
+  const stats = el("div", "stats", "");
+  if (meta.usage || meta.latencyMs != null) stats.textContent = formatStats(meta);
+  bubble.appendChild(stats);
+
+  const hintBox = el("div");
+  bubble.appendChild(hintBox);
+  if (meta.questionType === "knowledge" || meta.questionType === "mixed") {
+    hintBox.appendChild(el("div", "knowledge-hint",
+      "本题含知识型内容，部分信息可能未经过检索，请以官方资料为准。"));
+  }
+  const sourcesBox = el("div");
+  bubble.appendChild(sourcesBox);
+  renderSources(sourcesBox, meta.sources);
+
+  // 正文和来源优先；排查信息仍可展开查看。
+  const logs = details("流程日志（意图 / 抽取 / 检索 / 生成）", []);
+  const logBody = logs.querySelector(".fold-body");
+  if (Array.isArray(meta.processLogs)) {
+    for (const l of meta.processLogs) logBody.appendChild(el("div", "log-line", "· " + l));
+  }
+  bubble.appendChild(logs);
+
+  const thinkPre = el("pre", null, meta.thinking || "");
+  const thinkDetails = details("思考过程", [thinkPre]);
+  if (!meta.thinking) thinkDetails.classList.add("hidden");
+  bubble.appendChild(thinkDetails);
+
+  if (meta.stopped) bubble.appendChild(el("div", "stopped-tag", "⏹ 已停止生成（内容可能不完整）"));
+  // 上次生成途中被系统回收（本应用刻意**不用前台服务**：不为一个聊天应用去要保活权限）。
+  // 本地只留下当时已经落盘的部分，如实说明，别让用户以为回答本来就这么短。
+  //
+  // 必须排除**此刻正在生成**的那一条：它同样带着 streaming 标记，但它是活的。
+  // 这里曾经只判断 meta.streaming，而那条消息在流式开始时就渲染好了 —— 结果是每生成
+  // 一次都立刻挂上「被中断」的提示，直到下次重渲染（切换对话）才消失。
+  // 判据改用 state.live（登记"当前在生成哪条"），所以生成中途切走再切回来也不会误报。
+  const live = !!(state.live && state.live.convId === state.convId
+                  && state.live.index === index);
+  if (meta.streaming && !live) {
+    bubble.appendChild(el("div", "stopped-tag",
+      "⏹ 上次回答在生成中被系统中断（应用切到后台后被回收），以上是当时已生成的部分。"
+      + "可点「重新生成」重问一次。"));
+  }
+  // 模型因长度上限停止：如实标注，否则用户会以为内容本来就到这儿了
+  if (meta.truncated) {
+    bubble.appendChild(el("div", "truncate-note",
+      "⚠️ 回答因输出长度上限被截断（内容不完整）。可在「⚙️ 设置 → 编辑」里调大「最大输出」，"
+      + "或让问题更聚焦后重问。"));
+  }
+  if (meta.error) bubble.appendChild(el("div", "error-box", "⚠️ " + meta.error));
+
+  const followups = followupQuestions(meta);
+  if (followups.length && !meta.streaming && !meta.error) {
+    const followupBox = el("div", "followups");
+    for (const question of followups) {
+      const b = el("button", "followup", question.label);
+      b.type = "button";
+      b.addEventListener("click", () => {
+        inputEl.value = question.text;
+        autoGrow();
+        inputEl.focus();
+      });
+      followupBox.appendChild(b);
+    }
+    bubble.appendChild(followupBox);
+  }
+
+  row.appendChild(bubble);
+
+  const actions = el("div", "actions");
+  actions.appendChild(actionBtn("复制", "复制回答", () => copyText(msg.content || "")));
+  actions.appendChild(actionBtn("分享", "分享这条回答（调起系统分享面板）", () => shareText(msg)));
+  const regen = actionBtn("重新生成", "丢弃这条回答并重新生成", () => regenerate(index));
+  regen.disabled = state.generating;
+  actions.appendChild(regen);
+  row.appendChild(actions);
+
+  return { row, intent, progress, ans, stats, logBody, thinkPre, thinkDetails, bubble, hintBox, sourcesBox };
+}
+
+function followupQuestions(meta) {
+  const label = String(meta.intent || "");
+  if (label.includes("票价")) {
+    return [{ label: "再查余票", text: "再查一下余票" }, { label: "查看时刻表", text: "再看一下这趟车的时刻表" }];
+  }
+  if (label.includes("交路") || label.includes("担当")) {
+    return [{ label: "查看时刻表", text: "查看这些车次的时刻表" }, { label: "再查余票", text: "再查一下余票" }];
+  }
+  if (label.includes("时刻")) {
+    return [{ label: "查票价", text: "查一下这趟车的票价" }, { label: "查担当车组", text: "查一下这趟车的担当车组" }];
+  }
+  return [];
+}
+
+function intentLabel(raw) {
+  const value = String(raw || "");
+  const translated = value.match(/^[a-z_]+（(.+)）$/);
+  return translated ? translated[1] : value;
+}
+
+function renderIntentLine(refs, meta) {
+  refs.intent.textContent = intentLabel(meta.intent);
+  if (meta.questionType && meta.questionType !== "realtime") {
+    refs.intent.appendChild(el("span", "qtype " + meta.questionType,
+      meta.questionType === "knowledge" ? "知识型" : "混合型"));
+  }
+}
+
+function renderSources(container, sources) {
+  container.replaceChildren();
+  if (!Array.isArray(sources) || !sources.length) return;
+  const wrap = el("div", "sources");
+  wrap.appendChild(el("span", "sources-label", "数据来源"));
+  sources.forEach((raw, index) => {
+    let url;
+    try { url = new URL(String(raw)); } catch { return; }
+    if (url.protocol !== "https:" && url.protocol !== "http:") return;
+    const link = el("a", null, url.hostname.replace(/^www\./, "") + (sources.length > 1 ? ` ${index + 1}` : ""));
+    link.href = url.href;
+    link.title = url.href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    wrap.appendChild(link);
+  });
+  if (wrap.querySelector("a")) container.appendChild(wrap);
+}
+
+function formatStats(meta) {
+  const u = meta.usage || {};
+  const secs = ((meta.latencyMs != null ? meta.latencyMs : 0) / 1000).toFixed(1);
+  const total = u.total_tokens || 0;
+  // 输入/输出分开显示：只有总数时，用户没法判断"慢"是慢在读长上下文还是慢在生成。
+  // 设备端这两个数字的差距非常悬殊（prefill ~26 tok/s vs decode ~15 tok/s，
+  // 而且提示词动辄上千 token），少了分解就看不出瓶颈在哪。
+  const split = (u.prompt_tokens || u.completion_tokens)
+    ? `（输入 ${(u.prompt_tokens || 0).toLocaleString()} / 输出 ${(u.completion_tokens || 0).toLocaleString()}）`
+    : "";
+  return "本次用量：" + total.toLocaleString() + " Token" + split + " · 耗时 " + secs + " 秒";
+}
+
+function emptyState() {
+  const d = el("div", "empty");
+  const mark = el("div", "empty-mark");
+  mark.appendChild(icon("train"));
+  d.appendChild(mark);
+  d.appendChild(el("h2", null, "想查哪趟列车？"));
+  d.appendChild(el("p", null, "查询 12306 与 rail.re 数据，帮你看票价、时刻和车组。"));
+  const quick = el("div", "quick-grid");
+  for (const [iconName, label, question] of [
+    ["ticket", "查票价", "明天北京南到上海虹桥的 G1 票价"],
+    ["clock", "查时刻", "G1 今天的时刻表"],
+    ["route", "查交路", "CR400AF-5033 今天的交路"],
+    ["camera", "找机位", "我想找一个拍 CR400AF 的机位"],
+  ]) {
+    const b = el("button", "quick-item");
+    b.type = "button";
+    b.appendChild(icon(iconName, "quick-icon"));
+    b.appendChild(el("span", "quick-label", label));
+    b.addEventListener("click", () => { inputEl.value = question; autoGrow(); inputEl.focus(); });
+    quick.appendChild(b);
+  }
+  d.appendChild(quick);
+  d.appendChild(el("p", "empty-section", "试试这样问"));
+  const examples = el("div", "empty-examples");
+  for (const question of ["明天 G1 北京南到上海虹桥多少钱？", "G8932 今天会经过哪些站？"]) {
+    const b = el("button", "ex", question);
+    b.type = "button";
+    b.addEventListener("click", () => { inputEl.value = question; autoGrow(); inputEl.focus(); });
+    examples.appendChild(b);
+  }
+  d.appendChild(examples);
+  d.appendChild(el("p", "empty-tip", "点选后可先编辑，再发送。结果会附数据来源。"));
+  return d;
+}
+
+/** 重绘当前对话。 */
+/** 在对话区插入一条可操作的错误提示（带「去配置」）。 */
+function showChatError(message) {
+  chatEl.innerHTML = "";
+  const box = el("div", "chat-error");
+  box.appendChild(el("span", null, "⚠️ " + message));
+  const go = el("button", "btn primary", "去配置");
+  go.addEventListener("click", () => navigate("#/settings"));
+  box.appendChild(go);
+  chatEl.appendChild(box);
+  scrollBottom();
+}
+
+function renderChat() {
+  const conv = store.get(state.convId) || store.current();
+  state.convId = conv.id;
+  chatEl.innerHTML = "";
+  refreshTotal();
+  if (!conv.messages.length) {
+    chatEl.appendChild(emptyState());
+    updateCtxInfo([]);
+    return;
+  }
+  conv.messages.forEach((m, i) => {
+    if (m.role === "user") {
+      chatEl.appendChild(renderUserRow(m, i));
+    } else {
+      const refs = renderAssistantRow(m, i);
+      m._refs = refs;
+      chatEl.appendChild(refs.row);
+    }
+  });
+  updateCtxInfo(conv.messages);
+  scrollBottom();
+}
+
+// ---------- 发送 / 流式 ----------
+function setGenerating(on) {
+  state.generating = on;
+  sendBtn.classList.toggle("stop", on);
+  sendBtn.textContent = on ? "■" : "发送";
+  sendBtn.title = on ? "停止生成" : "发送";
+  inputEl.placeholder = on
+    ? "正在生成…点击 ■ 可停止（仍可先输入下一条）"
+    : "输入你的问题…（Enter 发送，Shift+Enter 换行）";
+}
+
+async function send() {
+  if (state.generating) { stopGeneration(); return; }
+  const text = inputEl.value.trim();
+  if (!text) return;
+
+  // 用户主动关掉了引导条、却仍未配置任何 Key：不要在对话里默默失败，
+  // 直接给一条可操作的错误（并保留「去配置」入口）。
+  if (!llmConfigured()) {
+    showChatError("尚未配置模型 API，无法生成回答。请先在「⚙️ 设置」里选择供应商并填入 API Key。");
+    return;
+  }
+
+  inputEl.value = "";
+  autoGrow();
+
+  const conv = store.current();
+  state.convId = conv.id;
+  if (!conv.messages.length) chatEl.innerHTML = "";
+
+  const stored = store.addMessage(conv.id, { role: "user", content: text });
+  const userIndex = conv.messages.length - 1;
+  chatEl.appendChild(renderUserRow(stored, userIndex));
+  updateCtxInfo(conv.messages);
+  updateHeaderTitle();
+  renderConvList();
+
+  await runAssistant(conv.id, userIndex);
+}
+
+/** 为第 userIndex 条用户消息生成回答（history 取其之前的所有消息）。 */
+async function runAssistant(convId, userIndex) {
+  const conv = store.get(convId);
+  if (!conv) return;
+  const userText = conv.messages[userIndex].content;
+  const history = buildHistory(conv.messages, userIndex);
+
+  // streaming 这个标记是"这条回答还没写完"的落盘证据：应用在生成途中被系统回收时，
+  // 进程里涨到一半的正文会丢，本地留下的就是这个标记 + 已经落盘的那部分内容。
+  // 下次打开据此如实提示"被打断了"，而不是让用户对着一个空气泡猜发生了什么。
+  const assistant = { role: "assistant", content: "", meta: { streaming: true } };
+  store.addMessage(convId, assistant);
+  const aIndex = conv.messages.length - 1;
+  // 登记"这一条正在生成"。渲染时靠它区分"活着"与"上次被打断"——
+  // 只看 meta.streaming 是不行的：生成开始时那条消息的标记本来就是 true，
+  // 于是每生成一次都会立刻挂上"被系统中断"的提示（用户实测就是这个现象）。
+  state.live = { convId, index: aIndex };
+  const refs = renderAssistantRow(assistant, aIndex);
+  assistant._refs = refs;
+  chatEl.appendChild(refs.row);
+  refs.progress.textContent = "正在准备…";
+  scrollBottom();
+
+  setGenerating(true);
+  const controller = new AbortController();
+  state.controller = controller;
+
+  const stageOrder = { intent: "意图分类", extract: "信息抽取", retrieve: "数据检索" };
+  let answerRaw = "";
+  let thinkRaw = "";
+  let finished = false;
+  const persist = () => store.updateMessage(convId, aIndex, { content: answerRaw, meta: assistant.meta });
+  // 流式途中**定期落盘**。不这么做的话，进程在生成到一半时被系统回收（本应用刻意不用
+  // 前台服务，切到后台久了就会被杀），那条回答在本地就是空的 —— 正文原先只在结束时写一次。
+  // 节流到约 1.5 秒：每来一个 delta 就序列化整份状态没必要，代价也不小。
+  let persistedAt = 0;
+  const persistThrottled = () => {
+    const now = Date.now();
+    if (now - persistedAt < 1500) return;
+    persistedAt = now;
+    if (thinkRaw) assistant.meta = { ...assistant.meta, thinking: thinkRaw };
+    persist();
+  };
+
+  // 流式正文渲染节流。原先每个 delta 都 `renderMarkdown(整篇) + innerHTML`：
+  // 一次回答上百个 delta 就把整篇 Markdown 重新解析、整棵 DOM 重新排版上百次，
+  // 长回答（逐站列表、表格）在移动 WebView 上表现为滚动卡顿、键盘跟随迟滞。
+  // 现在 delta 只累加到字符串，渲染合并成"每帧最多一次、且间隔 ≥ 50 ms"，
+  // 结束时的收尾渲染仍是一次完整渲染（见 finally）。
+  const renderAnswer = rafThrottle(() => {
+    refs.ans.innerHTML = renderMarkdown(answerRaw) + '<span class="caret"></span>';
+    scrollBottom();
+  }, 50);
+
+  try {
+    const resp = await fetch(API_BASE + "/api/chat/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: userText, history,
+        session_id: convId,
+        // 供应商覆盖（BYOK）：未选择时为空对象，服务端用自身配置
+        ...llmSpec(),
+      }),
+      signal: controller.signal,
+    });
+    if (!resp.ok || !resp.body) {
+      let detail = "";
+      try {
+        const j = await resp.json();
+        const d = j && j.detail;
+        if (d && typeof d === "object" && !Array.isArray(d)) detail = d.message || d.code || "";
+        else if (Array.isArray(d) && d.length) {
+          detail = String((d[0] && d[0].msg) || "").replace(/^Value error,\s*/, "");
+        }
+      } catch { /* 非 JSON 响应 */ }
+      throw new Error(detail ? `请求失败（HTTP ${resp.status}）：${detail}` : `请求失败：${resp.status}`);
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buf = "";
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) >= 0) {
+        const rawEvent = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        const line = rawEvent.split("\n").find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+
+        switch (ev.type) {
+          case "stage": {
+            const name = stageOrder[ev.stage] || ev.stage;
+            refs.progress.textContent = "● 正在[" + name + "]…";
+            refs.logBody.appendChild(el("div", "log-line", "· [" + name + "] " + ev.ms + "ms"));
+            if (ev.stage === "intent" && ev.msg) {
+              const parts = String(ev.msg).split(" · ");
+              assistant.meta = {
+                ...assistant.meta,
+                intent: parts[0],
+                questionType: (parts[1] || "realtime").trim(),
+              };
+              renderIntentLine(refs, assistant.meta);
+            }
+            break;
+          }
+          case "think":
+            thinkRaw += ev.delta || "";
+            refs.thinkPre.textContent = thinkRaw;
+            if (thinkRaw) refs.thinkDetails.classList.remove("hidden");
+            break;
+          case "answer":
+            answerRaw += ev.delta || "";
+            assistant.content = answerRaw;
+            renderAnswer();
+            persistThrottled();
+            break;
+          case "replace":
+            // 服务端在**生成中途**发现后文是连续重复（模型退化），把已吐出去的那段收回，
+            // 整体替换成截断后的版本。没有这个事件，用户会看到一屏复读内容。
+            answerRaw = ev.text || "";
+            assistant.content = answerRaw;
+            renderAnswer();
+            persistThrottled();
+            break;
+          case "billing":            // M11.3 起下发：先记录，暂不展示
+            assistant.meta = { ...assistant.meta, billing: ev };
+            break;
+          case "done": {
+            finished = true;
+            refs.progress.textContent = "";
+            assistant.meta = {
+              ...assistant.meta,
+              intent: ev.intent,
+              questionType: ev.question_type || "realtime",
+              usage: ev.usage || {},
+              latencyMs: ev.latency_ms,
+              thinking: ev.thinking || thinkRaw,
+              sources: ev.sources || [],
+              processLogs: ev.process_logs || [],
+              // 模型是否因长度上限停止：必须在气泡里如实提示，
+              // 否则用户会以为回答本来就写到这儿（真实反馈过）
+              truncated: !!ev.truncated,
+              truncateReason: ev.truncate_reason || null,
+            };
+            renderIntentLine(refs, assistant.meta);
+            refs.stats.textContent = formatStats(assistant.meta);
+            if (assistant.meta.thinking) {
+              refs.thinkPre.textContent = assistant.meta.thinking;
+              refs.thinkDetails.classList.remove("hidden");
+            }
+            if (assistant.meta.processLogs.length) {
+              refs.logBody.innerHTML = "";
+              for (const l of assistant.meta.processLogs) {
+                refs.logBody.appendChild(el("div", "log-line", "· " + l));
+              }
+            }
+            if (assistant.meta.questionType === "knowledge" || assistant.meta.questionType === "mixed") {
+              refs.hintBox.appendChild(el("div", "knowledge-hint",
+                "本题含知识型内容，部分信息可能未经过检索，请以官方资料为准。"));
+            }
+            if (assistant.meta.truncated) {
+              // 按**原因**给不同指引：复读调大输出上限只会让它重复更久，方向是反的。
+              refs.bubble.appendChild(el("div", "truncate-note",
+                assistant.meta.truncateReason === "repetition"
+                  ? "⚠️ 模型输出出现连续重复，已在重复开始处截断。这是小模型的典型退化："
+                    + "换更大的模型档位（设置页 →本地模型）会明显改善。"
+                  : "⚠️ 回答因输出长度上限被截断（内容不完整）。可在「⚙️ 设置 → 编辑」里调大"
+                    + "「最大输出」，或让问题更聚焦后重问。"));
+            }
+            renderSources(refs.sourcesBox, assistant.meta.sources);
+            break;
+          }
+          case "error":
+            assistant.meta = { ...assistant.meta, error: ev.message || "生成失败" };
+            refs.progress.textContent = "";
+            if (!refs.errorBox) {
+              refs.errorBox = el("div", "error-box", "⚠️ " + assistant.meta.error);
+              refs.bubble.appendChild(refs.errorBox);
+            } else {
+              refs.errorBox.textContent = "⚠️ " + assistant.meta.error;
+            }
+            break;
+          default:
+            break;
+        }
+      }
+    }
+  } catch (e) {
+    if (e && e.name === "AbortError") {
+      assistant.meta = { ...assistant.meta, stopped: true };
+      renderIntentLine(refs, assistant.meta);
+      refs.ans.innerHTML = renderMarkdown(answerRaw) +
+        (answerRaw ? "" : "<em>（未产生内容）</em>");
+      refs.progress.textContent = "";
+      if (answerRaw) refs.bubble.appendChild(el("div", "stopped-tag", "⏹ 已停止生成（内容可能不完整）"));
+      toast("已停止生成");
+    } else {
+      assistant.meta = { ...assistant.meta, error: (e && e.message) || "网络/服务错误" };
+      renderIntentLine(refs, assistant.meta);
+      refs.progress.textContent = "";
+      refs.bubble.appendChild(el("div", "error-box", "⚠️ " + assistant.meta.error));
+    }
+  } finally {
+    // 先取消可能还挂着的节流渲染：否则它会在收尾渲染之后重画一次，
+    // 把已经摘掉的 caret 又贴回去（表现为回答写完了光标还在闪）。
+    renderAnswer.cancel();
+    if (!finished && !assistant.meta.stopped && !assistant.meta.error) {
+      assistant.meta = { ...assistant.meta, error: "连接中断，回答可能不完整" };
+      refs.bubble.appendChild(el("div", "error-box", "⚠️ 连接中断，回答可能不完整"));
+    }
+    // 收尾做一次**完整**渲染（流式期间渲染是节流的，这里必须补上不带 caret 的最终版本）。
+    // ⚠️ 判据是 `answerRaw`（有没有正文），**不能**是"DOM 里有没有 caret"：
+    //    渲染被节流到下一帧，而一次很快的回答（mock / 命中缓存 / 短问短答）可能在第一帧
+    //    之前就结束 —— 那时 caret 根本没来得及画出来，按 caret 判断就会**整段回答不显示**。
+    //    实测踩过：模拟器 LLM_MOCK 下一次回答只剩意图与流程日志，正文空白（1.2ms 就流完了）。
+    //    （caret 一旦存在就必然有正文，所以改判据不会放过"流到一半中断"的情况。）
+    if (answerRaw) {
+      refs.ans.innerHTML = renderMarkdown(answerRaw);
+    } else if (assistant.meta.stopped) {
+      refs.ans.innerHTML = "<em>（未产生内容）</em>";
+    }
+    state.controller = null;
+    setGenerating(false);
+    // 先摘掉"进行中"标记再落盘：万一正好死在这两步之间，下次会显示成"被打断"
+    // —— 偏保守，但不会骗人。
+    delete assistant.meta.streaming;
+    state.live = null;             // 生成结束：这条不再是「活的」
+    persist();                     // 流式结束后一次性落盘（含 meta）
+    refreshTotal();
+    updateCtxInfo(conv.messages);
+    updateHeaderTitle();
+    renderConvList();
+    scrollBottom();
+    // 完成后**不要**自动聚焦输入框：在手机上这会立刻弹出软键盘，把刚生成的回答
+    // 顶走半屏（用户实测反馈）。桌面端有实体键盘，聚焦一下能接着打下一句，仍然保留。
+    // 判据用 (hover: hover) 而不是"是不是 Android"：真正决定要不要弹键盘的是
+    // 有没有指针设备，不是平台。
+    if (!window.matchMedia || window.matchMedia("(hover: hover)").matches) inputEl.focus();
+  }
+}
+
+function stopGeneration() { if (state.controller) state.controller.abort(); }
+
+/**
+ * 重算底部的「累计 Token」。
+ *
+ * **不是累加，是重算** —— 它等于当前对话里所有回答的 usage 之和。
+ * 累加式的旧实现有两个消不掉的毛病：新开对话不归零；删消息/编辑重发后只增不减。
+ * 重算天然自愈，所以凡是可能改变对话内容的地方（答完、切对话、删对话、编辑重发）
+ * 都调它一次即可，不需要在各种分支里小心地"补加/回退"。
+ */
+function refreshTotal() {
+  if (totalEl) totalEl.textContent = store.totalTokens().toLocaleString();
+}
+
+// ---------- 编辑 / 重新生成 ----------
+function startEdit(index, row, msg) {
+  if (state.generating) { toast("请先停止当前生成"); return; }
+  row.classList.add("pinned");
+  const original = msg.content;
+
+  const wrap = el("div", "edit-wrap");
+  const ta = document.createElement("textarea");
+  ta.value = original;
+  wrap.appendChild(ta);
+
+  const acts = el("div", "edit-actions");
+  const cancel = el("button", "btn", "取消");
+  const ok = el("button", "btn primary", "发送");
+  acts.appendChild(cancel);
+  acts.appendChild(ok);
+  wrap.appendChild(acts);
+
+  const bubble = row.querySelector(".bubble");
+  row.replaceChild(wrap, bubble);
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+
+  cancel.addEventListener("click", () => renderChat());
+  ok.addEventListener("click", async () => {
+    const newText = ta.value.trim();
+    if (!newText) { toast("内容不能为空"); return; }
+    if (newText === original) { renderChat(); return; }
+    const conv = store.get(state.convId);
+    store.truncate(conv.id, index);        // 丢弃该条及其后所有消息
+    renderChat();
+    inputEl.value = newText;
+    autoGrow();
+    await send();
+  });
+}
+
+async function regenerate(index) {
+  if (state.generating) { toast("请先停止当前生成"); return; }
+  const conv = store.get(state.convId);
+  const msg = conv && conv.messages[index];
+  if (!msg || msg.role !== "assistant") return;
+  let userIdx = index - 1;
+  while (userIdx >= 0 && conv.messages[userIdx].role !== "user") userIdx--;
+  if (userIdx < 0) { toast("找不到对应的提问"); return; }
+  store.truncate(conv.id, userIdx + 1);
+  renderChat();
+  await runAssistant(conv.id, userIdx);
+}
+
+// ---------- 输入框 ----------
+function autoGrow() {
+  inputEl.style.height = "auto";
+  inputEl.style.height = Math.min(inputEl.scrollHeight, Math.round(window.innerHeight * 0.36)) + "px";
+}
+
+// ---------- 事件绑定 ----------
+sendBtn.addEventListener("click", send);
+inputEl.addEventListener("input", autoGrow);
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  if (e.isComposing || e.keyCode === 229) return;   // 中文输入法组合中
+  if (e.shiftKey) return;
+  e.preventDefault();
+  if (state.generating) { toast("生成中，请先点击 ■ 停止"); return; }
+  send();
+});
+menuBtn.addEventListener("click", () => {
+  sidebarEl.classList.contains("open") ? closeSidebar() : openSidebar();
+});
+scrimEl.addEventListener("click", closeSidebar);
+document.getElementById("newchat").addEventListener("click", newConv);
+// 侧栏原来的「ℹ️ 关于」按钮已移除（与顶栏「⚙️ 设置」入口重复），
+// 关于内容并入设置页；对应的监听器也一并删除 —— 元素没了还去 addEventListener
+// 会直接抛 TypeError，而它会把启动期的错误横幅整个点亮。
+if (llmBtn) llmBtn.addEventListener("click", () => { navigate("#/settings"); });
+if (convSearchEl) convSearchEl.addEventListener("input", renderConvList);
+
+// 桌面快捷键：Ctrl/Cmd+K 新对话，ESC 停止或收起侧栏
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (sidebarEl.classList.contains("open")) { closeSidebar(); return; }
+    if (state.generating) stopGeneration();
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    newConv();
+  }
+});
+
+// 离开页面/切后台前落盘（流式中途也能保住）
+window.addEventListener("beforeunload", () => { store.save(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { store.save(); return; }
+  // 回到前台时刷新一次本地模型状态 —— 发热提醒的**唯一正确时机**就在这里。
+  // App 一启动就把 llama-server 拉起来了（只要下过模型），所以"刚启动"永远显示
+  // 运行 0 分钟、提醒不会触发；而用户切回来的时候它可能已经跑了半小时。
+  void refreshLocalModelState().then(renderLlmNotice);
+});
+// 视口变化：移动端旋转/宽度变化时收起抽屉
+window.addEventListener("resize", () => {
+  if (window.innerWidth >= 1024) closeSidebar();
+  autoGrow();
+});
+
+// ---------- 初始化 ----------
+store.load();
+// 外观：应用存下来的模式，并在系统切换深浅色时实时跟随（默认模式是"跟随系统"）。
+// 首屏那一下由 index.html 里的内联脚本负责（模块脚本是 defer 的，来不及防闪烁）。
+store.initTheme();
+// 版本是异步取的（Android 读 build.json、桌面读 /api/version）。
+// 拿到后刷新角标；如果用户正停在设置/文档页，顺手重渲染一次把文字更新掉。
+loadAppVersion().then(() => {
+  if (verBadge) verBadge.textContent = versionLabel();
+  if (/^#\/(settings|doc\/)/.test(location.hash)) handleRoute();
+});
+state.convId = store.currentId;
+refreshTotal();
+renderConvList();
+updateHeaderTitle();
+renderChat();
+handleRoute();
+autoGrow();
+if (window.innerWidth >= 1024) inputEl.focus();
+// 供应商列表与顶栏徽标（异步，不阻塞首屏；失败时静默退回"服务端默认"）
+void loadProviders();

@@ -7,8 +7,12 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import logging
+import os
 import re
 import socket
+import time
+import threading
+import weakref
 from urllib.parse import urlparse
 
 import httpx
@@ -19,8 +23,10 @@ _log = logging.getLogger("railfan.http")
 
 _ALLOWED_SCHEMES = ("http", "https")
 
-# 进程内共享的抓取 client（懒建，见 `get_client`）。
-# `_client_loop` 记录创建它的事件循环：连接池的锁绑定在循环上，跨循环复用会直接报错。
+# Main retains one shared client per live event loop; one app's shutdown must
+# never close another live loop's transport. LM keeps its existing lifecycle.
+_clients: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+_clients_lock = threading.Lock()
 _client: httpx.AsyncClient | None = None
 _client_loop = None
 
@@ -70,6 +76,18 @@ def assert_public_url(url: str) -> None:
             )
 
 
+async def assert_public_url_async(url: str) -> None:
+    """Keep the same guard, but never block the event loop on DNS."""
+    from app.metrics import record_operation
+    started = time.perf_counter()
+    ok = False
+    try:
+        await asyncio.to_thread(assert_public_url, url)
+        ok = True
+    finally:
+        record_operation("public_dns", (time.perf_counter() - started) * 1000, ok)
+
+
 # 模拟浏览器请求头，避免被 rail.re / 12306 等站点反爬
 # 注意：Accept-Encoding 含 br 时需要 brotli 解压库；缺失则自动降级为 gzip/deflate，
 # 否则会拿到无法解压的原始字节（曾导致 web.fetch 返回乱码）。
@@ -97,6 +115,15 @@ BROWSER_HEADERS = {
 async def aclose_client() -> None:
     """关闭共享 client（FastAPI lifespan 结束时调用，避免"未关闭的 client"告警）。"""
     global _client, _client_loop
+    if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+        with _clients_lock:
+            client = _clients.pop(asyncio.get_running_loop(), None)
+        if client is not None and not client.is_closed:
+            try:
+                await client.aclose()
+            except Exception:
+                pass
+        return
     if _client is not None and not _client.is_closed:
         try:
             await _client.aclose()
@@ -104,6 +131,24 @@ async def aclose_client() -> None:
             pass
     _client = None
     _client_loop = None
+
+
+def _create_client() -> httpx.AsyncClient:
+    """Existing request policy, shared unchanged by both lifecycle paths."""
+    kwargs: dict = {
+        "timeout": get_settings().http_timeout,
+        "follow_redirects": True,
+        "trust_env": False,
+        "limits": httpx.Limits(
+            max_connections=20, max_keepalive_connections=10, keepalive_expiry=90.0
+        ),
+    }
+    try:
+        return httpx.AsyncClient(http2=True, **kwargs)
+    except ImportError:
+        # Missing h2 must retain the same observable HTTP/1.1 fallback.
+        _log.warning("缺少 h2 包，抓取层退回 HTTP/1.1（检查 android/requirements.txt 是否锁定 h2）")
+        return httpx.AsyncClient(http2=False, **kwargs)
 
 
 async def get_client() -> httpx.AsyncClient:
@@ -126,29 +171,23 @@ async def get_client() -> httpx.AsyncClient:
     """
     global _client, _client_loop
     loop = asyncio.get_running_loop()
+    if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+        # Protect only the process-wide map across different loop threads.
+        # The client is constructed without network I/O and then used solely
+        # by its own loop. Same-loop callers always receive this same instance.
+        with _clients_lock:
+            client = _clients.get(loop)
+            if client is None or client.is_closed:
+                client = _create_client()
+                _clients[loop] = client
+            return client
     if _client is not None and _client_loop is not loop:
         # 连接池内部锁绑定在创建它的事件循环上，**不能跨循环复用**。
         # 测试与脚本会反复 asyncio.run()（每次新循环）→ 这里直接丢弃旧 client 重建。
         # 旧循环已死，无法 await aclose()，交给 GC 回收即可。
         _client = None
     if _client is None or _client.is_closed:
-        kwargs: dict = {
-            "timeout": get_settings().http_timeout,
-            "follow_redirects": True,
-            "trust_env": False,
-            "limits": httpx.Limits(
-                max_connections=20, max_keepalive_connections=10, keepalive_expiry=90.0
-            ),
-        }
-        try:
-            _client = httpx.AsyncClient(http2=True, **kwargs)
-        except ImportError:
-            # 缺 `h2` 包时 http2=True 会直接抛 ImportError。这条路径一旦被漏掉，
-            # 表现是"所有工具都连不上"——比慢一点严重得多，所以这里兜住并**留日志**：
-            # 静默降级会变成"只是慢一点"，没人查得出来（Android 是 --no-deps 安装，
-            # 最容易漏依赖，见 android/requirements.txt 与 tests/test_android.py）。
-            _log.warning("缺少 h2 包，抓取层退回 HTTP/1.1（检查 android/requirements.txt 是否锁定 h2）")
-            _client = httpx.AsyncClient(http2=False, **kwargs)
+        _client = _create_client()
         _client_loop = loop
     return _client
 
@@ -185,7 +224,7 @@ async def get_text_ex(
     settings = get_settings()
     limit = int(max_bytes if max_bytes is not None else settings.http_max_bytes)
     if not allow_private:
-        assert_public_url(url)
+        await assert_public_url_async(url)
 
     merged = dict(BROWSER_HEADERS)
     if headers:
@@ -303,7 +342,7 @@ async def post_text(
     settings = get_settings()
     limit = int(max_bytes if max_bytes is not None else settings.http_max_bytes)
     if not allow_private:
-        assert_public_url(url)
+        await assert_public_url_async(url)
 
     merged = dict(BROWSER_HEADERS)
     merged["Content-Type"] = "application/x-www-form-urlencoded"

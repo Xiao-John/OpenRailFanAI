@@ -1,0 +1,52 @@
+- acc_id: ACC-T07
+  module: routing_empty
+  design_ref: desi2.png:[1034, 136, 462, 343]
+  impl_ref: frontend/tests/visual/screenshots/routing_empty.png
+  viewport:
+    width: 390
+    height: 844
+    unit: css_px
+  diff_px: 6.49
+  status: failed
+  file: acceptance/ACC-T07__routing-empty__20260929.png
+  generated_at: '2026-09-29T11:39:46+08:00'
+  script_version: 1.0.0
+  failed_layout: []
+  failed_copy: []
+  failed_icons:
+  - routing_empty-25-train-empty
+- acc_id: ACC-T08
+  module: connection_error
+  design_ref: desi2.png:[44, 536, 458, 399]
+  impl_ref: frontend/tests/visual/screenshots/connection_error.png
+  viewport:
+    width: 390
+    height: 844
+    unit: css_px
+  diff_px: 12.45
+  status: failed
+  file: acceptance/ACC-T08__connection-error__20260929.png
+  generated_at: '2026-09-29T11:39:46+08:00'
+  script_version: 1.0.0
+  failed_layout: []
+  failed_copy: []
+  failed_icons:
+  - connection_error-27-cloud-error
+- acc_id: ACC-T10
+  module: reading_followup
+  design_ref: desi2.png:[542, 536, 454, 399]
+  impl_ref: frontend/tests/visual/screenshots/reading_followup.png
+  viewport:
+    width: 390
+    height: 844
+    unit: css_px
+  diff_px: 8.05
+  status: failed
+  file: acceptance/ACC-T10__reading-followup__20260929.png
+  generated_at: '2026-09-29T11:39:46+08:00'
+  script_version: 1.0.0
+  failed_layout:
+  - fixed_input_and_send
+  failed_copy: []
+  failed_icons:
+  - reading_followup-31-up

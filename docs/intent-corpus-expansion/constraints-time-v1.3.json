@@ -1,0 +1,374 @@
+{
+  "schema": "intent-evaluation-constraints-time-codebook",
+  "version": "1.3",
+  "date": {
+    "required_keys": [
+      "state",
+      "kind",
+      "precision",
+      "direction",
+      "raw",
+      "resolved",
+      "resolved_range",
+      "resolved_instant",
+      "window_raw",
+      "time_filters"
+    ],
+    "states": {
+      "explicit": "当前适用的明确时间表达，允许宽泛窗口",
+      "inherited": "只有可靠继承时间，锚点唯一",
+      "omitted": "无表达且无可靠继承",
+      "invalid": "时间在已有解释下不合法",
+      "ambiguous": "时间解释/锚点/对象对应/作用域有竞争候选"
+    },
+    "kinds": [
+      "none",
+      "calendar_day",
+      "calendar_range",
+      "instant",
+      "current_period",
+      "relative_period",
+      "time_of_day",
+      "unresolved"
+    ],
+    "precisions": [
+      "none",
+      "day",
+      "range",
+      "instant",
+      "clock_time",
+      "vague",
+      "unresolved"
+    ],
+    "directions": [
+      "past",
+      "future",
+      "current",
+      "unspecified"
+    ],
+    "direction_nullable": true,
+    "normal_forms": {
+      "none": {
+        "precision": "none",
+        "direction": null,
+        "state": "omitted"
+      },
+      "calendar_day": {
+        "precision": "day",
+        "direction": null,
+        "result": "resolved ISO day"
+      },
+      "calendar_range": {
+        "precision": "range",
+        "direction": null,
+        "result": "resolved_range inclusive start/end; resolved=null"
+      },
+      "instant": {
+        "precision": "instant",
+        "direction": null,
+        "result": "resolved_instant with UTC offset; resolved=null"
+      },
+      "current_period": {
+        "precision": "vague",
+        "direction": "current",
+        "result": "all resolved fields null"
+      },
+      "relative_period": {
+        "precision": "vague",
+        "direction": "past/future/unspecified",
+        "result": "all resolved fields null when bounds unknown"
+      },
+      "time_of_day": {
+        "precision": "clock_time",
+        "direction": null,
+        "result": "clock condition; query day may be unknown"
+      },
+      "unresolved": {
+        "precision": "unresolved",
+        "result": "preserve known components and candidate evidence"
+      }
+    },
+    "time_filters": {
+      "required_members": [
+        "event",
+        "op",
+        "value",
+        "raw"
+      ],
+      "event": [
+        "departure",
+        "arrival",
+        "boarding",
+        "observation",
+        "unspecified"
+      ],
+      "op": [
+        "eq",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "part_of_day"
+      ],
+      "clock_format": "HH:MM, 00:00 through 23:59",
+      "part_of_day": [
+        "morning",
+        "afternoon",
+        "evening",
+        "early_morning",
+        "night"
+      ],
+      "value_nullable_when_pending": true,
+      "numeric_part_of_day_bounds_frozen": false
+    },
+    "rules": [
+      "resolved/null 不是 state 判据",
+      "宽泛但唯一解释为 explicit/inherited + vague",
+      "invalid/ambiguous 覆盖来源状态，来源逐字段记录",
+      "query day/range/instant 不互相冒充；已知部分不因其他部分未决而抹去",
+      "现在的快照取样本 clock.now；服务日不从此刻裁切推断",
+      "现在的现行标准/服务用 current_period；不是所有在线列车",
+      "时段仅存 date，不复制到 constraints",
+      "不能擅定最近 N 天、假期终点或早班起止时刻"
+    ]
+  },
+  "namespace": "intent-evaluation-only",
+  "extends": {
+    "file": "codebook-v1.2.json",
+    "version": "1.2",
+    "sha256": "d02d7713e53563696d102f7d43b09ac1d69571d0ba91b5176d8e198a704eafa7"
+  },
+  "runtime_contract_changed": false,
+  "constraints": {
+    "additional_keys_allowed": false,
+    "keys": {
+      "seat": {
+        "type": "enum_filter",
+        "vocabulary": "seat",
+        "scope": "query_unit",
+        "required_members": [
+          "any_of",
+          "none_of",
+          "strength"
+        ]
+      },
+      "service_type": {
+        "type": "enum_filter",
+        "vocabulary": "service_type",
+        "scope": "query_unit",
+        "required_members": [
+          "any_of",
+          "none_of",
+          "strength"
+        ]
+      },
+      "station_type": {
+        "type": "enum_filter",
+        "vocabulary": "station_type",
+        "scope": "query_unit",
+        "required_members": [
+          "any_of",
+          "none_of",
+          "strength"
+        ]
+      },
+      "transport_mode": {
+        "type": "enum_filter",
+        "vocabulary": "transport_mode",
+        "scope": "query_unit",
+        "required_members": [
+          "any_of",
+          "none_of",
+          "strength"
+        ]
+      },
+      "direct_only": {
+        "type": "boolean_filter",
+        "required_members": [
+          "value",
+          "strength"
+        ],
+        "scope": "query_unit"
+      },
+      "topic": {
+        "type": "enum_set",
+        "vocabulary": "topic",
+        "scope": "query_unit",
+        "note": "只补充结果字段未覆盖的主题；实体名不作为 topic 值"
+      },
+      "criterion": {
+        "type": "enum_set",
+        "vocabulary": "criterion",
+        "scope": "query_unit",
+        "note": "比较/择优维度，不自动新增工具结果字段"
+      },
+      "service_ordinal": {
+        "type": "ordinal",
+        "required_members": [
+          "index",
+          "order_by"
+        ],
+        "index_min": 1,
+        "order_by": [
+          "departure_time",
+          "arrival_time",
+          "unspecified"
+        ]
+      },
+      "unassigned_trains": {
+        "type": "ordered_entity_list",
+        "entity_kind": "train",
+        "note": "提及順序不是到达/出发角色；保留 v1.2 完整关系节点"
+      }
+    },
+    "vocabularies": {
+      "seat": {
+        "first_class": "一等座",
+        "second_class": "二等座",
+        "business": "商务座",
+        "hard_seat": "硬座",
+        "soft_seat": "软座",
+        "hard_sleeper": "硬卧",
+        "soft_sleeper": "软卧",
+        "sleeper": "泛指卧铺，不能改成具体席别",
+        "no_seat": "无座"
+      },
+      "service_type": {
+        "high_speed": "高铁",
+        "intercity": "城际",
+        "sleeper_emu": "动卧",
+        "temporary_service": "临客"
+      },
+      "station_type": {
+        "marshalling": "编组站",
+        "passenger": "客运站",
+        "freight": "货运站"
+      },
+      "transport_mode": {
+        "air": "航空",
+        "metro": "地铁",
+        "bus": "公交",
+        "coach": "长途客车",
+        "taxi": "出租车",
+        "rail": "泛指铁路",
+        "high_speed_rail": "高铁"
+      },
+      "criterion": {
+        "min_duration": "最少耗时或更省时间",
+        "min_cost": "最低费用",
+        "value_for_money": "划算或性价比，不能简化成最低价",
+        "comfort": "乘坐舒适度",
+        "technical_advancement": "技术先进性",
+        "high_train_frequency": "所问时段车多",
+        "convenience": "最顺或便利，不默认最快"
+      },
+      "topic": {
+        "person_relation": "知识对象与明确人物的关系",
+        "domestic_origin": "国产来源或国内研制属性",
+        "manufacture_origin": "制造来源或制造地",
+        "model_variants": "车型细分型号",
+        "formation": "编组维度",
+        "maintenance_levels": "检修级别及各级内容",
+        "crew_handover": "司机换班或乘务交接",
+        "switching_mechanism": "转线、进出侧线的机制",
+        "train_numbering": "车次编号规则",
+        "maintenance_window": "铁路天窗制度及原因",
+        "wireless_connectivity": "车上网络连接问题",
+        "boarding_cutoff": "停止检票规则及原因",
+        "construction_standard": "建设标准差异",
+        "vehicle_features": "所问车辆特点",
+        "train_number_identification": "重联等场景下如何识别车次",
+        "passenger_flow": "客流情况",
+        "weather_suitability": "天气与拍摄适宜性",
+        "infrastructure_function": "铁路设施用途"
+      }
+    },
+    "types": {
+      "enum_filter": {
+        "members": {
+          "any_of": "unique sorted codes from vocabulary",
+          "none_of": "unique sorted codes from vocabulary",
+          "strength": [
+            "required",
+            "preferred"
+          ]
+        },
+        "rules": [
+          "至少一个码，any_of/none_of 不相交",
+          "any_of 为可选集合并集，不代表每种都必须有",
+          "分别要求结果时按完整条件拆单元",
+          "复杂未表达逻辑保持 pending"
+        ]
+      },
+      "boolean_filter": {
+        "members": {
+          "value": "boolean",
+          "strength": [
+            "required",
+            "preferred"
+          ]
+        }
+      },
+      "enum_set": {
+        "rules": [
+          "nonempty unique sorted codes",
+          "unknown code goes to pending_fields, not other"
+        ]
+      },
+      "ordinal": {
+        "members": {
+          "index": "positive integer; booleans are invalid",
+          "order_by": "controlled enum"
+        }
+      },
+      "ordered_entity_list": {
+        "rules": [
+          "nonempty strings",
+          "preserve mention order without allocating roles"
+        ]
+      }
+    },
+    "legacy_routes": {
+      "seat": "constraints.seat",
+      "window": "date",
+      "topic": "requested_fields/bindings/constraints.topic after source review",
+      "part_of_day": "date.time_filters",
+      "criterion": "constraints.criterion",
+      "train_type": "constraints.service_type or constraints.direct_only",
+      "station_type": "constraints.station_type",
+      "service_scope": "date after source review",
+      "section": "bindings.section after source review",
+      "mode": "constraints.transport_mode; compared operands remain paired",
+      "from": "bindings.origin after source review",
+      "time_window": "date after source review",
+      "service_ordinal": "constraints.service_ordinal",
+      "after_time": "date.time_filters",
+      "reference_scope": "pending binding/scope evidence",
+      "reference": "pending binding/scope evidence",
+      "time_hint": "date/pending time evidence",
+      "time": "date after source review",
+      "unassigned_trains": "constraints.unassigned_trains",
+      "candidate_legs": "pending itinerary scope evidence",
+      "topic_scope": "bindings after source review",
+      "direction_from": "bindings.origin after source review",
+      "candidate_stations": "pending binding candidates",
+      "itinerary_scope": "pending itinerary scope evidence",
+      "line_scope": "pending line scope evidence"
+    },
+    "automatic_migration": false
+  },
+  "unfrozen": [
+    "分类边界",
+    "行程引用/段序结构",
+    "动作恢复策略",
+    "复杂限制逻辑未能表示的部分"
+  ],
+  "comparison": [
+    "controlled constraint keys/types/values",
+    "date state/kind/precision",
+    "resolved day/range/instant",
+    "time predicates",
+    "evidence and scope",
+    "unfrozen binding/scope contents retained; whole-unit comparability disclosed"
+  ]
+}

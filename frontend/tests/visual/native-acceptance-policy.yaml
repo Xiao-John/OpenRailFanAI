@@ -1,0 +1,23 @@
+schema_version: 1
+id: HARMONY-20261003
+mode: harmony_first
+authorization: 用户要求放宽尚未完成验收标准，优先保证整体和谐，不要求足够接近设计稿。
+scope: 仅以下尚未完成的Main原生状态；已通过的测量记录和历史运行不改写。
+states:
+  - train_schedule
+  - emu_routing
+  - query_loading
+  - batch_partial
+  - routing_empty
+  - connection_error
+  - reading_followup
+  - query_details
+  - history
+review_ref: .ai/reports/native-harmony-review.yaml
+criteria_ref: docs/ui-acceptance-policy.md
+pixel_fidelity: diagnostic_only
+hard_requirements:
+  - 真实同次采集及可靠坐标基准
+  - 44dp触控下限和系统安全区
+  - 关键文案、操作与内容可见性
+  - 失败恢复、停止、复制、追问及历史操作

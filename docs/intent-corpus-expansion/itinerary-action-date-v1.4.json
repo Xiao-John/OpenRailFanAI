@@ -1,0 +1,464 @@
+{
+  "schema": "intent-evaluation-itinerary-action-date-rules",
+  "version": "1.4",
+  "issued_on": "2026-10-02",
+  "namespace": "intent-evaluation-only",
+  "runtime_contract_changed": false,
+  "bases": [
+    {
+      "file": "codebook-v1.2.json",
+      "sha256": "d02d7713e53563696d102f7d43b09ac1d69571d0ba91b5176d8e198a704eafa7"
+    },
+    {
+      "file": "constraints-time-v1.3.json",
+      "sha256": "512142857b1e786ba106e77fd0e1f914f2a418a18be94702825d11a49d33a027"
+    },
+    {
+      "file": "date-direction-v1.3.1.json",
+      "sha256": "8427430d5b119fd3ad3729d39d16c41b330409de3480e623e7830b20511046ef"
+    }
+  ],
+  "resolves_prior_rule_dependencies": [
+    "constraints-time-v1.3.json:unfrozen[1] itinerary references and leg ordering",
+    "C-0008 invalid action single-date kind/precision mapping"
+  ],
+  "does_not_resolve": [
+    "action execution/recovery policy",
+    "unprovided physical railway line/service/date values",
+    "other residual date text/window/inheritance cases"
+  ],
+  "itineraries": {
+    "location": "expect.itineraries",
+    "none_value": [],
+    "required_keys": [
+      "id",
+      "legs",
+      "sequence_order",
+      "stays"
+    ],
+    "id_pattern": "I[1-9][0-9]* assigned by first mention",
+    "leg_required_keys": [
+      "leg_id",
+      "leg_index",
+      "origin",
+      "destination",
+      "date"
+    ],
+    "leg_id_pattern": "<itinerary_id>:L<zero_based_leg_index>",
+    "leg_index_start": 0,
+    "leg_index_contiguous": true,
+    "sequence_order": "all leg IDs exactly once in input order",
+    "unknown_endpoints_nullable": true,
+    "endpoint_granularity": "preserve user city/station/location level; no automatic city-to-station conversion",
+    "stay_required_keys": [
+      "after_leg",
+      "before_leg",
+      "location",
+      "amount",
+      "unit",
+      "approximate",
+      "quote"
+    ],
+    "stay_unit": [
+      "day",
+      "week"
+    ],
+    "stay_amount": "positive number",
+    "stay_approximate": "boolean",
+    "stay_refs": "adjacent valid legs",
+    "evidence": "specific fields and relations backed by original input; a frame is not a verified rail route"
+  },
+  "unit_reference": {
+    "field": "query_unit.itinerary_ref",
+    "none_value": null,
+    "required_keys": [
+      "itinerary_id",
+      "scope",
+      "leg_ids",
+      "candidate_leg_sets"
+    ],
+    "scope": {
+      "leg": {
+        "leg_ids": "one valid leg ID",
+        "candidate_leg_sets": []
+      },
+      "all_legs": {
+        "leg_ids": "full itinerary.sequence_order",
+        "candidate_leg_sets": [],
+        "condition": "user explicitly requests an aggregate/composite whole-trip result"
+      },
+      "unresolved": {
+        "leg_ids": [],
+        "candidate_leg_sets": "distinct evidence-supported ordered leg ID sets; unavailable candidates require explicit pending"
+      }
+    },
+    "validate": [
+      "frame exists",
+      "all referenced legs exist",
+      "leg bindings match corresponding endpoints",
+      "order preserved",
+      "candidate scope never silently selected"
+    ],
+    "legacy_fields_to_replace": [
+      "task.sequence_order as leg ordering",
+      "unit.leg_index duplicate"
+    ],
+    "not_a_constraint_key": true
+  },
+  "unit_granularity": {
+    "per_leg_operations": [
+      "train.timetable",
+      "train.stops",
+      "ticket.fare",
+      "ticket.availability"
+    ],
+    "condition": "request explicitly concerns the segments of the itinerary; whole-trip aggregate exception requires explicit wording",
+    "unknown_service": "train=null, preserve segment reference and pending service selection; never choose first returned service",
+    "unresolved_scope": "one relationship node retaining scope candidates; do not expand candidate combinations",
+    "sequence_relation": "primary itinerary service/time request",
+    "independent_relation": "per-segment auxiliary stop/fare/availability requests; itinerary supplies ordering",
+    "depends_on": "real semantic dependency only, never task list position or tool step count"
+  },
+  "temporal_scope": {
+    "departure_window": "bind to the departure leg, do not assume whole itinerary completion within window",
+    "approximate_stay": "stays gives event anchor for subsequent relative_period/vague; never clock+exact days",
+    "sequence_only": "retain order without manufacturing a calendar date",
+    "context_only_requests": "generic spots/route-membership without a shooting/operation time get omitted date while retaining itinerary_ref",
+    "explicit_time_request": "bind supported query time, not a permanent per-operation omitted-date rule",
+    "same_message_reference_source": "current, not history_user"
+  },
+  "invalid_action_date": {
+    "condition": "date is already established invalid and source is a declared single-date action slot",
+    "slot_path": "/date relative to display_action",
+    "kind": "calendar_day",
+    "precision": "unresolved",
+    "state": "invalid",
+    "direction": null,
+    "resolved": null,
+    "resolved_range": null,
+    "resolved_instant": null,
+    "window_raw": null,
+    "time_filters": [],
+    "raw": "original action value; for C-0008 the string not_a_date",
+    "source_required": [
+      "source=display_action",
+      "history_index=null",
+      "quote=original value",
+      "path=/date"
+    ],
+    "priority": "this invalid declared-slot precision overrides generic calendar_day/day normal form",
+    "untyped_invalid": "unresolved/unresolved with retained value/source/reason",
+    "missing_or_schema_allowed_empty": "not made invalid by this rule",
+    "other_natural_language_invalid_precision": "not frozen by this patch",
+    "expect_time": "mirror invalid/raw/null resolved_date/null window_raw for this sole time candidate",
+    "execution_policy_changed": false
+  },
+  "calibration": {
+    "C-0096": {
+      "clock": "2026-10-01T10:00:00+08:00",
+      "itineraries": [
+        {
+          "id": "I1",
+          "legs": [
+            {
+              "leg_id": "I1:L0",
+              "leg_index": 0,
+              "origin": "北京",
+              "destination": "拉萨",
+              "date": {
+                "state": "explicit",
+                "kind": "calendar_range",
+                "precision": "range",
+                "direction": null,
+                "raw": "下个月",
+                "resolved": null,
+                "resolved_range": {
+                  "start": "2026-11-01",
+                  "end": "2026-11-30"
+                },
+                "resolved_instant": null,
+                "window_raw": "下个月",
+                "time_filters": []
+              }
+            },
+            {
+              "leg_id": "I1:L1",
+              "leg_index": 1,
+              "origin": "拉萨",
+              "destination": "成都",
+              "date": {
+                "state": "explicit",
+                "kind": "relative_period",
+                "precision": "vague",
+                "direction": "future",
+                "raw": "大概玩一周",
+                "resolved": null,
+                "resolved_range": null,
+                "resolved_instant": null,
+                "window_raw": "大概玩一周",
+                "time_filters": []
+              }
+            },
+            {
+              "leg_id": "I1:L2",
+              "leg_index": 2,
+              "origin": "成都",
+              "destination": "北京",
+              "date": {
+                "state": "omitted",
+                "kind": "none",
+                "precision": "none",
+                "direction": null,
+                "raw": null,
+                "resolved": null,
+                "resolved_range": null,
+                "resolved_instant": null,
+                "window_raw": null,
+                "time_filters": []
+              }
+            }
+          ],
+          "sequence_order": [
+            "I1:L0",
+            "I1:L1",
+            "I1:L2"
+          ],
+          "stays": [
+            {
+              "after_leg": "I1:L0",
+              "before_leg": "I1:L1",
+              "location": "拉萨",
+              "amount": 1,
+              "unit": "week",
+              "approximate": true,
+              "quote": "大概玩一周"
+            }
+          ]
+        }
+      ],
+      "tasks": [
+        {
+          "operation": "train.timetable",
+          "relation": "sequence",
+          "unit_count": 3,
+          "leg_ids": [
+            "I1:L0",
+            "I1:L1",
+            "I1:L2"
+          ],
+          "requested_fields": [
+            "arrival_time",
+            "train_list"
+          ],
+          "train": null,
+          "time_basis": "scheduled"
+        },
+        {
+          "operation": "train.stops",
+          "relation": "independent",
+          "unit_count": 3,
+          "leg_ids": [
+            "I1:L0",
+            "I1:L1",
+            "I1:L2"
+          ],
+          "requested_fields": [
+            "stop_sequence"
+          ],
+          "train": null,
+          "time_basis": "scheduled"
+        },
+        {
+          "operation": "ticket.fare",
+          "relation": "independent",
+          "unit_count": 3,
+          "leg_ids": [
+            "I1:L0",
+            "I1:L1",
+            "I1:L2"
+          ],
+          "requested_fields": [
+            "fare"
+          ],
+          "train": null,
+          "time_basis": "not_applicable"
+        },
+        {
+          "operation": "ticket.availability",
+          "relation": "independent",
+          "unit_count": 3,
+          "leg_ids": [
+            "I1:L0",
+            "I1:L1",
+            "I1:L2"
+          ],
+          "requested_fields": [
+            "availability"
+          ],
+          "train": null,
+          "time_basis": "not_applicable",
+          "constraints": {
+            "seat": {
+              "any_of": [
+                "sleeper"
+              ],
+              "none_of": [],
+              "strength": "required"
+            }
+          }
+        },
+        {
+          "operation": "photo.spot",
+          "relation": "independent",
+          "unit_count": 1,
+          "bindings": {
+            "line": null
+          },
+          "requested_fields": [
+            "spot_options"
+          ],
+          "time_basis": "not_applicable",
+          "itinerary_ref": {
+            "itinerary_id": "I1",
+            "scope": "unresolved",
+            "leg_ids": [],
+            "candidate_leg_sets": [
+              [
+                "I1:L0"
+              ],
+              [
+                "I1:L0",
+                "I1:L1",
+                "I1:L2"
+              ]
+            ]
+          },
+          "date": {
+            "state": "omitted",
+            "kind": "none",
+            "precision": "none",
+            "direction": null,
+            "raw": null,
+            "resolved": null,
+            "resolved_range": null,
+            "resolved_instant": null,
+            "window_raw": null,
+            "time_filters": []
+          }
+        },
+        {
+          "operation": "emu.routing",
+          "relation": "independent",
+          "unit_count": 1,
+          "bindings": {
+            "model": "CR400BF",
+            "line": null
+          },
+          "requested_fields": [
+            "route_membership"
+          ],
+          "time_basis": "not_applicable",
+          "itinerary_ref": {
+            "itinerary_id": "I1",
+            "scope": "unresolved",
+            "leg_ids": [],
+            "candidate_leg_sets": [
+              [
+                "I1:L0"
+              ],
+              [
+                "I1:L0",
+                "I1:L1",
+                "I1:L2"
+              ]
+            ]
+          },
+          "date": {
+            "state": "omitted",
+            "kind": "none",
+            "precision": "none",
+            "direction": null,
+            "raw": null,
+            "resolved": null,
+            "resolved_range": null,
+            "resolved_instant": null,
+            "window_raw": null,
+            "time_filters": []
+          }
+        }
+      ],
+      "task_count": 6,
+      "unit_count": 14,
+      "status": "ambiguous",
+      "projection": {
+        "status": "unresolved",
+        "intent": null,
+        "question_type": "realtime",
+        "slots": {
+          "location": null,
+          "target": null,
+          "time": null,
+          "direction": null,
+          "extra": null
+        }
+      },
+      "expect_time": {
+        "state": "explicit",
+        "raw": null,
+        "resolved_date": null,
+        "window_raw": null
+      },
+      "eligibility": "defer",
+      "not_golden_data": true
+    },
+    "C-0008": {
+      "operation": "train.timetable",
+      "train": "G1",
+      "requested_fields": [
+        "timetable"
+      ],
+      "time_basis": "scheduled",
+      "date": {
+        "state": "invalid",
+        "kind": "calendar_day",
+        "precision": "unresolved",
+        "direction": null,
+        "raw": "not_a_date",
+        "resolved": null,
+        "resolved_range": null,
+        "resolved_instant": null,
+        "window_raw": null,
+        "time_filters": []
+      },
+      "date_source": {
+        "source": "display_action",
+        "history_index": null,
+        "quote": "not_a_date",
+        "path": "/date"
+      },
+      "expect_time": {
+        "state": "invalid",
+        "raw": "not_a_date",
+        "resolved_date": null,
+        "window_raw": null
+      },
+      "projection_time": null,
+      "itineraries": [],
+      "itinerary_ref": null,
+      "not_golden_data": true
+    }
+  },
+  "comparison": {
+    "pairing": "operation/relation + itinerary/leg/scope + bindings/meaningful constraints; never old array index alone",
+    "keep_record_denominator": 300,
+    "recompute_unit_denominators": true,
+    "keep_calibration_split": [
+      18,
+      282
+    ],
+    "constraints_dictionary_changed": false,
+    "unit_expansion_is_zero_diff": false,
+    "semantic_ambiguity_may_remain_after_structure_freeze": true,
+    "candidate_data_is_system_accuracy": false
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "schema": "intent-evaluation-direction-rules",
+  "version": "1.3.1",
+  "issued_on": "2026-10-01",
+  "namespace": "intent-evaluation-only",
+  "runtime_contract_changed": false,
+  "extends": {
+    "file": "constraints-time-v1.3.json",
+    "version": "1.3",
+    "sha256": "512142857b1e786ba106e77fd0e1f914f2a418a18be94702825d11a49d33a027"
+  },
+  "field": "query_unit.date.direction",
+  "scope": "vague relative periods and current periods only",
+  "allowed_by_kind": {
+    "none": [null],
+    "calendar_day": [null],
+    "calendar_range": [null],
+    "instant": [null],
+    "current_period": ["current"],
+    "relative_period": ["past", "future", "unspecified"],
+    "time_of_day": [null],
+    "unresolved": [null]
+  },
+  "enforcement": {
+    "kind_direction_combination": "hard",
+    "invalid_combination": "contract_violation",
+    "applies_to_all_date_states": true,
+    "other_normal_form_combinations": "not_frozen_by_this_patch"
+  },
+  "migration": {
+    "output": "new_label_copy_only",
+    "clear_non_null_direction_for_known_kinds": [
+      "none", "calendar_day", "calendar_range", "instant", "time_of_day", "unresolved"
+    ],
+    "change_type": "representation_migration",
+    "must_not_change": [
+      "state", "kind", "precision", "resolved", "resolved_range", "resolved_instant",
+      "raw", "window_raw", "time_filters", "bindings", "constraints", "projection"
+    ],
+    "relative_period_and_current_period": "source_review_required_no_automatic_fill",
+    "unknown_kind": "contract_violation_no_automatic_clear"
+  },
+  "comparison": {
+    "report_violations_before_normalization": true,
+    "virtual_normalization_is_formal_score": false,
+    "whole_unit_equality_cannot_be_inferred_from_date_only": true,
+    "keep_existing_denominators_and_other_differences": true
+  },
+  "source_review_decisions": [
+    {
+      "id": "M-0078",
+      "kind": "relative_period",
+      "quote": "国庆以后",
+      "direction": "future",
+      "change_type": "judgment_correction",
+      "preserve_state": "ambiguous",
+      "preserve_precision": "unresolved",
+      "preserve_anchor_ambiguity": true,
+      "do_not_resolve_holiday_dates": true,
+      "automatic_rule_for_other_samples": false
+    }
+  ]
+}

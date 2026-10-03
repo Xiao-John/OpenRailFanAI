@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+
     <application
         android:label="@string/app_name"
         android:icon="@drawable/ic_launcher"
@@ -13,6 +14,16 @@
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:supportsRtl="true">
+
+        <!-- MainActivity 保留安装后的 launcher 身份，并按构建资源将 Main 转入此原生宿主。 -->
+        <activity
+            android:name=".MainComposeActivity"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="false" />
+
+        <service
+            android:name=".BackendService"
+            android:exported="false" />
 
         <activity
             android:name=".MainActivity"
@@ -25,5 +36,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Qualcomm FastRPC 的 vendor 库（Hexagon DSP 的唯一系统依赖）。
+             Android 12（API 31）起有 vendor library isolation：targetSdk >= 31 的应用
+             默认看不到 /vendor/lib64 里的厂商库，**必须在 manifest 里声明才允许 dlopen**。
+             我们 targetSdk = 35，没有这一行，进程连 libcdsprpc.so 都打不开 ——
+             而它是通往 NPU 的门票（`libQnnHtp*.so` 那些才要自己打包，这一条不用也不该打包）。
+
+             `required="false"` 是刻意的：非骁龙设备上根本没有这个库，
+             设成 true 会**直接装不上**。要的是"有就用、没有也不拦"。
+
+             位置也必须是 `<application>` 的子元素 —— 官方文档写明了 "contained in: <application>"，
+             放错层级不报错也不生效。
+             https://developer.android.com/guide/topics/manifest/uses-native-library-element
+
+             ⚠️ 这里**不要**用"只在 LM 轨加一份 manifest"的写法：
+             `AndroidSourceSet.manifest.srcFile()` 是**替换**而不是追加，
+             实测会把整个 main manifest 顶掉 —— 结果是没有 label、没有 icon、
+             连 LAUNCHER 入口都没有的包（lm33 就是这么坏的）。
+             这条声明本身是惰性的，放 main 里对正式包没有行为影响。 -->
+        <uses-native-library
+            android:name="libcdsprpc.so"
+            android:required="false" />
     </application>
 </manifest>

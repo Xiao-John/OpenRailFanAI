@@ -773,7 +773,11 @@ def test_version_is_single_sourced():
     assert not re.search(r"versionCode\s*=\s*\d+", gradle), (
         "gradle 里又出现写死的 versionCode —— 应由 VERSION 推导"
     )
-    assert '"version":"$appVersion"' in gradle, "build.json 里没带上版本号"
+    assert '"version":"$effectiveVersionName"' in gradle, "build.json 里没带上版本号"
+    assert 'inputs.property("versionLabel", effectiveVersionName)' in gradle, (
+        "构建标记没把版本标签声明为输入：LM 轨只改 -PlmLabel（VERSION 文件没动），"
+        "Gradle 会判 UP-TO-DATE 而不重写 build.json，标记就停在上一版的标签上"
+    )
 
     # 扫描前先去掉注释：注释里提到历史版本号是有价值的说明，不该被判为"写死"。
     html = re.sub(r"<!--.*?-->", "", (REPO_ROOT / "frontend/index.html").read_text(encoding="utf-8"), flags=re.S)
@@ -790,7 +794,7 @@ def test_version_is_single_sourced():
 def test_version_bump_updates_artifact_name():
     """构建脚本要把产物按版本号命名，否则"我手上是哪个文件"又要靠嘴说。"""
     sh = (REPO_ROOT / "scripts/android/build.sh").read_text(encoding="utf-8")
-    assert "dist/android/OpenRailFanAI-$APP_VERSION-arm64-$TYPE.apk" in sh, (
+    assert "dist/android/OpenRailFanAI-$ARTIFACT_LABEL-arm64-$TYPE.apk" in sh, (
         "构建脚本没有按版本号命名产物"
     )
     assert "-nt " in sh and "BUILD_STARTED_AT" in sh, (
@@ -798,6 +802,90 @@ def test_version_bump_updates_artifact_name():
         "把旧内容的 APK 按新版本号复制过去，就成了同名不同内容"
     )
     print("[PASS] 产物按版本号命名，且只归置本次真正重建过的")
+
+
+def test_lm_track_is_independent_of_release_version():
+    """本地模型版（LM 轨）必须与正式版本线**完全解耦**，且数字只增不飘。
+
+    背景：LM 轨是内部封测通道，每次改动都要出一个能彼此区分的包。
+    两条红线：
+      1. 不能改 VERSION —— 那会让正式构建跟着跳号；
+      2. 不能沿用正式号 —— dist/ 里会出现同名不同内容的包。
+    所以 LM 轨自带前缀+自增数字（lm1/lm2/…），计数只写在 VERSION.lm 里。
+    """
+    sh = (REPO_ROOT / "scripts/android/build.sh").read_text(encoding="utf-8")
+    gradle = (ANDROID_DIR / "app/build.gradle.kts").read_text(encoding="utf-8")
+
+    assert "--lm)" in sh, "build.sh 没有 --lm 开关"
+    assert 'LM_FILE="$ROOT/VERSION.lm"' in sh, "LM 轨的计数没有独立的来源文件（不应复用 VERSION）"
+    assert '-PlmLabel=' in sh, "build.sh 没有把 LM 标签传给 Gradle"
+    assert 'LM_N + 1' in sh and 'PLACED' in sh, (
+        "LM 计数没有在构建成功后自增，或没有用 PLACED 守住「没产出就不跳号」"
+    )
+
+    # versionCode 必须**高于正式线**：测试者手机上已有的 debug 包（0.1.6 → 106）
+    # 会让 Android 拒绝安装 versionCode 更低的包。1/2/3 这种计数会直接卡死安装。
+    assert "100000" in gradle, "LM 轨的 versionCode 起点不是 100000+，会低于正式线而无法覆盖安装"
+    assert "effectiveVersionCode" in gradle and "effectiveVersionName" in gradle, (
+        "gradle 没有把 LM 标签接到 versionName/versionCode 上"
+    )
+
+    # 计数文件本身要存在且是纯数字（脚本 tr -dc '0-9' 后为空就报错退出）
+    lm_file = REPO_ROOT / "VERSION.lm"
+    assert lm_file.exists(), "缺少 VERSION.lm（LM 轨的计数器）"
+    assert re.fullmatch(r"\d+", lm_file.read_text(encoding="utf-8").strip()), (
+        "VERSION.lm 内容必须只有一个数字"
+    )
+    print(
+        f"[PASS] LM 轨独立于 VERSION={ (REPO_ROOT / 'VERSION').read_text().strip() }："
+        f"前缀+数字（当前 VERSION.lm={lm_file.read_text(encoding='utf-8').strip()}）、"
+        f"versionCode=100000+N 高于正式线"
+    )
+
+
+def test_launcher_entry_and_label_survive():
+    """主 manifest 必须保住 label / icon / LAUNCHER 入口 —— 否则装完**桌面没有图标**。
+
+    这条是**真实事故**的回归（lm33）：为了加 NPU 需要的 `<uses-native-library>`，
+    当时以为 `AndroidSourceSet.manifest.srcFile()` 是"追加并合并"，就给 LM 轨加了一份
+    附加 manifest。实际它是**替换** —— 整个 main manifest 被顶掉，产出包的后果是：
+      · `application-label` 为空      → 安装器只显示包名
+      · 没有 icon + 没有 LAUNCHER 入口 → 装完桌面找不到这个应用
+    而**构建全程成功、零警告**，所以只能在测试里钉住。
+
+    静态检查即可（不必跑一次 Gradle）：只要再有人写 `manifest.srcFile(`，
+    或主 manifest 丢了 LAUNCHER / label / icon，就立刻失败。
+    """
+    manifest = (REPO_ROOT / "android" / "app" / "src" / "main" / "AndroidManifest.xml").read_text(
+        encoding="utf-8")
+    assert "android.intent.category.LAUNCHER" in manifest, \
+        "主 manifest 丢了 LAUNCHER 入口 —— 装完桌面不会有图标"
+    assert 'android:label="@string/app_name"' in manifest, \
+        "主 manifest 的 <application> 丢了 label —— 安装器会只显示包名"
+    assert 'android:icon="@drawable/ic_launcher"' in manifest, \
+        "主 manifest 的 <application> 丢了 icon"
+
+    # NPU 需要的 FastRPC 库声明：必须在 <application> 内，且 required=false
+    # （非骁龙设备上没有这个库，写 true 会直接装不上）。
+    assert "libcdsprpc.so" in manifest, \
+        "缺 <uses-native-library android:name=\"libcdsprpc.so\"> —— NPU 探针会假阴性"
+    assert 'android:required="false"' in manifest, "libcdsprpc.so 的声明必须写成 required=false"
+    app_i, lib_i = manifest.find("<application"), manifest.find("uses-native-library")
+    assert app_i >= 0 and app_i < lib_i < manifest.find("</application>"), \
+        "<uses-native-library> 不在 <application> 内 —— 放错层级不报错也不生效"
+
+    gradle = (REPO_ROOT / "android" / "app" / "build.gradle.kts").read_text(encoding="utf-8")
+    # **先剥掉注释再判**：这段说明本身就要提到那个 API 名，否则护栏会把自己的注释当成违规。
+    # （第一版就是这么假失败的 —— 顺带说明：判据要落在"代码做了什么"，不是"文字里出现过什么"。）
+    import re as _re
+
+    gradle_code = _re.sub(r"/\*.*?\*/", "", gradle, flags=_re.S)
+    gradle_code = _re.sub(r"//[^\n]*", "", gradle_code)
+    assert "manifest.srcFile(" not in gradle_code, (
+        "build.gradle.kts 的代码里出现了 manifest.srcFile() —— 它是**替换**而不是合并，"
+        "会把主 manifest 顶掉，产出一个没有 label / 没有桌面入口的包（lm33 真实事故）"
+    )
+    print("[PASS] 主 manifest 保住 label / icon / LAUNCHER，且 FastRPC 声明在 <application> 内")
 
 
 def main():
@@ -832,6 +920,7 @@ def main():
     test_frontend_api_calls_have_api_prefix()
     test_server_selfcheck_covers_entry_script()
     test_frontend_reports_boot_errors()
+    test_launcher_entry_and_label_survive()
     print("\nAndroid 一体化约束测试全部通过 ✔")
 
 

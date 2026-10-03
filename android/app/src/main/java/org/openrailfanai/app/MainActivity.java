@@ -6,11 +6,17 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ComponentName;
+import android.content.ServiceConnection;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import android.content.pm.PackageInfo;
 import android.content.res.AssetManager;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Process;
+import android.os.IBinder;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
@@ -64,7 +70,7 @@ import javax.crypto.spec.GCMParameterSpec;
  * 而真机排障时用户拿不到 logcat —— 所以这里把启动过程做成可见日志，
  * 并把 WebView 的网络/HTTP 错误、以及前端 JS 的运行期错误都显示出来。
  */
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements BackendService.Listener {
 
     private static final String TAG = "RailFanAI";
 
@@ -76,11 +82,30 @@ public class MainActivity extends Activity {
     private TextView hintView;
     private final StringBuilder bootLog = new StringBuilder();
     private volatile boolean pageLoaded = false;
+    private BackendService backendService;
+    private boolean backendBound;
+    private final ServiceConnection backendConnection = new ServiceConnection() {
+        @Override public void onServiceConnected(ComponentName name, IBinder binder) {
+            backendService = ((BackendService.LocalBinder) binder).service();
+            backendService.addListener(MainActivity.this);
+        }
+        @Override public void onServiceDisconnected(ComponentName name) { backendService = null; }
+    };
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Keep the installed launcher component stable while Main moves to Compose.
+        // The build-time resource leaves LM on its original path. An explicit intent
+        // provides the retained WebView fallback without adding a product UI toggle.
+        if (getResources().getBoolean(R.bool.main_native_ui)
+                && !getIntent().getBooleanExtra("railfan_web_fallback", false)) {
+            startActivity(new Intent(this, MainComposeActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            finish();
+            return;
+        }
         Log.i(TAG, "启动一体化运行环境");
 
         FrameLayout root = new FrameLayout(this);
@@ -135,7 +160,10 @@ public class MainActivity extends Activity {
 
         Button retry = new Button(this);
         retry.setText("重试");
-        retry.setOnClickListener(v -> recreate());
+        retry.setOnClickListener(v -> {
+            if (backendService != null) backendService.retry();
+            else startService(new Intent(this, BackendService.class));
+        });
         panel.addView(retry);
 
         ScrollView scroller = new ScrollView(this);
@@ -248,7 +276,9 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(root);
 
-        new Thread(this::bootstrap, "railfan-bootstrap").start();
+        Intent backend = new Intent(this, BackendService.class);
+        startService(backend);
+        backendBound = bindService(backend, backendConnection, Context.BIND_AUTO_CREATE);
     }
 
     /** 用系统浏览器打开外部链接；没有可用浏览器时给出可见提示而不是静默失败。 */
@@ -324,11 +354,95 @@ public class MainActivity extends Activity {
             startPythonLogPump();       // 从此刻起把 Python 日志同步到屏幕
             PyObject server = Python.getInstance().getModule("server");
             boot("调用 server.serve()…");
+            // 设备端本地推理要用的两个路径，只能由 Java 侧给出：
+            //   nativeLibraryDir —— Android 10+ 的 W^X 之下，**只有这个目录允许 exec 二进制**，
+            //                       可写目录（filesDir 等）一律被拒，所以推理二进制必须在那儿；
+            //   外部应用目录     —— 模型 1.2–2.5GB 不可能进 APK，放这里可直接 adb push
+            //                       （内部 filesDir 需要 run-as 才能写）。
+            String nativeLibDir = getApplicationInfo().nativeLibraryDir;
+            File extDir = getExternalFilesDir(null);
+            boolean lmBuild = getPackageManager().getPackageInfo(getPackageName(), 0)
+                    .versionName.startsWith("lm");
+            File modelsDir = lmBuild ? new File(extDir != null ? extDir : dataDir, "models") : null;
+            if (modelsDir != null) boot("本地模型目录：" + modelsDir);
+            // 内部调试轨（包名带 .internal）与封测轨是**两个独立应用**，各自有各自的
+            // Android/data/<包名>/files/models —— 于是调试版看不到封测版已经下好的模型，
+            // 而一份 2B/4B 要 1.2–2.6 GB。Android 11+ 又禁止应用读**其它包**的 Android/data，
+            // 只有拿到「所有文件访问权限」才读得到。
+            // 所以这里把**兄弟包**的模型目录一并报给 Python，让它能原地认出来（不拷贝、不重下）。
+            // 没授权时那些路径读不到，Python 侧会自然跳过 —— 不会因此报错。
+            String siblingDirs = lmBuild ? siblingModelDirs(extDir) : "";
+            if (lmBuild && !siblingDirs.isEmpty()) {
+                boot("尝试复用其它版本的模型目录：" + siblingDirs);
+            }
             // serve() 内部起 uvicorn 并常驻；就绪/失败都通过回调回到主线程
-            server.callAttr("serve", this, webappDir.getAbsolutePath(), dataDir.getAbsolutePath());
+            server.callAttr("serve", this, webappDir.getAbsolutePath(), dataDir.getAbsolutePath(),
+                    nativeLibDir == null ? "" : nativeLibDir,
+                    modelsDir == null ? "" : modelsDir.getAbsolutePath(),
+                    siblingDirs);
         } catch (Throwable t) {
             Log.e(TAG, "启动失败", t);
             fail("启动异常：" + t + "\n" + Log.getStackTraceString(t));
+        }
+    }
+
+    /**
+     * 其它 RailFanAI 包的模型目录（**只读候选**，`:` 分隔；空串表示没有）。
+     *
+     * 为什么需要：内部调试轨是独立包名（`.internal`），与封测轨属于**两个应用**，
+     * 各自有 `/Android/data/<包名>/files/models`。调试时不可能为每一版重下 2.6 GB。
+     * 把兄弟目录报给 Python，它就能把那边已下好的模型**原地认出来**。
+     *
+     * 只在拿到「所有文件访问权限」时真的读得到；没授权就只是几个读不到的路径，
+     * Python 侧自然跳过，不会因此失败。**刻意不做存在性检查**：即使现在读不到，
+     * 用户随后去系统设置里授权，也应重启后即生效，而不是被这一层缓存住。
+     */
+    private String siblingModelDirs(File extDir) {
+        if (extDir == null) return "";
+        // .../Android/data/<pkg>/files → 取两级父目录，即 Android/data
+        File parent = extDir.getParentFile();
+        File dataRoot = parent == null ? null : parent.getParentFile();
+        if (dataRoot == null || !dataRoot.isDirectory()) return "";
+        File[] kids = dataRoot.listFiles();
+        if (kids == null) return "";
+        String self = getPackageName();
+        StringBuilder sb = new StringBuilder();
+        for (File kid : kids) {
+            String name = kid.getName();
+            // 只认自家系列（org.openrailfanai.app / .debug / .internal），不去扫别人的目录
+            if (!name.startsWith("org.openrailfanai.app") || name.equals(self)) continue;
+            if (sb.length() > 0) sb.append(':');
+            sb.append(new File(kid, "files/models").getAbsolutePath());
+        }
+        return sb.toString();
+    }
+
+    // ---------------------------------------------------------------- 文件导出（SAF）
+    /** 请求码：SAF 的「保存到…」 */
+    private static final int REQ_SAVE_FILE = 4001;
+    /** 等待用户选完位置再写盘的内容（选完才在 onActivityResult 里落盘）。 */
+    private String pendingExportText = null;
+    private String pendingExportName = "railfanai.txt";
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_SAVE_FILE) return;
+        String text = pendingExportText;
+        pendingExportText = null;
+        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null || text == null) {
+            Log.i(TAG, "用户取消了保存");
+            return;
+        }
+        // 注意用 try-with-resources：ContentResolver 拿到的流必须关，
+        // 否则 SAF 那边可能迟迟不落盘（实测在小文件上看不出来，大文件会）。
+        try (OutputStream os = getContentResolver().openOutputStream(data.getData())) {
+            if (os == null) throw new IllegalStateException("openOutputStream 返回 null");
+            os.write(text.getBytes(StandardCharsets.UTF_8));
+            os.flush();
+            Log.i(TAG, "导出成功：" + data.getData());
+        } catch (Exception e) {
+            Log.e(TAG, "导出写盘失败", e);
         }
     }
 
@@ -484,6 +598,37 @@ public class MainActivity extends Activity {
             }
         }
 
+        /**
+         * 让**用户自己选位置**保存一个文本文件（SAF 的「保存到…」）。
+         *
+         * 为什么要它：App 的外部私有目录（`/sdcard/Android/data/<pkg>/files`）
+         * 在 Android 11+ **对文件管理器是屏蔽的** —— 文件写得出来，用户却找不到，
+         * 实测因此拿不到日志。SAF 由系统弹框、用户选下载/文档/网盘，**不需要任何存储权限**，
+         * 落点是用户自己知道的地方。
+         *
+         * 返回 true 表示已唤起选择器（真正写盘在 onActivityResult 里完成）。
+         */
+        @JavascriptInterface
+        public boolean saveTextFile(String name, String text) {
+            if (text == null) return false;
+            pendingExportText = text;
+            pendingExportName = (name == null || name.isEmpty()) ? "railfanai.txt" : name;
+            // startActivityForResult 必须在 UI 线程；本方法跑在 JavaBridge 线程
+            runOnUiThread(() -> {
+                try {
+                    Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("text/plain");
+                    i.putExtra(Intent.EXTRA_TITLE, pendingExportName);
+                    startActivityForResult(i, REQ_SAVE_FILE);
+                } catch (Exception e) {
+                    Log.w(TAG, "唤起保存对话框失败", e);
+                    pendingExportText = null;
+                }
+            });
+            return true;
+        }
+
         /** 调起系统分享面板。返回是否成功唤起，供前端决定要不要提示失败。 */
         @JavascriptInterface
         public boolean shareText(String text) {
@@ -500,6 +645,98 @@ public class MainActivity extends Activity {
                 return false;
             }
         }
+
+        /**
+         * NPU 探测的 **Java 侧**那一半。为什么必须单独做一遍：
+         *
+         * 原生探针是用 subprocess 起出来的**独立可执行文件**，拿到的是裸的
+         * `(default)` linker namespace —— 而 `<uses-native-library>` 的授权加在
+         * **App 的 classloader namespace** 上。实测报错原文就是
+         * `is not accessible for the namespace "(default)"`，且 permitted_paths 里
+         * **没有 `/vendor/lib64`**。所以那个 "not found" 是**测量方式的假阴性**：
+         * 换个地方 dlopen，结论可能完全不同。
+         *
+         * 本方法跑在 **App 主进程**里、走 classloader namespace ——
+         * 也就是"普通 App 真正会用到的那条路"。
+         *
+         * 返回**文本**而不是布尔值：排障要看具体原因，不是"失败了"三个字。
+         */
+        @JavascriptInterface
+        public String probeNpuJava() {
+            String report = buildNpuJavaReport();
+            // **顺手缓存到文件**：Python 侧的「导出诊断」够不着 Java（它只能读文件），
+            // 而 Java 这半边才是决定性的（loadLibrary 成不成 + open 设备节点成不成）。
+            // 不缓存的话，导出的报告就**只有原生那半** —— 实测 vivo 那份诊断正是如此：
+            // 决定性数据缺失，而文本看上去毫无异常。缓存之后，直接导出即完整。
+            try (FileOutputStream out = new FileOutputStream(npuJavaReportFile())) {
+                out.write(report.getBytes("UTF-8"));
+            } catch (Throwable t) {
+                Log.w(TAG, "NPU Java 报告缓存写入失败（导出诊断里会缺这一节）", t);
+            }
+            return report;
+        }
+    }
+
+    /** Java 侧 NPU 报告的缓存文件（供 Python 的 diagnostics() 读取，见 probeNpuJava）。 */
+    private File npuJavaReportFile() {
+        return new File(getFilesDir(), "npu-java-report.txt");
+    }
+
+    /** Java 侧探测的实际内容。调用方见 {@link RailBridge#probeNpuJava()}。 */
+    private String buildNpuJavaReport() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Java 侧探测（App 主进程 / classloader namespace）===\n");
+        sb.append("pid ").append(Process.myPid())
+          .append("  uid ").append(Process.myUid()).append("\n\n");
+
+        // ---- 1) 能不能加载 FastRPC 库 ----
+        // 这才是 `<uses-native-library>` 真正管辖的事。
+        // 原生探针（独立 exec 出来的进程）在这里**必然失败** —— 它拿到的是裸的
+        // `(default)` namespace。两半的差异正是这个探针存在的理由。
+        for (String n : new String[]{"cdsprpc", "adsprpc"}) {
+            try {
+                System.loadLibrary(n);
+                sb.append("loadLibrary(\"").append(n).append("\")  → **成功**\n");
+            } catch (Throwable t) {
+                sb.append("loadLibrary(\"").append(n).append("\")  → 失败：")
+                  .append(t.getClass().getSimpleName()).append(": ")
+                  .append(String.valueOf(t.getMessage())).append("\n");
+            }
+        }
+        for (String p : new String[]{"/vendor/lib64/libcdsprpc.so"}) {
+            try {
+                System.load(p);
+                sb.append("load(\"").append(p).append("\")  → **成功**\n");
+            } catch (Throwable t) {
+                sb.append("load(\"").append(p).append("\")  → 失败：")
+                  .append(t.getClass().getSimpleName()).append(": ")
+                  .append(String.valueOf(t.getMessage())).append("\n");
+            }
+        }
+
+        // ---- 2) DSP 设备节点能不能碰（**决定性的那一步**）----
+        // 与"库能不能加载"是两回事：库只是用户态包装，真正 open/ioctl 设备节点的是它。
+        // 「能加载 ≠ 能用」—— loadLibrary 成功那一下最容易让人以为整条路通了。
+        sb.append("\n");
+        for (String d : new String[]{"/dev/fastrpc-cdsp", "/dev/fastrpc-cdsp-secure"}) {
+            File f = new File(d);
+            String open;
+            try (FileInputStream in = new FileInputStream(d)) {
+                open = "**open 成功**（首字节 " + in.read() + "）";
+            } catch (Throwable t) {
+                open = "open 失败：" + t.getClass().getSimpleName() + ": "
+                       + String.valueOf(t.getMessage());
+            }
+            sb.append(d).append("\n  exists=").append(f.exists())
+              .append(" canRead=").append(f.canRead())
+              .append("  → ").append(open).append("\n");
+        }
+        // 为什么要顺带打 exists/canRead：`File.exists()` 走的是 `access(F_OK)`，
+        // 不需要 SELinux 的 `getattr`；而原生探针的 `stat()` 需要 —— 两者**本来就可能不一致**。
+        // 都打出来，省得把这个差异误读成"两个进程权限不同"（第一版就这么怀疑过）。
+        sb.append("\n判据：**只有 `open` 那一行的成败算结论。**\n");
+        sb.append("exists/canRead 仅作参考（access(2) 与 stat(2) 受的检查不同）。\n");
+        return sb.toString();
     }
 
     // ---------------------------------------------------------------- 密钥库与文件工具
@@ -820,10 +1057,30 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (backendBound) {
+            if (backendService != null) backendService.removeListener(this);
+            unbindService(backendConnection);
+            backendBound = false;
+        }
         if (web != null) {
             web.destroy();
             web = null;
         }
         super.onDestroy();
     }
+
+    @Override public void onBackendStage(String stage) { boot("  · " + stage); }
+
+    @Override public void onBackendReady(int readyPort, String selfCheck) {
+        boot("后端就绪：http://127.0.0.1:" + readyPort + "/");
+        if (selfCheck != null && !selfCheck.isEmpty()) boot("自检：" + selfCheck);
+        runOnUiThread(() -> {
+            if (web != null) {
+                web.setVisibility(View.VISIBLE);
+                web.loadUrl("http://127.0.0.1:" + readyPort + "/");
+            }
+        });
+    }
+
+    @Override public void onBackendFailed(String detail) { fail("后端启动失败：\n" + detail); }
 }

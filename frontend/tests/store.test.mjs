@@ -76,10 +76,37 @@ ok(fresh.store.get(idsBefore[0]).messages.length === 2, "消息内容也恢复�
 for (let i = 0; i < 130; i++) fresh.store.create();
 ok(fresh.store.conversations.length <= 100, "对话数量被限制在 100 以内：" + fresh.store.conversations.length);
 
-// 累计 token
-const t = fresh.store.bumpTotal(1234);
-ok(t >= 1234, "累计 token 累加生效：" + t);
-ok(fresh.store.totalTokens() === t, "累计 token 持久化读取一致");
+// 累计 token：**按当前对话算**，不是全局计数器。
+// 旧实现把它累加成一个不受对话约束的全局值，于是新开对话不归零、删消息也不减少 ——
+// 而用户读这个数是在问"我现在这段对话花了多少"。这里把新语义钉死。
+{
+  const conv = fresh.store.current();
+  fresh.store.addMessage(conv.id, { role: "user", content: "q1" });
+  fresh.store.addMessage(conv.id, {
+    role: "assistant", content: "a1", meta: { usage: { total_tokens: 1000, prompt_tokens: 800, completion_tokens: 200 } },
+  });
+  ok(fresh.store.totalTokens() === 1000, "用量按当前对话的消息求和：" + fresh.store.totalTokens());
+
+  fresh.store.addMessage(conv.id, { role: "user", content: "q2" });
+  fresh.store.addMessage(conv.id, {
+    role: "assistant", content: "a2", meta: { usage: { total_tokens: 234, prompt_tokens: 200, completion_tokens: 34 } },
+  });
+  ok(fresh.store.totalTokens() === 1234, "多轮累加：" + fresh.store.totalTokens());
+
+  // 新开一个对话必须归零（旧实现在这里会继续往上涨）
+  const c2 = fresh.store.create();
+  ok(fresh.store.totalTokens() === 0, "新对话归零（旧全局计数器在这里会继续累加）");
+
+  // 删消息要能跟着减（旧实现只增不减）
+  fresh.store.setCurrent(conv.id);
+  fresh.store.truncate(conv.id, 2);
+  ok(fresh.store.totalTokens() === 1000, "截断消息后合计跟着减少：" + fresh.store.totalTokens());
+
+  // 没有 usage 的消息不能把合计变成 NaN
+  fresh.store.addMessage(conv.id, { role: "assistant", content: "无用量", meta: {} });
+  ok(fresh.store.totalTokens() === 1000, "缺 usage 的消息按 0 计，不污染合计");
+  fresh.store.remove(c2.id);
+}
 
 // ---------- LLM 供应商（BYOK）----------
 // 关键约束：**未勾选"记住 Key"时，Key 绝不落盘**（隐私红线，改了必须在这里失败）

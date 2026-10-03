@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     # LLM_MOCK=true 时：不走真实模型，用确定性本地 mock 跑通整链（无 Key 演示/CI 用）
     llm_mock: bool = False
 
+    # 模型不可用（LLMUnavailable）时，是否用**确定性规则**把已检索到的事实排版成回复。
+    # 为什么默认开：快路径命中的问法（占单轮 74%）本来就 0 次 LLM 调用就能拿到全部数据，
+    # 生成层挂掉不该连带把这批数据一起丢掉。只做排版、不生成事实，且回复首行明确自报
+    # "未使用大语言模型"；error 事件照常下发，不会被静默掩盖。
+    # 关掉即回到"只给错误提示"的旧行为（LLM_FALLBACK_RENDER=false）。
+    llm_fallback_render: bool = True
+
     # ---- 服务器 ----
     host: str = "127.0.0.1"
     port: int = 8000
@@ -88,6 +95,14 @@ class Settings(BaseSettings):
     fact_text_max_chars: int = 4000
     # 表格类事实最多注入多少行（超出时显式标注省略行数）
     fact_table_max_rows: int = 40
+    # 单次生成最多注入多少**条**工具事实（0 = 不限制，云端行为不变）。
+    #
+    # **本地小模型建议设 8**：实测给 4B 灌 15 条候选车次时，它一边列出
+    # "G1 二等座余 12 张"，一边在结论里写"明天上午没有票" —— 自相矛盾。
+    # 根因不是"没思考"（那是加思考预算的思路），而是**候选条数超出了小模型的注意力容量**。
+    # 收敛条数同时降 prefill（本地推理的延迟大头），是少见的双赢。
+    # 丢弃的条数会**显式写进 prompt** 并禁止全集表述，与项目既有完整性契约一致。
+    fact_max_entries: int = 0
     # station.lookup 列表展示条数（本地索引排序后取前 N；mcp 自身硬上限仅 10 条）
     station_list_limit: int = 12
     # station.screen（12306 车站大屏）单次下发的明细条数：接口一次返回全天 200–700 条，
@@ -102,6 +117,66 @@ class Settings(BaseSettings):
     fastpath_enabled: bool = True
     # 结构化调用（意图/槽位）关闭"思考"：这类任务里思考 token 纯属延迟（实测 3.3s → 1.1s）
     llm_structured_no_think: bool = True
+    # 结构化调用时把**完整 JSON Schema** 下发给上游（response_format=json_schema /
+    # Responses 的 text.format=json_schema），让服务端做**约束解码**（语法掩码），
+    # 而不只是声明"请给一个 JSON 对象"。
+    #
+    # 默认关的原因：约束解码是后来才普及的能力，多数 OpenAI 兼容网关不支持；不支持时
+    # 白费一次失败往返（阶梯会自动丢参数重试，不报错，但慢一拍）。
+    #
+    # **用本地小模型（Ollama / llama.cpp / LM Studio）时务必打开**：
+    #   实测（arXiv 2609.07370，1000 条 CPU 小模型原始响应）**只有 5 条**能被 json.loads
+    #   直接解析；另一组对照实验里"好好请求"的合法率 4%、重试 5 次也只有 23%，
+    #   而**约束解码是 100%**（且每条可用记录的 token 花费少 19 倍）。
+    #   即"小模型能不能当决策器"主要不取决于模型多聪明，而取决于有没有约束解码。
+    # 配套：LLM_STRUCTURED_NO_THINK=true，且 LLM_CONTEXT_TOKENS 要与本地服务端的
+    # num_ctx 对齐（对不齐时超出的部分会被静默丢弃，比报错难查）。
+    llm_structured_json_schema: bool = False
+    # 决策层的提示词用"**模板 + 算例**"代替"JSON Schema 原文"。
+    #
+    # 默认关（云端模型照旧用 schema 原文，行为零变化）。
+    # **用本地小模型时务必打开**：实测把带中文描述的 schema 原文甩给 2B 模型，
+    # 它会**把 schema 骨架当成答案模板照抄回来**
+    #   {"type":"object","properties":{"intent":"查询余票","location":{},…}}
+    # —— 19 条语料里合并调用 19 次全废，整轮退化到两次调用的兜底路径且槽位全空。
+    # 换成模板 + 两个算例（其中一个必须是省略句，用来钉住多轮继承）后同样三条全部正确，
+    # 而且提示词从 ~1072 token 压到 ~300（本地推理里 prefill 就是延迟本身）。
+    # 见 docs/local-model.md §5。
+    llm_structured_compact_prompt: bool = False
+    # **生成阶段**要不要关思考（与上一条是两件事：那条只管结构化调用）。
+    #
+    # 默认关（云端行为零变化：云端多烧几百思考 token 只是贵一点、慢一点）。
+    # **本地小模型必须打开**：实测 llama-server + Qwen3.5-0.8B、max_tokens=64：
+    #   不传关闭参数        → 正文 0 字、思考 202 字、finish_reason=length
+    #   reasoning_effort=none → 正文 15 字、思考 0 字、finish_reason=stop  ← 唯一有效
+    #   enable_thinking=false → 正文 0 字、思考 216 字（**被静默忽略**）
+    # 即：本地生成不关思考，思考会把输出预算吃光、**正文一个字都没有** ——
+    # 不是慢一点，是整条生成链路不可用。Android 端由 local_model.py 自动置 true。
+    llm_generation_no_think: bool = False
+    # **生成阶段**用精简提示词（默认关，云端行为零变化）。
+    #
+    # 与决策层的 `llm_structured_compact_prompt` 是同一个教训，只是发生在生成层：
+    # 实测同一条真实生成提示词（2073 字）下
+    #   0.8B            输出 1200 token（撞上限不会停）· 重复率 97% · 编造站名
+    #   2B/4B/云端      119–234 token · 重复率 0% · 内容正确
+    # 换成 760 字的精简版后，**同一个 0.8B** 输出 61 token、重复率 0%。
+    # 长提示词不是"信息更多"，对这个小尺度的模型它是**过载**：它会去逐条应付读不完的
+    # 规则，最后抓住其中一条反复复读。
+    #
+    # 顺带是**延迟优化**：设备端 prefill 是唯一瓶颈，1950→760 字 ≈ 砍到 1/2.5。
+    llm_generation_compact_prompt: bool = False
+
+    # 流式请求要不要**主动索取 usage**（`stream_options: {"include_usage": true}`）。
+    #
+    # 默认开。为什么非开不可：OpenAI 兼容规范下**流式响应的 usage 默认不下发**
+    # （末块的 choices 是空的），于是 `done` 事件里三个 token 数恒为 0 ——
+    # 界面上显示「本次 token used: 0（输入 0 / 输出 0）」，看起来像模型没算，
+    # 其实是**我们从来没要过**。非流式调用不受影响（那边本来就带 usage）。
+    #
+    # 少数网关对这个参数会直接报错。链路里有参数降级阶梯兜底（上游若以 400/422
+    # 明确拒绝就会被丢掉重试），但**兜底不等于必然命中** —— 如果某个网关用 5xx
+    # 或无 body 的错误回应它，阶梯认不出来，此时把它设成 false 就是那个逃生口。
+    llm_stream_usage: bool = True
 
     # ---- 本地数据字典（里程/车站档案/离线时刻；2026-09-15 拍板）----
     # 由 `scripts/mirror_dict.py` 构建到 backend/data/dict.db（已 gitignore）。

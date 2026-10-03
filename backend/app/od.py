@@ -40,6 +40,12 @@ _TAIL_JUNK = ("还有", "有票", "有座", "余票", "多少钱", "票价", "�
               "一等座", "二等座", "商务座", "无座", "硬座", "软座",
               "硬卧", "软卧", "动卧", "卧铺", "高铁", "动车", "普速",
               "直达", "特快", "快速", "城际", "发车", "到达",
+              # 运输方式前的动词：「北京到上海坐高铁要多长时间？」剥掉句末的
+              # "要多长时间"后剩 "上海坐高铁"，在"高铁"处截断会留下"坐"，
+              # 终点变成 **"上海坐"** —— 一个不存在的站，查询必然落空
+              # （实测：该问句今天会被接管成 rail_line 并带 direction=北京→上海坐）。
+              # 站点库里没有任何站名含这三个字，可安全作为截断词。
+              "坐", "乘", "搭",
               "呢", "吗", "吧", "啊", "的", "都", "有", "开")
 
 # 句首填充语：帮我/我要/查询…（实测「帮我候补一张明天北京到广州的硬卧」→ 起点应为"北京"）
@@ -102,8 +108,52 @@ def _clean_station(v: str) -> str:
     return v.strip()
 
 
-def parse_od(text: str | None) -> tuple[str, str] | None:
-    """解析区间表述为 (出发站, 到达站)；无法识别返回 None。"""
+def parse_od(text: str | None, station_ok=None) -> tuple[str, str] | None:
+    """解析区间表述为 (出发站, 到达站)；无法识别返回 None。
+
+    `station_ok`：可选的"这是不是一个真实站名"谓词。默认自动取本地站点库，
+    取到就启用**引导式解析**（见 `_parse_od_guided`）。站点库不可用时行为与
+    旧实现完全一致（纯字符串规则），所以无网络的单测里跑的就是旧路径。
+    """
+    if station_ok is None:
+        station_ok = _default_station_ok()
+    legacy = _parse_od_rules(text)
+    if station_ok is None:
+        return legacy
+    # 规则解出来的结果**两端都确实是站名**时才采信：绝大多数正常问法走这条，
+    # 行为与旧实现一致；只有规则解出垃圾（或解不出）时才去做候选搜索。
+    # 这么排是为了"能不动就不动"——引导式只用来补规则的漏与错。
+    if legacy and station_ok(legacy[0]) and station_ok(legacy[1]):
+        return legacy
+    return _parse_od_guided(text, station_ok) or legacy
+
+
+def _default_station_ok():
+    """默认谓词：本地站点库（懒加载；不可用返回 None → 退回纯规则解析）。
+
+    懒加载而不是模块级 import：`app/od.py` 是纯字符串工具，被大量无网络单测
+    直接调用，不该在 import 期就牵出 httpx/mcp 那条链。
+    """
+    try:
+        from app.tools._rt12306 import station_name_set
+
+        names = station_name_set()
+    except Exception:  # noqa: BLE001
+        return None
+    return (names.__contains__ if names else None)
+
+
+def _strip_edges(s: str) -> str:
+    """剥掉句首填充语/时间词与句末追问短语/标点（原来内联在 parse_od 里的四步）。"""
+    s = _LEAD_FILLER_RE.sub("", s).strip()     # 句首填充语（帮我/我要/候补一张…）
+    s = _LEAD_TIME_RE.sub("", s).strip()       # 句首时间词（明天/下周三…）
+    s = _TAIL_NOISE_RE.sub("", s).strip()      # 句末追问短语（走哪条线路/怎么走…）
+    s = _TAIL_PUNCT_RE.sub("", s).strip()      # 句末标点
+    return s
+
+
+def _parse_od_rules(text: str | None) -> tuple[str, str] | None:
+    """原有实现：整串匹配 + 剥句末杂词（保留不动，作为默认路径与最终兜底）。"""
     if not text:
         return None
     s = str(text).strip()
@@ -114,10 +164,7 @@ def parse_od(text: str | None) -> tuple[str, str] | None:
     prev = None
     while prev != s:
         prev = s
-        s = _LEAD_FILLER_RE.sub("", s).strip()     # 句首填充语（帮我/我要/候补一张…）
-        s = _LEAD_TIME_RE.sub("", s).strip()       # 句首时间词（明天/下周三…）
-        s = _TAIL_NOISE_RE.sub("", s).strip()      # 句末追问短语（走哪条线路/怎么走…）
-        s = _TAIL_PUNCT_RE.sub("", s).strip()      # 句末标点
+        s = _strip_edges(s)
     if not s:
         return None
 
@@ -134,3 +181,89 @@ def parse_od(text: str | None) -> tuple[str, str] | None:
             if f and t:
                 return f, t
     return None
+
+
+# 引导式解析的分隔符：在"到/至/箭头/横杠/波浪/去"处**逐个**试切
+_GUIDED_SEP_RE = re.compile(r"(?:到|至|→|->|—|－|-|~|～|去)")
+_MAX_NAME_LEN = 12      # 站名长度上限（实际最长 8，留余量给"XX东"这类）
+
+
+def _suffix_station(s: str, ok) -> str:
+    """`s` 中最长的**后缀**且是真实站名（「有没有通宵的车从西安」→ 西安）。"""
+    s = _LEAD_FILLER_RE.sub("", (s or "").strip()).strip()
+    for n in range(min(len(s), _MAX_NAME_LEN), 1, -1):
+        if ok(s[-n:]):
+            return s[-n:]
+    return ""
+
+
+def _prefix_station(s: str, ok) -> str:
+    """`s` 中最长的**前缀**且是真实站名（「上海虹桥的高铁全程几个小时」→ 上海虹桥）。"""
+    s = (s or "").strip()
+    for n in range(min(len(s), _MAX_NAME_LEN), 1, -1):
+        if ok(s[:n]):
+            return s[:n]
+    return ""
+
+
+def _side_station(seg: str, ok, *, adjacent_suffix: bool) -> str:
+    """取分隔符某一侧的站名：**先试紧邻分隔符的那一端，再试另一端**。
+
+    为什么两端都要试：杂词可能落在任一侧。
+      · `有没有通宵的车从西安`（左段）→ 站名在**末尾**（后缀 西安）
+      · `从北京坐到上海` 的左段 `北京坐` → 站名在**开头**（前缀 北京），后缀是"京坐"
+      · `上海虹桥的高铁全程几个小时`（右段）→ 站名在**开头**（前缀 上海虹桥）
+    只试一端时，上面第二例就解不出来（实测：整句回退成 ('北京坐','上海走')）。
+    """
+    seg = _LEAD_FILLER_RE.sub("", (seg or "").strip()).strip()
+    if not seg:
+        return ""
+    if adjacent_suffix:
+        return _suffix_station(seg, ok) or _prefix_station(seg, ok)
+    return _prefix_station(seg, ok) or _suffix_station(seg, ok)
+
+
+def _parse_od_guided(text: str | None, station_ok) -> tuple[str, str] | None:
+    """**引导式解析**：站点库负责消歧，字符串规则只负责切候选。
+
+    为什么需要它（实测：单轮含区间的语料 18 条里 7 条失败）——原实现是
+    "整串匹配 + 只剥句末词"，目的地一旦超过 10 字上限、或句中夹了杂词，整串就不匹配；
+    起点侧又刻意不切停用词（克制是对的——「成都东」里有"都"），于是杂词留在起点里。
+    两类失败：
+      · **解不出**：`深圳北到厦门北今天还有票吗？要高铁的` → None
+                  `北京南到上海虹桥的高铁全程几个小时` → None
+      · **解错**：  `有没有通宵的车从西安到兰州` → ('有没有通宵的车从西安', '兰州')
+                  `从北京坐到上海走的是哪条线？` → ('北京坐', '上海走')
+
+    做法：在每个分隔符处切成左右两段，各自**从紧邻分隔符的一端向内收缩**到
+    "最长的、确实是站名的"候选（见 `_side_station`）。上面四例分别得到
+    (深圳北,厦门北)、(北京南,上海虹桥)、(西安,兰州)、(北京,上海)。
+    站点库在这里不是"补充校验"，而是**唯一判据** —— 字符串规则无从知道"上海坐"不是站名。
+
+    `_is_timeish` 红线保留：时间/时段表述不算站名（"明天下午到上海的高铁"）。
+    多个切分都成立时取"站名总长最大、其次分隔符最靠左"的一个（最长匹配优先，结果可复现）。
+    """
+    if not text:
+        return None
+    s = str(text).strip()
+    if not s:
+        return None
+    prev = None
+    while prev != s:
+        prev = s
+        s = _strip_edges(s)
+    if not s:
+        return None
+
+    best: tuple[tuple[int, int], tuple[str, str]] | None = None
+    for m in _GUIDED_SEP_RE.finditer(s):
+        f = _side_station(s[:m.start()], station_ok, adjacent_suffix=True)
+        t = _side_station(s[m.end():], station_ok, adjacent_suffix=False)
+        if not f or not t:
+            continue
+        if _is_timeish(f) or _is_timeish(t):
+            continue
+        score = (len(f) + len(t), -m.start())
+        if best is None or score > best[0]:
+            best = (score, (f, t))
+    return best[1] if best else None
