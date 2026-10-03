@@ -1,0 +1,169 @@
+10-03 10:33:47.986  4397  4411 I TestRunner: started: fixedScheduleFixtureShowsRouteAndStops(org.openrailfanai.app.ComposeDisplayFixtureTest)
+10-03 10:33:48.139  4397  4411 W FileTestStorage: Output properties is not supported.
+10-03 10:33:48.142  4397  4411 I Tracing : Tracer added: class androidx.test.platform.tracing.AndroidXTracer
+10-03 10:33:48.160  4397  4397 D EventInjectionStrategy: Creating injection strategy with input manager.
+10-03 10:33:48.160  4397  4397 W fanai.app.debug: Accessing hidden method Landroid/hardware/input/InputManager;->getInstance()Landroid/hardware/input/InputManager; (unsupported, reflection, allowed)
+10-03 10:33:48.167  4397  4397 W fanai.app.debug: Accessing hidden method Landroid/hardware/input/InputManager;->injectInputEvent(Landroid/view/InputEvent;I)Z (unsupported, reflection, allowed)
+10-03 10:33:48.167  4397  4397 W fanai.app.debug: Accessing hidden field Landroid/hardware/input/InputManager;->INJECT_INPUT_EVENT_MODE_WAIT_FOR_FINISH:I (unsupported, reflection, allowed)
+10-03 10:33:48.177  4397  4397 W fanai.app.debug: Accessing hidden method Landroid/os/MessageQueue;->next()Landroid/os/Message; (unsupported, reflection, allowed)
+10-03 10:33:48.177  4397  4397 W fanai.app.debug: Accessing hidden field Landroid/os/MessageQueue;->mMessages:Landroid/os/Message; (unsupported, reflection, allowed)
+10-03 10:33:48.181  4397  4397 W fanai.app.debug: Accessing hidden method Landroid/os/Message;->recycleUnchecked()V (unsupported, reflection, allowed)
+10-03 10:33:48.191  4397  4411 D IdlingRegistry: Registering idling resources: [androidx.compose.ui.test.EspressoLink@e918a0d]
+10-03 10:33:48.219  4397  4411 W Settings: Setting always_finish_activities has moved from android.provider.Settings.System to android.provider.Settings.Global, returning read-only value.
+10-03 10:33:48.238   556  1555 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10163, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:33:48.249   807   970 D SplashScreenView: Build android.window.SplashScreenView{dce8000 V.E...... ......ID 0,0-0,0}
+10-03 10:33:48.249   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:33:48.249   807   970 D SplashScreenView: Branding: view: android.view.View{becb039 G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:33:48.252  1226  1226 W SplitSelectStateCtor: Missing session instanceIds
+10-03 10:33:48.252  1226  1226 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+10-03 10:33:48.260  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=148, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=org.openrailfanai.app.debug/androidx.activity.ComponentActivity }
+10-03 10:33:48.273   404   404 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-03 10:33:48.323  1226  1359 D EGL_emulation: app_time_stats: avg=25346.21ms min=1.06ms max=506280.00ms count=20
+10-03 10:33:48.368  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@1729c40 in: PRE_ON_CREATE
+10-03 10:33:48.369  4397  4397 V ActivityScenario: Activity lifecycle changed event received but ignored because the reported transition was not ON_CREATE while the last known transition was PRE_ON_CREATE
+10-03 10:33:48.393  1226  1359 D EGL_emulation: app_time_stats: avg=38994.49ms min=3.23ms max=506731.88ms count=13
+10-03 10:33:48.404  4397  4397 D CompatChangeReporter: Compat change id reported: 309578419; UID 10163; state: ENABLED
+10-03 10:33:48.449  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@1729c40 in: CREATED
+10-03 10:33:48.451  4397  4397 V ActivityScenario: Update currentActivityStage to CREATED, currentActivity=androidx.activity.ComponentActivity@1729c40
+10-03 10:33:48.454  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@1729c40 in: STARTED
+10-03 10:33:48.455  4397  4397 V ActivityScenario: Update currentActivityStage to STARTED, currentActivity=androidx.activity.ComponentActivity@1729c40
+10-03 10:33:48.469  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@1729c40 in: RESUMED
+10-03 10:33:48.469  4397  4397 V ActivityScenario: Update currentActivityStage to RESUMED, currentActivity=androidx.activity.ComponentActivity@1729c40
+10-03 10:33:48.484   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:48.485   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:48.489   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:48.499  4397  4397 W HWUI    : Unknown dataspace 0
+10-03 10:33:48.550   404   790 W ServiceManagerCppClient: Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10163 pid=0
+10-03 10:33:48.550   404   790 D PermissionCache: checking android.permission.ACCESS_SURFACE_FLINGER for uid=10163 => denied (594 us)
+10-03 10:33:48.550   404   790 W ServiceManagerCppClient: Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10163 pid=0
+10-03 10:33:48.550   404   790 D PermissionCache: checking android.permission.ROTATE_SURFACE_FLINGER for uid=10163 => denied (408 us)
+10-03 10:33:48.551   404   790 W ServiceManagerCppClient: Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10163 pid=0
+10-03 10:33:48.551   404   790 D PermissionCache: checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10163 => denied (733 us)
+10-03 10:33:48.558  4397  4413 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+10-03 10:33:48.566  4397  4413 I EGL_emulation: Opening libGLESv2_emulation.so
+10-03 10:33:48.580  4397  4413 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-03 10:33:48.580  4397  4413 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-03 10:33:48.580   807  1006 D EGL_emulation: app_time_stats: avg=17993.90ms min=17993.90ms max=17993.90ms count=1
+10-03 10:33:48.654   161   161 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device VINTF manifest.
+10-03 10:33:48.659  4397  4413 I Gralloc4: mapper 4.x is not supported
+10-03 10:33:48.673  1226  1226 D VRI[QuickstepLauncher]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:33:48.749   556   788 W ServiceManagerCppClient: Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10163 pid=0
+10-03 10:33:48.749   556   788 D PermissionCache: checking android.permission.ACCESS_SURFACE_FLINGER for uid=10163 => denied (236 us)
+10-03 10:33:48.750   556   788 W ServiceManagerCppClient: Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10163 pid=0
+10-03 10:33:48.750   556   788 D PermissionCache: checking android.permission.ROTATE_SURFACE_FLINGER for uid=10163 => denied (19 us)
+10-03 10:33:48.750   556   788 W ServiceManagerCppClient: Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10163 pid=0
+10-03 10:33:48.750   556   788 D PermissionCache: checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10163 => denied (8 us)
+10-03 10:33:48.756   556   589 W ziparchive: Unable to open '/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.dm': No such file or directory
+10-03 10:33:48.763   556   589 I ActivityTaskManager: Displayed org.openrailfanai.app.debug/androidx.activity.ComponentActivity for user 0: +520ms
+10-03 10:33:48.773   359   359 I netd    : tetherGetStats() -> {[]} <0.97ms>
+10-03 10:33:48.785  1226  1226 D BaseDepthController: setSurface:
+10-03 10:33:48.785  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:33:48.785  1226  1226 D BaseDepthController: 	mSurface: null
+10-03 10:33:48.786  1226  1226 D BaseDepthController: mSurface is null and mCurrentBlur is: 0
+10-03 10:33:48.786  1226  1226 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+10-03 10:33:48.786  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:453)
+10-03 10:33:48.786  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:444)
+10-03 10:33:48.786  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:119)
+10-03 10:33:48.787  1226  1226 D StatsLog: LAUNCHER_ONSTOP
+10-03 10:33:48.904  4397  4397 W fanai.app.debug: Method void androidx.compose.runtime.snapshots.SnapshotStateListKt.clearImpl(androidx.compose.runtime.snapshots.SnapshotStateList) failed lock verification and will run slower.
+10-03 10:33:48.904  4397  4397 W fanai.app.debug: Common causes for lock verification issues are non-optimized dex code
+10-03 10:33:48.904  4397  4397 W fanai.app.debug: and incorrect proguard optimizations.
+10-03 10:33:49.042   807   969 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@735e2fb
+10-03 10:33:49.049   556   788 W InputManager-JNI: Input channel object 'fb19b84 Splash Screen org.openrailfanai.app.debug (client)' was disposed without first being removed with the input manager!
+10-03 10:33:49.094   807   969 W FrameTracker: Missed SF frame:PREDICTION_ERROR, 166330, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:49.095   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 166330, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:49.095   807   969 W FrameTracker: Missed App frame:UNKNOWN: 24, 166456, 28330513, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:49.095   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 24, 166456, 28330513, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:49.095   807   969 W FrameTracker: Missed App frame:UNKNOWN: 88, 166471, 37157097, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:49.095   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 88, 166471, 37157097, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:49.095   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 80, 166486, 28773556, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:49.095   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 80, 166501, 24230973, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:49.095   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 80, 166516, 28403224, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:49.095   807   881 V PerfettoTrigger: Triggering /system/bin/trigger_perfetto com.android.telemetry.interaction-jank-monitor-39
+10-03 10:33:49.207  4397  4397 W fanai.app.debug: Accessing hidden method Landroid/os/SystemProperties;->addChangeCallback(Ljava/lang/Runnable;)V (unsupported, reflection, allowed)
+10-03 10:33:49.244  4397  4401 I fanai.app.debug: Compiler allocated 5250KB to compile void android.view.ViewRootImpl.performTraversals()
+10-03 10:33:49.445  4397  4397 I Choreographer: Skipped 38 frames!  The application may be doing too much work on its main thread.
+10-03 10:33:49.492   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:49.493   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:49.495   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:49.607   556   678 I ImeTracker: org.openrailfanai.app.debug:fa0f47f2: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:33:49.607   556   678 I ImeTracker: org.openrailfanai.app.debug:fa0f47f2: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:33:49.694  4397  4408 I HWUI    : Davey! duration=885ms; Flags=0, FrameTimelineVsyncId=166344, IntendedVsync=2843375472930, Vsync=2844008806238, InputEventId=0, HandleInputStart=2844016472272, AnimationStart=2844016474605, PerformTraversalsStart=2844016813730, DrawStart=2844157052272, FrameDeadline=2843392139596, FrameInterval=2844015463272, FrameStartTime=16666666, SyncQueued=2844170579980, SyncStart=2844170861980, IssueDrawCommandsStart=2844170912105, SwapBuffers=2844254172980, FrameCompleted=2844260928230, DequeueBufferDuration=3208, QueueBufferDuration=221084, GpuCompleted=2844260928230, SwapBuffersCompleted=2844254932105, DisplayPresentTime=144115222452437076, CommandSubmissionCompleted=2844254172980,
+10-03 10:33:49.707   556   788 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10164, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:33:49.719  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=149, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity }
+10-03 10:33:49.719   807   970 D SplashScreenView: Build android.window.SplashScreenView{cad8b6 V.E...... ......ID 0,0-0,0}
+10-03 10:33:49.719   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:33:49.719   807   970 D SplashScreenView: Branding: view: android.view.View{729e9b7 G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:33:49.720  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@1729c40 in: PAUSED
+10-03 10:33:49.720  4397  4397 V ActivityScenario: Update currentActivityStage to PAUSED, currentActivity=androidx.activity.ComponentActivity@1729c40
+10-03 10:33:49.722   556   592 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10164, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:33:49.723   404   404 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-03 10:33:49.745   360   360 D Zygote  : Forked child process 4425
+10-03 10:33:49.751  4425  4425 I .app.debug.test: Late-enabling -Xcheck:jni
+10-03 10:33:49.786  4425  4425 I .app.debug.test: Using CollectorTypeCMC GC.
+10-03 10:33:49.796   807  1006 D EGL_emulation: app_time_stats: avg=55.65ms min=2.19ms max=485.29ms count=20
+10-03 10:33:49.812   411   452 I adbd    : jdwp connection from 4425
+10-03 10:33:49.819  4425  4425 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+10-03 10:33:49.879   359   359 I netd    : tetherGetStats() -> {[]} <0.55ms>
+10-03 10:33:49.881  4425  4425 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/android.test.base.jar
+10-03 10:33:49.885  4425  4425 D nativeloader: Configuring clns-7 for other apk /system/framework/android.test.mock.jar. target_sdk_version=35, uses_libraries=ALL, library_path=/data/app/~~wzuiqpQmgryeutH8EUIuuQ==/org.openrailfanai.app.debug.test-Nzgn8L37NaL3PPJmcb8Low==/lib/arm64, permitted_path=/data:/mnt/expand:/data/user/0/org.openrailfanai.app.debug.test
+10-03 10:33:49.887  4425  4425 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/android.test.base.jar
+10-03 10:33:49.889  4425  4425 D nativeloader: Configuring clns-8 for other apk /system/framework/android.test.runner.jar. target_sdk_version=35, uses_libraries=ALL, library_path=/data/app/~~wzuiqpQmgryeutH8EUIuuQ==/org.openrailfanai.app.debug.test-Nzgn8L37NaL3PPJmcb8Low==/lib/arm64, permitted_path=/data:/mnt/expand:/data/user/0/org.openrailfanai.app.debug.test
+10-03 10:33:49.890  4425  4425 W ziparchive: Unable to open '/data/app/~~wzuiqpQmgryeutH8EUIuuQ==/org.openrailfanai.app.debug.test-Nzgn8L37NaL3PPJmcb8Low==/base.dm': No such file or directory
+10-03 10:33:49.890  4425  4425 W ziparchive: Unable to open '/data/app/~~wzuiqpQmgryeutH8EUIuuQ==/org.openrailfanai.app.debug.test-Nzgn8L37NaL3PPJmcb8Low==/base.dm': No such file or directory
+10-03 10:33:49.907   404   496 W TransactionTracing: Could not find layer id 1591
+10-03 10:33:49.957  4425  4425 D nativeloader: Configuring clns-9 for other apk /data/app/~~wzuiqpQmgryeutH8EUIuuQ==/org.openrailfanai.app.debug.test-Nzgn8L37NaL3PPJmcb8Low==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~wzuiqpQmgryeutH8EUIuuQ==/org.openrailfanai.app.debug.test-Nzgn8L37NaL3PPJmcb8Low==/lib/arm64, permitted_path=/data:/mnt/expand:/data/user/0/org.openrailfanai.app.debug.test
+10-03 10:33:49.967  4425  4425 D CompatChangeReporter: Compat change id reported: 202956589; UID 10164; state: ENABLED
+10-03 10:33:49.985  4425  4425 V GraphicsEnvironment: Currently set values for:
+10-03 10:33:49.985  4425  4425 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+10-03 10:33:49.985  4425  4425 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+10-03 10:33:49.985  4425  4425 V GraphicsEnvironment: Global.Settings values are invalid: number of packages: 0, number of values: 0
+10-03 10:33:49.985  4425  4425 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+10-03 10:33:50.061  4425  4425 D CompatChangeReporter: Compat change id reported: 279646685; UID 10164; state: ENABLED
+10-03 10:33:50.067  4425  4425 D CompatChangeReporter: Compat change id reported: 309578419; UID 10164; state: ENABLED
+10-03 10:33:50.114  4425  4425 W HWUI    : Unknown dataspace 0
+10-03 10:33:50.140  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=56, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.android.launcher3/.uioverrides.QuickstepLauncher }
+10-03 10:33:50.164   404   790 W ServiceManagerCppClient: Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10164 pid=0
+10-03 10:33:50.164   404   790 D PermissionCache: checking android.permission.ACCESS_SURFACE_FLINGER for uid=10164 => denied (737 us)
+10-03 10:33:50.165   404   790 W ServiceManagerCppClient: Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10164 pid=0
+10-03 10:33:50.165   404   790 D PermissionCache: checking android.permission.ROTATE_SURFACE_FLINGER for uid=10164 => denied (428 us)
+10-03 10:33:50.165   404   536 W ServiceManagerCppClient: Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10164 pid=4425
+10-03 10:33:50.165   404   536 D PermissionCache: checking android.permission.ROTATE_SURFACE_FLINGER for uid=10164 => denied (500 us)
+10-03 10:33:50.165   404   536 W ServiceManagerCppClient: Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10164 pid=4425
+10-03 10:33:50.165   404   536 D PermissionCache: checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10164 => denied (372 us)
+10-03 10:33:50.165   404   790 W ServiceManagerCppClient: Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10164 pid=0
+10-03 10:33:50.165   404   790 D PermissionCache: checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10164 => denied (835 us)
+10-03 10:33:50.168  4425  4439 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+10-03 10:33:50.168  4425  4439 I EGL_emulation: Opening libGLESv2_emulation.so
+10-03 10:33:50.180  4425  4439 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-03 10:33:50.180  4425  4439 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-03 10:33:50.207   161   161 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device VINTF manifest.
+10-03 10:33:50.207  4425  4439 I Gralloc4: mapper 4.x is not supported
+10-03 10:33:50.276   556   642 W ServiceManagerCppClient: Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10164 pid=0
+10-03 10:33:50.276   556   642 D PermissionCache: checking android.permission.ACCESS_SURFACE_FLINGER for uid=10164 => denied (208 us)
+10-03 10:33:50.276   556   642 W ServiceManagerCppClient: Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10164 pid=0
+10-03 10:33:50.276   556   642 D PermissionCache: checking android.permission.ROTATE_SURFACE_FLINGER for uid=10164 => denied (14 us)
+10-03 10:33:50.276   556   642 W ServiceManagerCppClient: Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10164 pid=0
+10-03 10:33:50.276   556   642 D PermissionCache: checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10164 => denied (23 us)
+10-03 10:33:50.305  1226  1226 D StatsLog: LAUNCHER_ONRESUME
+10-03 10:33:50.312  4397  4397 D VRI[ComponentActivity]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:33:50.328  1226  1226 D BaseDepthController: setSurface:
+10-03 10:33:50.328  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:33:50.328  1226  1226 D BaseDepthController: 	mSurface: Surface(name=com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher)/@0xd8ec6e0
+10-03 10:33:50.356  1226  1226 D StateManager: createAtomicAnimation - fromState: Background, toState: Normal, partial trace:
+10-03 10:33:50.356  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.prepareToAnimate(WorkspaceRevealAnim.java:130)
+10-03 10:33:50.356  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.<init>(WorkspaceRevealAnim.java:66)
+10-03 10:33:50.356  1226  1226 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(QuickstepTransitionManager.java:1716)
+10-03 10:33:50.375   556   678 I ImeTracker: com.android.launcher3:882bbb54: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:33:50.375   556   678 I ImeTracker: com.android.launcher3:882bbb54: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:33:50.396  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@1729c40 in: STOPPED
+10-03 10:33:50.397  4397  4397 V ActivityScenario: Update currentActivityStage to STOPPED, currentActivity=androidx.activity.ComponentActivity@1729c40
+10-03 10:33:50.427  1226  1359 D EGL_emulation: app_time_stats: avg=46.81ms min=0.96ms max=1426.14ms count=35
+10-03 10:33:50.468  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@1729c40 in: DESTROYED
+10-03 10:33:50.469  4397  4397 V ActivityScenario: Update currentActivityStage to DESTROYED, currentActivity=null
+10-03 10:33:50.482  4397  4397 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@7668bcd
+10-03 10:33:50.487  4397  4411 D IdlingRegistry: Unregistering idling resources: [androidx.compose.ui.test.EspressoLink@e918a0d]
+10-03 10:33:50.502   556  2169 W InputManager-JNI: Input channel object '615dad9 org.openrailfanai.app.debug/androidx.activity.ComponentActivity (client)' was disposed without first being removed with the input manager!
+10-03 10:33:50.517   556  2169 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:50.521   556  2169 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:50.530  4397  4411 I TestRunner: finished: fixedScheduleFixtureShowsRouteAndStops(org.openrailfanai.app.ComposeDisplayFixtureTest)

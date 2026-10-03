@@ -1,0 +1,102 @@
+10-03 10:33:57.428  4397  4411 I TestRunner: started: errorThenDoneKeepsRetrievedScheduleFacts(org.openrailfanai.app.ComposeDisplayFixtureTest)
+10-03 10:33:57.447   556   678 I ImeTracker: com.android.launcher3:c1b77852: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:33:57.449   556   678 I ImeTracker: com.android.launcher3:c1b77852: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:33:57.449  4397  4411 D IdlingRegistry: Registering idling resources: [androidx.compose.ui.test.EspressoLink@13af5d4]
+10-03 10:33:57.479  4397  4402 I fanai.app.debug: Background concurrent mark compact GC freed 11MB AllocSpace bytes, 2(40KB) LOS objects, 49% free, 6035KB/11MB, paused 345us,20.368ms total 232.445ms
+10-03 10:33:57.496  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=154
+10-03 10:33:57.496  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=154
+10-03 10:33:57.505  4397  4411 W Settings: Setting always_finish_activities has moved from android.provider.Settings.System to android.provider.Settings.Global, returning read-only value.
+10-03 10:33:57.568   556   848 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10163, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:33:57.639  4425  4425 D VRI[InstrumentationActivityInvoker$EmptyActivity]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:33:57.643  1226  1226 W SplitSelectStateCtor: Missing session instanceIds
+10-03 10:33:57.643  1226  1226 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+10-03 10:33:57.689   807   970 D SplashScreenView: Build android.window.SplashScreenView{c0ae3d9 V.E...... ......ID 0,0-0,0}
+10-03 10:33:57.689   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:33:57.689   807   970 D SplashScreenView: Branding: view: android.view.View{4e5519e G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:33:57.710  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=156, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=org.openrailfanai.app.debug/androidx.activity.ComponentActivity }
+10-03 10:33:57.747  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@d499258 in: PRE_ON_CREATE
+10-03 10:33:57.750  4425  4425 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@e496bb3
+10-03 10:33:57.752  4397  4397 V ActivityScenario: Activity lifecycle changed event received but ignored because the reported transition was not ON_CREATE while the last known transition was PRE_ON_CREATE
+10-03 10:33:57.757   404   404 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-03 10:33:57.757   556  2828 W InputManager-JNI: Input channel object '9843ceb org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity (client)' was disposed without first being removed with the input manager!
+10-03 10:33:57.781  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@d499258 in: CREATED
+10-03 10:33:57.784  4397  4397 V ActivityScenario: Update currentActivityStage to CREATED, currentActivity=androidx.activity.ComponentActivity@d499258
+10-03 10:33:57.784  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@d499258 in: STARTED
+10-03 10:33:57.785  4397  4397 V ActivityScenario: Update currentActivityStage to STARTED, currentActivity=androidx.activity.ComponentActivity@d499258
+10-03 10:33:57.787  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@d499258 in: RESUMED
+10-03 10:33:57.792  4397  4397 V ActivityScenario: Update currentActivityStage to RESUMED, currentActivity=androidx.activity.ComponentActivity@d499258
+10-03 10:33:57.808  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=155
+10-03 10:33:57.808  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=155
+10-03 10:33:57.819   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:57.819   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:57.822   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:33:57.936   556   589 W ziparchive: Unable to open '/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.dm': No such file or directory
+10-03 10:33:57.937   556   589 I ActivityTaskManager: Displayed org.openrailfanai.app.debug/androidx.activity.ComponentActivity for user 0: +369ms
+10-03 10:33:57.974   556   678 I ImeTracker: org.openrailfanai.app.debug:f19969b4: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:33:57.976   556   678 I ImeTracker: org.openrailfanai.app.debug:f19969b4: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:33:58.049  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 74, 172215, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:33:58.050  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 74, 172215, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:33:58.050  1226  1226 W FrameTracker: Missing HWUI jank callback for vsyncId: 172215, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:33:58.050  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 74, 172269, 134999771, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:33:58.050  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 74, 172269, 134999771, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:33:58.050  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 72, 172329, 194864690, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:33:58.050  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 66, 172409, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:33:58.050  1226  1226 W FrameTracker: Missing HWUI jank callback for vsyncId: 172409, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:33:58.050  1226  1273 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-78 - not enough time since last trigger
+10-03 10:33:58.243  1226  1359 D EGL_emulation: app_time_stats: avg=60.76ms min=3.86ms max=383.97ms count=14
+10-03 10:33:58.263  1226  1226 D VRI[QuickstepLauncher]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:33:58.275   556  1555 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10164, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:33:58.324   807   969 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@5a1799b
+10-03 10:33:58.342   556   642 W InputManager-JNI: Input channel object 'ff8d68f Splash Screen org.openrailfanai.app.debug (client)' was disposed without first being removed with the input manager!
+10-03 10:33:58.348  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@d499258 in: PAUSED
+10-03 10:33:58.348  4397  4397 V ActivityScenario: Update currentActivityStage to PAUSED, currentActivity=androidx.activity.ComponentActivity@d499258
+10-03 10:33:58.358   807   970 D SplashScreenView: Build android.window.SplashScreenView{d7c5175 V.E...... ......ID 0,0-0,0}
+10-03 10:33:58.358   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:33:58.358   807   970 D SplashScreenView: Branding: view: android.view.View{43e850a G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:33:58.374   404   404 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-03 10:33:58.389  1226  1226 D BaseDepthController: setSurface:
+10-03 10:33:58.389  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:33:58.389  1226  1226 D BaseDepthController: 	mSurface: null
+10-03 10:33:58.390  1226  1226 D BaseDepthController: mSurface is null and mCurrentBlur is: 0
+10-03 10:33:58.400  1226  1226 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+10-03 10:33:58.400  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:453)
+10-03 10:33:58.400  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:444)
+10-03 10:33:58.400  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:119)
+10-03 10:33:58.401  1226  1226 D StatsLog: LAUNCHER_ONSTOP
+10-03 10:33:58.420  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=157, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity }
+10-03 10:33:58.423   359   359 I netd    : tetherGetStats() -> {[]} <0.84ms>
+10-03 10:33:58.449   807   969 W FrameTracker: Missed App frame:UNKNOWN: 24, 172654, 100710920, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:58.450   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 24, 172654, 100710920, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:58.450   807   969 W FrameTracker: Missed App frame:UNKNOWN: 72, 172690, 117807379, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:58.450   807   969 W FrameTracker: Missed App frame:UNKNOWN: 72, 172757, 74236340, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:58.450   807   969 W FrameTracker: Missed App frame:UNKNOWN: 72, 172780, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:58.450   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 172780, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:58.450   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 80, 172824, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:58.450   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 172824, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:58.450   807   969 W FrameTracker: Missing SF jank callback for vsyncId: 172869, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:33:58.451   807   881 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-39 - not enough time since last trigger
+10-03 10:33:58.499  4425  4439 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+10-03 10:33:58.500  4425  4439 I EGL_emulation: Opening libGLESv2_emulation.so
+10-03 10:33:58.507  4425  4439 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-03 10:33:58.508  4425  4439 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-03 10:33:58.547   556   589 W ziparchive: Unable to open '/data/app/~~wzuiqpQmgryeutH8EUIuuQ==/org.openrailfanai.app.debug.test-Nzgn8L37NaL3PPJmcb8Low==/base.dm': No such file or directory
+10-03 10:33:58.549   556   589 I ActivityTaskManager: Displayed org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity for user 0: +278ms
+10-03 10:33:58.556  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=56, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.android.launcher3/.uioverrides.QuickstepLauncher }
+10-03 10:33:58.570  1226  1226 D StatsLog: LAUNCHER_ONRESUME
+10-03 10:33:58.587  1226  1226 D BaseDepthController: setSurface:
+10-03 10:33:58.587  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:33:58.587  1226  1226 D BaseDepthController: 	mSurface: Surface(name=com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher)/@0xd8ec6e0
+10-03 10:33:58.682  4397  4397 D VRI[ComponentActivity]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:33:58.715  1226  1226 D StateManager: createAtomicAnimation - fromState: Background, toState: Normal, partial trace:
+10-03 10:33:58.715  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.prepareToAnimate(WorkspaceRevealAnim.java:130)
+10-03 10:33:58.715  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.<init>(WorkspaceRevealAnim.java:66)
+10-03 10:33:58.715  1226  1226 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(QuickstepTransitionManager.java:1716)
+10-03 10:33:58.719  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@d499258 in: STOPPED
+10-03 10:33:58.719  4397  4397 V ActivityScenario: Update currentActivityStage to STOPPED, currentActivity=androidx.activity.ComponentActivity@d499258
+10-03 10:33:58.720  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@d499258 in: DESTROYED
+10-03 10:33:58.720  4397  4397 V ActivityScenario: Update currentActivityStage to DESTROYED, currentActivity=null
+10-03 10:33:58.722  4397  4397 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@62dee34
+10-03 10:33:58.738  4397  4411 D IdlingRegistry: Unregistering idling resources: [androidx.compose.ui.test.EspressoLink@13af5d4]
+10-03 10:33:58.760   556  4275 W InputManager-JNI: Input channel object 'dc0054c org.openrailfanai.app.debug/androidx.activity.ComponentActivity (client)' was disposed without first being removed with the input manager!
+10-03 10:33:58.776   807  1006 D EGL_emulation: app_time_stats: avg=113.59ms min=2.87ms max=606.91ms count=12
+10-03 10:33:58.783  4397  4411 I TestRunner: finished: errorThenDoneKeepsRetrievedScheduleFacts(org.openrailfanai.app.ComposeDisplayFixtureTest)

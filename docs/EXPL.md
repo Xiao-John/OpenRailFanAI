@@ -48,6 +48,28 @@ docs/                      # README(索引) / EXPL(本文件) / run / datasource
 scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预热离线数据） / upgrade_python.sh
 ```
 
+## Main 移动端结构化展示结果
+
+`POST /api/chat/stream` 的 `done` SSE 事件保留原有 `intent`、`slots`、`sources`、`tool_trace`、`usage`、`latency_ms` 与日志字段，并增加 `display_results`。`POST /api/chat` 的 `PipelineResult` 同样定义该可选字段；旧消息缺少字段或字段为空时，Main 前端继续用原 Markdown 内容显示。
+
+`backend/app/display_result.py` 只把工具返回的规范化 `ToolResult.data` 投影成前端安全对象，不使用模型回答文本，也不暴露供应商原始响应。当前可判别类型为：
+
+结构化对象使用 `schema_version: 1`。站点记录只投影 `station_no`、`station`、`arrive_time`、`start_time`、`stopover_time`；交路记录只投影 `train_code`、`date`、`time`。各顶层结果及嵌套项均带版本字段。Main 前端忽略声明了未知版本的结果，保留其旧 Markdown 降级显示；未带版本的既有结果仍可兼容读取。列车时刻的 `time_basis` 区分 `reference` 与 `stations_only`。12306 实时查询确认有当日车次时，接口提供的发到及经停时刻可显示，但经停时刻仍标作图定参考；工具明确标记当日时刻不可用且无单独 reference 时，不投影当日发到时刻。
+
+| kind | 主要字段 | 状态 |
+|---|---|---|
+| `train_schedule` | `train_code`、`date`、起讫站、时刻、`stops`、口径、来源 | `success` / `empty` |
+| `train_schedule_batch` | `items`（每项保留车次、日期和单项结果） | `success` / `partial` |
+| `emu_routing` | 查询对象、`focus_date`、交路 `records`、来源、记录时间语义 | `success` / `empty` |
+| `empty` | 空交路日期、查询对象及来源错误说明 | `empty` |
+| `error` | 相关工具与错误说明 | `failed` |
+
+批量时刻操作通过可选 `ChatRequest.display_action` 传递 `{kind: "train_schedule_batch", trains: [...], date: "YYYY-MM-DD"}`；只重试失败项时，前端只发送失败车次。日期切换和最近交路入口通过 `{kind: "emu_routing", query, date}` 发起结构化动作。单项状态由工具结果分别投影，成功项不因另一项失败而丢弃。交路记录的 `time_semantics` 明确说明其为记录时间，不是列车到发时间。
+
+Main 移动端对话历史使用 `#/history`，按会话更新时间分组，复用 `store.js` 现有搜索、切换、重命名和删除能力。流式滚动在用户离开底部后暂停，点击“回到底部”提示恢复跟随；追问只写入输入框，不直接发送。设计状态的静态文案集中在 `frontend/src/ui-copy.js`，图标资源位于 `frontend/assets/icons/`。
+
+Main 移动端视觉夹具位于 `frontend/tests/visual/fixtures.json`，用 `node frontend/tests/visual/capture.mjs` 启动本地 FastAPI 和 Microsoft Edge，使用 CDP 固定 CSS viewport 为 390×844。脚本在测试浏览器页内替换 SSE 响应并注入固定会话，不增加生产请求分支；`query_loading` 和 `reading_followup` 使用保持打开的活动流。九张 PNG、逐元素文案核对、原图坐标换算、DOM 矩形和逐项交互记录写入 `frontend/tests/visual/screenshots/`。`design-targets.json` 按对应手机框宽度或独立模块局部原点定义目标，`measurement-map.json` 记录原图到页面的语义映射，`page-comparisons/` 生成九份并列对照图。当前 71 项可比较布局测量均在 2px 内、109 项文案核对通过；两张设计图的阅读输入栏高度冲突单独标注，不作为页面偏差。`compare-icons.py` 从原图图标裁切与 Edge 截图生成 `icon-comparisons/` 的轮廓叠加和中心偏差；仍有 31 项超过 1px，因此 T13 与 T16 未完整通过。原 T1 至 T16 的逐条件证据和结论见 `frontend/tests/visual/acceptance.md`。
+
 ## 四、工具清单（16 个，全部已注册并验证）
 
 | 工具 | 数据源 | 能力 | 前置条件 |

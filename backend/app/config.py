@@ -95,6 +95,14 @@ class Settings(BaseSettings):
     fact_text_max_chars: int = 4000
     # 表格类事实最多注入多少行（超出时显式标注省略行数）
     fact_table_max_rows: int = 40
+    # 单次生成最多注入多少**条**工具事实（0 = 不限制，云端行为不变）。
+    #
+    # **本地小模型建议设 8**：实测给 4B 灌 15 条候选车次时，它一边列出
+    # "G1 二等座余 12 张"，一边在结论里写"明天上午没有票" —— 自相矛盾。
+    # 根因不是"没思考"（那是加思考预算的思路），而是**候选条数超出了小模型的注意力容量**。
+    # 收敛条数同时降 prefill（本地推理的延迟大头），是少见的双赢。
+    # 丢弃的条数会**显式写进 prompt** 并禁止全集表述，与项目既有完整性契约一致。
+    fact_max_entries: int = 0
     # station.lookup 列表展示条数（本地索引排序后取前 N；mcp 自身硬上限仅 10 条）
     station_list_limit: int = 12
     # station.screen（12306 车站大屏）单次下发的明细条数：接口一次返回全天 200–700 条，
@@ -135,6 +143,40 @@ class Settings(BaseSettings):
     # 而且提示词从 ~1072 token 压到 ~300（本地推理里 prefill 就是延迟本身）。
     # 见 docs/local-model.md §5。
     llm_structured_compact_prompt: bool = False
+    # **生成阶段**要不要关思考（与上一条是两件事：那条只管结构化调用）。
+    #
+    # 默认关（云端行为零变化：云端多烧几百思考 token 只是贵一点、慢一点）。
+    # **本地小模型必须打开**：实测 llama-server + Qwen3.5-0.8B、max_tokens=64：
+    #   不传关闭参数        → 正文 0 字、思考 202 字、finish_reason=length
+    #   reasoning_effort=none → 正文 15 字、思考 0 字、finish_reason=stop  ← 唯一有效
+    #   enable_thinking=false → 正文 0 字、思考 216 字（**被静默忽略**）
+    # 即：本地生成不关思考，思考会把输出预算吃光、**正文一个字都没有** ——
+    # 不是慢一点，是整条生成链路不可用。Android 端由 local_model.py 自动置 true。
+    llm_generation_no_think: bool = False
+    # **生成阶段**用精简提示词（默认关，云端行为零变化）。
+    #
+    # 与决策层的 `llm_structured_compact_prompt` 是同一个教训，只是发生在生成层：
+    # 实测同一条真实生成提示词（2073 字）下
+    #   0.8B            输出 1200 token（撞上限不会停）· 重复率 97% · 编造站名
+    #   2B/4B/云端      119–234 token · 重复率 0% · 内容正确
+    # 换成 760 字的精简版后，**同一个 0.8B** 输出 61 token、重复率 0%。
+    # 长提示词不是"信息更多"，对这个小尺度的模型它是**过载**：它会去逐条应付读不完的
+    # 规则，最后抓住其中一条反复复读。
+    #
+    # 顺带是**延迟优化**：设备端 prefill 是唯一瓶颈，1950→760 字 ≈ 砍到 1/2.5。
+    llm_generation_compact_prompt: bool = False
+
+    # 流式请求要不要**主动索取 usage**（`stream_options: {"include_usage": true}`）。
+    #
+    # 默认开。为什么非开不可：OpenAI 兼容规范下**流式响应的 usage 默认不下发**
+    # （末块的 choices 是空的），于是 `done` 事件里三个 token 数恒为 0 ——
+    # 界面上显示「本次 token used: 0（输入 0 / 输出 0）」，看起来像模型没算，
+    # 其实是**我们从来没要过**。非流式调用不受影响（那边本来就带 usage）。
+    #
+    # 少数网关对这个参数会直接报错。链路里有参数降级阶梯兜底（上游若以 400/422
+    # 明确拒绝就会被丢掉重试），但**兜底不等于必然命中** —— 如果某个网关用 5xx
+    # 或无 body 的错误回应它，阶梯认不出来，此时把它设成 false 就是那个逃生口。
+    llm_stream_usage: bool = True
 
     # ---- 本地数据字典（里程/车站档案/离线时刻；2026-09-15 拍板）----
     # 由 `scripts/mirror_dict.py` 构建到 backend/data/dict.db（已 gitignore）。

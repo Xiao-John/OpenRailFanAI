@@ -97,6 +97,42 @@ export const native = {
   },
 
   // ---------- 系统能力 ----------
+  /**
+   * 让**用户自己选位置**保存一个文本文件（Android SAF 的「保存到…」对话框）。
+   *
+   * 为什么必须走它：App 自己的外部目录（`/sdcard/Android/data/<pkg>/files`）
+   * 在 Android 11+ 对文件管理器**是屏蔽的** —— 文件写得出来，用户却找不到。
+   * SAF 由系统弹框，用户选下载/文档/网盘都行，**不需要任何存储权限**，
+   * 落点也是用户自己知道的地方。返回 false 表示没接原生实现（网页端）。
+   */
+  saveTextFile(name, text) {
+    if (!has("saveTextFile")) return false;
+    try {
+      return !!call("saveTextFile", String(name), String(text));
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * NPU 探测的 **Java 侧**报告（App 主进程 / classloader namespace）。
+   *
+   * 为什么前端也要调它：原生探针是 `exec()` 出来的独立进程，拿到的是裸的
+   * `(default)` linker namespace，而 `<uses-native-library>` 的授权加在 App 的
+   * classloader namespace 上 —— 所以原生那条路的 `dlopen` 失败**可能是测量方式的假阴性**。
+   * 这一条走的是"普通 App 真正会用的那条路"，两边一起看才下得了结论。
+   *
+   * 没接桥（网页端）时返回 "" —— 调用方据此跳过即可，不该因此报错。
+   */
+  probeNpuJava() {
+    if (!has("probeNpuJava")) return "";
+    try {
+      const v = call("probeNpuJava");
+      return typeof v === "string" ? v : "";
+    } catch (e) {
+      return "（Java 侧探测抛异常：" + (e && e.message ? e.message : e) + "）";
+    }
+  },
   clipboard: {
     /** 读剪贴板。Android 10+ 只允许有焦点的应用读，读不到时返回 ""。 */
     async read() {

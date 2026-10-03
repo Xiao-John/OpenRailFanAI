@@ -12,6 +12,8 @@ LLM 未配置或调用失败时，捕获 LLMUnavailable 降级为友好提示，
 from __future__ import annotations
 
 import logging
+import os
+import re
 import time
 from typing import AsyncIterator, Any
 
@@ -19,16 +21,66 @@ from app.llm import client as llm_client
 from app.llm.client import LLMUnavailable
 from app.config import get_settings
 from app.models import PipelineResult, SlotValue
-from app.pipeline import generate, planner, prefetch as prefetch_mod, retrieve
+from app.display_result import serialize_display_results
+from app.pipeline import generate
+from app.pipeline import repetition, planner, prefetch as prefetch_mod, retrieve
 
 _log = logging.getLogger("railfan.pipeline")
 
 
 _PLANNER_ZH = {"deterministic": "快路径", "llm-merged": "合并调用", "llm-legacy": "两次调用"}
+_FARE_ONLY_RE = re.compile(r"票价|票多少钱|多少钱|票面价")
+_OTHER_TICKET_RE = re.compile(r"余票|还有票|有票|候补|能买")
+_KNOWLEDGE_RE = re.compile(r"为什么|原理|历史|发展|区别|科普")
+
+
+def _ticket_display(intent, question_type: str, message: str) -> tuple[str, str]:
+    """为明确的票价问题标出真实查询类型，避免误显示为余票/混合型。"""
+    name = f"{intent.value}（{intent.label_zh}）"
+    if (intent.value == "ticket" and _FARE_ONLY_RE.search(message)
+            and not _OTHER_TICKET_RE.search(message)):
+        name = "ticket（票价查询）"
+        if not _KNOWLEDGE_RE.search(message):
+            question_type = "realtime"
+    return name, question_type
 
 
 def _ms(t0: float) -> float:
     return round((time.perf_counter() - t0) * 1000.0, 1)
+
+
+async def _decide_with_prefetch(message: str, history: list[dict] | None,
+                                display_action: dict | None = None):
+    pf = None
+
+    def begin() -> None:
+        nonlocal pf
+        if pf is None and not display_action:
+            try:
+                pf = prefetch_mod.start(message)
+            except Exception as e:  # speculative optimization must not affect planning
+                _log.debug("预取未启动：%s", type(e).__name__)
+
+    main = os.environ.get("APP_VARIANT", "main").lower() != "lm"
+    token = planner.on_llm_decision.set(begin if main else None)
+    try:
+        decision = await planner.decide(message, history=history)
+        if not main and decision[3] != "deterministic":
+            pf = prefetch_mod.start(message)
+        return decision, pf
+    except BaseException:
+        if pf is not None:
+            await pf.cancel()
+        raise
+    finally:
+        planner.on_llm_decision.reset(token)
+
+
+def _tool_failed(retrieval: dict) -> bool:
+    return bool(retrieval.get("display_errors")) or any(
+        re.search(r":\s*(?:failed|error)\b", str(item), re.I)
+        for item in (retrieval.get("tool_trace") or [])
+    )
 
 
 def _friendly_llm_message(detail: str) -> str:
@@ -66,6 +118,7 @@ async def run_stream(
     message: str,
     history: list[dict] | None = None,
     llm: dict | None = None,
+    display_action: dict | None = None,
 ) -> AsyncIterator[dict]:
     """流式编排：逐事件产出 dict。
 
@@ -92,6 +145,13 @@ async def run_stream(
     intent_str: str = ""
     slots_pairs: list = []
     logs: list[str] = []
+    from app import metrics as perf_metrics
+    request_recorded = False
+    pipeline_recorded = False
+    pf = None
+    first_think = False
+    first_answer = False
+    first_upstream = set()
 
     # 外层兜底：捕获所有非 LLM 异常以 emit error 事件，避免 SSE 直接断流
     try:
@@ -99,13 +159,9 @@ async def run_stream(
         t0 = time.perf_counter()
         # ⚠️ 局部变量**不能**叫 planner：那会遮蔽上面 import 的 planner 模块
         # （RHS 的 planner.decide 会去找局部名 → UnboundLocalError）
-        intent_, question_type, slots, planner_used, defer_reason = await planner.decide(
-            message, history=history)
-        # 决策走了 LLM（慢）才值得投机预取；快路径 1–16ms，没有可藏的时间
-        pf = None
-        if planner_used != "deterministic":
-            pf = prefetch_mod.start(message)
-        intent_str = f"{intent_.value}（{intent_.label_zh}）"
+        decision, pf = await _decide_with_prefetch(message, history, display_action)
+        intent_, question_type, slots, planner_used, defer_reason = decision
+        intent_str, question_type = _ticket_display(intent_, question_type, message)
         slots_pairs = [(k, v) for k, v in slots.non_empty().items()]
         planner_label = _PLANNER_ZH.get(planner_used, planner_used)
         # 快路径没接管时，把"为什么交回 LLM"一并写进这条**用户可见**的日志：
@@ -113,40 +169,81 @@ async def run_stream(
         defer_note = f" · 快路径未接管：{defer_reason}" if defer_reason else ""
         logs.append(f"[决策] {planner_label}：{intent_str} · 问题性质={question_type} "
                     f"· 槽位={list(slots_pairs)} · {_ms(t0)}ms{defer_note}")
+        perf_metrics.record_stage("decision", _ms(t0))
         yield {"type": "stage", "stage": "intent",
-               "msg": f"{intent_str} · {question_type}（{planner_label}）", "ms": _ms(t0) + 0.0}
+               "msg": f"{intent_str} · {question_type}（{planner_label}）", "ms": _ms(t0) + 0.0,
+               "recognized": slots.target or ""}
 
         # 3 数据检索
         t0 = time.perf_counter()
         try:
             retrieval = await retrieve.retrieve(
-                intent_.value, slots, question_type=question_type, message=message, prefetch=pf
+                intent_.value, slots, question_type=question_type, message=message, prefetch=pf,
+                display_action=display_action,
             )
         finally:
             if pf is not None:
                 await pf.cancel()
         sources = retrieval.get("sources") or []
         trace_str = str(retrieval.get("tool_trace") or "(无)")
+        structured_tool_names = {"train.schedule", "emu.routing"}
+        structured_tool_errors = [
+            item for item in (retrieval.get("display_errors") or [])
+            if isinstance(item, dict) and item.get("tool") in structured_tool_names
+        ]
+        buffer_structured_answer = any(
+            isinstance(item, dict) and item.get("tool") in {"train.schedule", "emu.routing"}
+            for item in (retrieval.get("data") or [])
+        ) or bool(structured_tool_errors)
         logs.append(f"[数据检索] 工具：{trace_str} · {_ms(t0)}ms")
+        perf_metrics.record_stage("retrieve", _ms(t0))
         yield {"type": "stage", "stage": "retrieve", "msg": trace_str, "ms": _ms(t0)}
 
         # 4 回答生成（流式）
         t0 = time.perf_counter()
+        generation_t0 = t0
         prompt = generate.build_prompt(
             message, slots, retrieval, history=history, question_type=question_type
         )
         generation_failed = False
         degraded = False          # 是否走了"确定性规则排版"降级（答案非模型产出）
         failure_message = ""
+        loop_cut = False
+        stream = None
         try:
             # 历史已在 prompt 的 [对话历史] 区块中；不再重复传入 messages（省钱且语义不变）
-            async for kind, text in llm_client.stream_completion(prompt):
+            checked = 0
+            stream = llm_client.stream_completion(
+                prompt, **generate.completion_options(retrieval, question_type))
+            async for kind, text in stream:
+                if text and kind not in first_upstream:
+                    perf_metrics.record_stage("first_upstream_" + ("think" if kind == "think" else "answer"),
+                                              _ms(generation_t0))
+                    first_upstream.add(kind)
                 if kind == "think":
                     gathered_thinking.append(text)
-                    yield {"type": "think", "delta": text}
+                    if not buffer_structured_answer:
+                        if text and not first_think:
+                            perf_metrics.record_stage("first_public_think", _ms(t_all))
+                            first_think = True
+                        yield {"type": "think", "delta": text}
                 else:
                     gathered_answer.append(text)
-                    yield {"type": "answer", "delta": text}
+                    if not buffer_structured_answer:
+                        if text and not first_answer:
+                            perf_metrics.record_stage("first_public_answer", _ms(t_all))
+                            first_answer = True
+                        yield {"type": "answer", "delta": text}
+                    # 重复循环检测：循环一定长在尾部，所以要**边生成边查**。
+                    # 早发现早停流，省下的是设备端真金白银的解码时间 ——
+                    # 实测 0.8B 白吐了 1200 token（撞上限）才停，那一段全是重复。
+                    # 检查本身 0.03ms，每 128 字查一次可以忽略。
+                    total = sum(len(x) for x in gathered_answer)
+                    if total - checked >= 128:
+                        checked = total
+                        if repetition.detect("".join(gathered_answer)) is not None:
+                            loop_cut = True
+                            break
         except LLMUnavailable as e:
             generation_failed = True
             failure_message = _friendly_llm_message(str(e))
@@ -160,21 +257,81 @@ async def run_stream(
             if fb:
                 degraded = True
                 gathered_answer.append(fb)
-                yield {"type": "answer", "delta": fb}
+                if not buffer_structured_answer:
+                    if not first_answer:
+                        perf_metrics.record_stage("first_public_answer", _ms(t_all))
+                        first_answer = True
+                    yield {"type": "answer", "delta": fb}
                 logs.append("[回答生成] 已降级为确定性规则排版（未使用语言模型，首行已自报）")
         else:
             logs.append(f"[回答生成] 流式输出完成 · {_ms(t0)}ms")
+        finally:
+            # Breaking on repetition or closing the outer SSE generator must close
+            # upstream now, rather than defer socket release to GC finalization.
+            if stream is not None:
+                await stream.aclose()
+            perf_metrics.record_stage("generation", _ms(generation_t0))
+
+        if loop_cut:
+            # 已经吐出去的那段重复文本要**收回来**：前端按 delta 累加，所以下发一次
+            # `replace` 让它整体替换。不这么做的话用户会看到一屏重复内容，
+            # 而我们只是"停止生成"——问题照样在界面上。
+            full = "".join(gathered_answer)
+            cut_at = repetition.detect(full)
+            kept = (full[:cut_at] if cut_at is not None else full).rstrip()
+            kept += "\n\n（后续内容出现连续重复，已在此截断。）"
+            gathered_answer = [kept]
+            llm_client.mark_truncated()          # 复用既有的"被截断"如实标注机制
+            if not buffer_structured_answer:
+                yield {"type": "replace", "text": kept}
+            logs.append(f"[回答生成] ⚠️ 检测到连续重复，已在第 {cut_at or 0} 字处截断并停止生成")
+
+        if buffer_structured_answer:
+            buffered = "".join(gathered_answer)
+            if structured_tool_errors:
+                gathered_answer = [""]
+                logs.append("[回答生成] 已抑制结构化工具失败时未经核验的模型事实文本")
+            elif generate.suppress_duplicate_structured_answer(buffered, retrieval):
+                gathered_answer = [""]
+                logs.append("[回答生成] 已抑制重复或冲突的结构化事实文本，保留结构化结果卡片")
+            elif buffered and not generation_failed and not degraded:
+                # 结构化查询只在完整事实校验后发布一次叙述，避免先把错误数据推到页面。
+                if not first_answer:
+                    perf_metrics.record_stage("first_public_answer", _ms(t_all))
+                    first_answer = True
+                yield {"type": "answer", "delta": buffered}
+            elif buffered and degraded:
+                if not first_answer:
+                    perf_metrics.record_stage("first_public_answer", _ms(t_all))
+                    first_answer = True
+                yield {"type": "answer", "delta": buffered}
 
         metrics = llm_client.get_run_metrics()
         latency_ms = _ms(t_all)
         logs.append(f"[用量] 总 token：{metrics['total_tokens']}（输入 {metrics['prompt_tokens']} / 输出 {metrics['completion_tokens']}） · LLM 耗时 {metrics['latency_ms']}ms")
         logs.append(f"[整体] 流水线耗时 {latency_ms}ms")
+        perf_metrics.record_stage("pipeline", latency_ms)
+        pipeline_recorded = True
 
         # done 事件字段与块式 PipelineResult 对齐（含 tool_trace），
         # 并如实标注本次是否真的产出了回答（answer_done），避免"空答案 + done=true"误导前端。
+        # 截断要**分因**：两者对用户的意义完全不同 ——
+        #   length：回答没写完，调大输出上限可解决
+        #   repetition：模型退化成复读，调大上限只会让它重复得更久
+        # 混成一句话会把用户引向错误的操作。
+        truncate_reason = None
         if llm_client.was_truncated():
-            # 如实标注：模型明确表示因长度上限而停止（finish_reason=length）
-            logs.append("⚠️ 回答因输出长度上限被截断（可提高 LLM_MAX_TOKENS 后重试）")
+            truncate_reason = "repetition" if loop_cut else "length"
+            if truncate_reason == "length":
+                logs.append("⚠️ 回答因输出长度上限被截断（可提高 LLM_MAX_TOKENS 后重试）")
+        display_results = serialize_display_results(retrieval.get("data") or [], retrieval.get("display_errors") or [])
+        if display_results:
+            perf_metrics.record_stage("card_delivery", _ms(t_all))
+        perf_metrics.record_request("completed", degraded=degraded,
+                                    tool_failed=_tool_failed(retrieval),
+                                    model_failed=generation_failed,
+                                    truncated=llm_client.was_truncated())
+        request_recorded = True
         yield {
             "type": "done",
             "intent": intent_str or "general",
@@ -182,12 +339,13 @@ async def run_stream(
             "slots": [{"name": k, "value": v} for k, v in slots_pairs],
             "sources": sources,
             "tool_trace": (retrieval.get("tool_trace") or []),
-            "thinking": "".join(gathered_thinking),
+            "thinking": "" if buffer_structured_answer else "".join(gathered_thinking),
             "answer_done": not generation_failed,
             # 非模型产出的降级回复：answer_done 仍为 False（模型确实没答上），
             # 用这个字段如实区分"有正文但是规则排版"与"根本没有正文"
             "degraded": degraded,
             "truncated": llm_client.was_truncated(),
+            "truncate_reason": truncate_reason,
             "planner": planner_used,
             "error": failure_message or None,
             "usage": {
@@ -197,8 +355,11 @@ async def run_stream(
             },
             "latency_ms": latency_ms,
             "process_logs": logs,
+            "display_results": display_results,
         }
     except LLMUnavailable as e:
+        perf_metrics.record_request("failed")
+        request_recorded = True
         # 前置阶段（意图/抽取/检索前）就不可用：同样给可操作指引 + 一个 done 收尾，
         # 保证前端不会停在"半截状态"（此前只发 error，前端只能等到连接结束）
         yield {"type": "error", "message": _friendly_llm_message(str(e))}
@@ -218,6 +379,8 @@ async def run_stream(
             "process_logs": logs,
         }
     except Exception as e:  # noqa: BLE001
+        perf_metrics.record_request("failed")
+        request_recorded = True
         # 对外只给可读文案与异常类型；完整堆栈只进日志（避免把上游/内部细节漏给前端）
         _log.exception("流式编排出现未预期异常")
         msg = f"服务内部异常（{type(e).__name__}），请稍后重试；详细原因见服务端日志。"
@@ -237,6 +400,15 @@ async def run_stream(
             "latency_ms": _ms(t_all),
             "process_logs": logs,
         }
+    finally:
+        try:
+            if pf is not None:
+                await pf.cancel()
+        finally:
+            if not pipeline_recorded:
+                perf_metrics.record_stage("pipeline", _ms(t_all))
+            if not request_recorded:
+                perf_metrics.record_request("cancelled")
 
 
 async def run(
@@ -250,19 +422,25 @@ async def run(
     logs: list[str] = []
     t_all = time.perf_counter()
     planner_used: str | None = None      # 决策来源；降级路径也要如实带出
+    pf = None
+    request_recorded = False
+    pipeline_recorded = False
+    from app.metrics import record_request, record_stage
     try:
         # 1+2 决策（快路径 / 合并调用 / 两次调用）
         t0 = time.perf_counter()
-        intent_, question_type, slots, planner_used, defer_reason = await planner.decide(
-            message, history=history)
+        decision, pf = await _decide_with_prefetch(message, history)
+        intent_, question_type, slots, planner_used, defer_reason = decision
+        intent_str, question_type = _ticket_display(intent_, question_type, message)
         logs.append(
             f"[决策] {_PLANNER_ZH.get(planner_used, planner_used)}："
-            f"{intent_.value}（{intent_.label_zh}）"
+            f"{intent_str}"
             f" · 问题性质={question_type} · 槽位={list(slots.non_empty())} · {_ms(t0)}ms"
         )
+        from app.metrics import record_stage
+        record_stage("decision", _ms(t0))
 
         # 3 数据检索（Agent/工具循环）；决策走 LLM 时先投机预取，把这段时间用起来
-        pf = prefetch_mod.start(message) if planner_used != "deterministic" else None
         t0 = time.perf_counter()
         try:
             retrieval = await retrieve.retrieve(
@@ -272,15 +450,27 @@ async def run(
             if pf is not None:
                 await pf.cancel()
         logs.append(f"[数据检索] 工具：{retrieval.get('tool_trace') or '(无)'} · {_ms(t0)}ms")
+        record_stage("retrieve", _ms(t0))
 
         # 4 回答生成
         t0 = time.perf_counter()
         degraded = False
+        generation_failed = False
+        loop_cut = False
         try:
             answer, sources, thinking = await generate.generate(
                 message, slots, retrieval, history=history, question_type=question_type
             )
+            # 与流式路径**同一套**重复循环兜底。两处都要有：块式接口同样对外可用，
+            # 只在流式里加会留下一条没被保护的路径（本仓库吃过"两处各写一份"的亏）。
+            _cut = repetition.detect(answer)
+            if _cut is not None:
+                loop_cut = True
+                answer = answer[:_cut].rstrip() + "\n\n（后续内容出现连续重复，已在此截断。）"
+                llm_client.mark_truncated()
+                logs.append(f"[回答生成] ⚠️ 检测到连续重复，已在第 {_cut} 字处截断")
         except LLMUnavailable as e:
+            generation_failed = True
             # 与流式路径同一套降级：模型不可用但检索已完成时，用确定性规则把事实排出来。
             # 重新构一遍 prompt 只是纯字符串拼接（不发请求）—— 换取的是一份可交付的数据。
             prompt = generate.build_prompt(
@@ -291,16 +481,23 @@ async def run(
                 raise                      # 没有事实可搬 → 交由外层统一给可操作提示
             sources, thinking, degraded = retrieval.get("sources") or [], "", True
             logs.append(f"[回答生成] 模型不可用，已降级为确定性规则排版：{e}")
+        finally:
+            record_stage("generation", _ms(t0))
         logs.append(f"[回答生成] 完成 · {_ms(t0)}ms")
 
         metrics = llm_client.get_run_metrics()
         logs.append(f"[用量] 总计 token：{metrics['total_tokens']}（输入 {metrics['prompt_tokens']} / 输出 {metrics['completion_tokens']}） · LLM 耗时 {metrics['latency_ms']}ms")
         logs.append(f"[整体] 流水线耗时 {_ms(t_all)}ms")
+        record_stage("pipeline", _ms(t_all))
+        pipeline_recorded = True
 
+        truncate_reason = None
         if llm_client.was_truncated():
-            logs.append("⚠️ 回答因输出长度上限被截断（可调大「最大输出 token」或 LLM_MAX_TOKENS 后重试）")
-        return PipelineResult(
-            intent=f"{intent_.value}（{intent_.label_zh}）",
+            truncate_reason = "repetition" if loop_cut else "length"
+            if truncate_reason == "length":
+                logs.append("⚠️ 回答因输出长度上限被截断（可调大「最大输出 token」或 LLM_MAX_TOKENS 后重试）")
+        result = PipelineResult(
+            intent=intent_str,
             question_type=question_type,
             slots=[SlotValue(name=k, value=v) for k, v in slots.non_empty().items()],
             answer=answer,
@@ -313,14 +510,31 @@ async def run(
             degraded=degraded,
             # 模型若因长度上限停止，必须如实带给前端（此前该字段被完全忽略）
             truncated=llm_client.was_truncated(),
+            truncate_reason=truncate_reason,
             usage={
                 "total_tokens": metrics["total_tokens"],
                 "prompt_tokens": metrics["prompt_tokens"],
                 "completion_tokens": metrics["completion_tokens"],
             },
             latency_ms=_ms(t_all),
+            display_results=serialize_display_results(
+                retrieval.get("data") or [], retrieval.get("display_errors") or []
+            ),
         )
+        if result.answer:
+            record_stage("first_public_answer", _ms(t_all))
+        if result.display_results:
+            record_stage("card_delivery", _ms(t_all))
+        record_request("completed", degraded=degraded,
+                       tool_failed=_tool_failed(retrieval),
+                       model_failed=generation_failed,
+                       truncated=llm_client.was_truncated())
+        request_recorded = True
+        return result
     except LLMUnavailable as e:
+        from app.metrics import record_request
+        record_request("failed")
+        request_recorded = True
         return PipelineResult(
             intent="general（LLM 未可用）",
             planner=planner_used or "llm-unavailable",
@@ -332,6 +546,9 @@ async def run(
             tool_trace=[],
         )
     except Exception as e:  # noqa: BLE001 —— 兜底，避免 500
+        from app.metrics import record_request
+        record_request("failed")
+        request_recorded = True
         _log.exception("块式编排出现未预期异常")
         return PipelineResult(
             intent="general（异常）",
@@ -345,3 +562,12 @@ async def run(
             sources=[],
             tool_trace=[],
         )
+    finally:
+        try:
+            if pf is not None:
+                await pf.cancel()
+        finally:
+            if not pipeline_recorded:
+                record_stage("pipeline", _ms(t_all))
+            if not request_recorded:
+                record_request("cancelled")

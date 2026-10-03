@@ -61,6 +61,53 @@ def load_corpus() -> list[dict]:
     return [json.loads(ln) for ln in CORPUS.read_text(encoding="utf-8").splitlines() if ln.strip()]
 
 
+_STATION_KEYS: set[str] | None = None
+
+
+def _station_keys() -> set[str]:
+    """本地 3384 站规范名集合（键**不带**「站」字：`武昌` 而不是 `武昌站`）。
+
+    懒加载 + 失败即空集：打分器不该因为站点库没就绪就整体崩掉。
+    """
+    global _STATION_KEYS
+    if _STATION_KEYS is None:
+        try:
+            import asyncio
+
+            from app.tools import _rt12306 as rt
+
+            asyncio.get_event_loop()
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from app.tools._rt12306 import all_stations
+
+            _STATION_KEYS = set(all_stations().keys())
+        except Exception:  # noqa: BLE001
+            _STATION_KEYS = set()
+    return _STATION_KEYS
+
+
+def _norm_slot(key: str, value):
+    """槽位值归一化后再比较 —— **只归一化"同一件事的不同写法"**，不放过真错。
+
+    修的是这一类：模型答 `武昌站` / `郑州站`，语料写 `武昌` / `郑州`，
+    精确字符串比较把它记成错。实测这样冤枉了 4B 至少 6 条 ——
+    而"答对了却扣分"比"答错了没扣分"更坏：它会让选型结论整体偏悲观。
+
+    规则**故意收得很紧**：只有当"去掉末尾「站」之后确实是本地站点库里的规范名"时才归一化。
+    这样 `北京南站`→`北京南` 会归一化，而编造的站名不会被顺手洗白。
+    """
+    if not isinstance(value, str):
+        return value
+    v = value.strip()
+    if key in ("location", "target") and v.endswith("站"):
+        stripped = v[:-1]
+        if stripped and stripped in _station_keys():
+            return stripped
+    return v
+
+
 def _slots_of(slots) -> dict:
     return {k: getattr(slots, k, None) for k in ("location", "target", "time", "direction", "extra")}
 
@@ -144,7 +191,7 @@ def score(rows: list[dict], results: dict[str, dict]) -> dict:
         for k, v in (exp.get("slots") or {}).items():
             stat["slot_total"] += 1
             got = (r.get("slots") or {}).get(k)
-            if got == v:
+            if _norm_slot(k, got) == _norm_slot(k, v):
                 stat["slot_ok"] += 1
             else:
                 stat["wrong_slots"].append((row["id"], k, v, got, row["message"]))

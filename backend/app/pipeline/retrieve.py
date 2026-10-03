@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import time
 
 from app.config import get_settings
 from app.od import parse_od
@@ -33,6 +34,8 @@ _log = logging.getLogger("railfan.retrieve")
 
 # 车型/车组号（CR400AF / CRH2A / CR400BFA5054 等）—— 不是站名
 _EMU_LIKE_RE = re.compile(r"^(CR|CRH)[0-9A-Za-z\-]*$", re.I)
+_MULTI_TRAIN_RE = re.compile(r"(?<![A-Za-z0-9])(?:0?[GDCTZKYSLBN]\d{1,5}[A-Z]?|\d{1,4}(?=次))(?![A-Za-z0-9])", re.I)
+_FARE_RE = re.compile(r"(票价|票多少钱|多少钱|价格|票面价)")
 
 # 站名/电报码类事实词：这类问题即使被判为 knowledge，也必须走站点库精确查表
 # （2026-09-14 修复 E01★/E06：'上海虹桥的电报码' 被判知识型 → 只做网页搜索 → 给不出 AOH）
@@ -359,6 +362,7 @@ async def retrieve(
     question_type: str | None = None,
     message: str | None = None,
     prefetch=None,          # Prefetch | None：投机预取（perf P0-3），命中即复用
+    display_action: dict | None = None,
 ) -> dict:
     """按意图与槽位检索数据，返回 {data, sources, tool_trace, note}。
 
@@ -370,6 +374,7 @@ async def retrieve(
     sources: list[str] = []
     trace: list[str] = []
     notes: list[str] = []
+    display_errors: list[dict[str, str]] = []
 
     loc = slots.location
     tgt_raw = slots.target
@@ -396,6 +401,13 @@ async def retrieve(
         if tgt:
             tgt_raw = tgt
 
+    requested_trains = list(dict.fromkeys(
+        m.group(0).upper() for m in _MULTI_TRAIN_RE.finditer(message or "")
+        if not re.fullmatch(r"(?:19|20)\d{2}", m.group(0))
+    ))
+    if not requested_trains and tgt:
+        requested_trains = [tgt]
+
     # ---- 按意图计划调用的工具与参数 ----
 
     # 计划层面的说明（如"为何没发起某个查询"）：会并入最终 note，
@@ -409,8 +421,19 @@ async def retrieve(
 
     def _plan(intent: str) -> list[tuple[str, dict]]:
         if intent == "ticket":
-            # 余票查询：走 12306 实时接口（ticket.query）
+            # 票价与余票分开查询：票价接口只给价格，不承诺席位可售。
             plan: list[tuple[str, dict]] = []
+            fare_query = bool(_FARE_RE.search(message or ""))
+            if fare_query:
+                if od:
+                    plan.append(("ticket.price", {
+                        "from_station": od[0], "to_station": od[1],
+                        "date": time_ or None,
+                        "train": requested_trains[0] if requested_trains else None,
+                    }))
+                else:
+                    plan_notes.append("未发起票价查询：需要出发站和到达站（例如「北京南到上海虹桥」）")
+                return plan
             if _is_train_code(tgt):
                 # 目标是"某车次的余票/席别"（如"G1 明天还有商务座吗"）：
                 # ticket.query 需要起讫站，这里改走 train.schedule 直接取该车次席别
@@ -552,6 +575,15 @@ async def retrieve(
             return plan
         if intent == "schedule":
             plan = []
+            # 多个车次分别向 12306 查询；一个号码无结果时，不用另一个车次反推。
+            if len(requested_trains) > 1:
+                for code in requested_trains:
+                    plan.append(("train.schedule", {
+                        "train": code, "date": time_ or None,
+                        "include_reference": _wants_stops(message) or None,
+                    }))
+                plan_notes.append("多个车次已分别查询；某车次无独立查询结果时，不从其他车次的方向或时刻推算。")
+                return plan
             if _is_train_code(tgt):
                 # 车次明确：实时时刻 + 担当车组
                 # include_reference 只在用户问"经停/历时/站序"时为真（D06 红线修复）
@@ -563,6 +595,11 @@ async def retrieve(
             elif tgt:
                 # 车型（如 CR400AF）：查其担当交路
                 plan.append(("emu.routing", {"emu_no": tgt, "date": time_ or None}))
+                if _EMU_LIKE_RE.match(str(tgt).strip()):
+                    plan_notes.append(
+                        "车组交路记录中的日期和时间是交路记录时刻，不是列车到发时刻；"
+                        "请提供具体车次号（如 G8931）才能查询列车时刻表。"
+                    )
             if loc:
                 plan.append(("station.lookup", {"name": loc}))
             # 区间时刻查询（如"北京到上海有哪些车"）→ 实时余票/车次列表
@@ -623,6 +660,14 @@ async def retrieve(
         ]
 
     plan = _plan(intent)
+    if isinstance(display_action, dict) and display_action.get("kind") == "train_schedule_batch":
+        trains = list(dict.fromkeys(str(code).strip().upper() for code in display_action.get("trains", [])
+                                    if re.fullmatch(r"(?:0?[GDCTZKYSLBN]\d{1,5}[A-Z]?|\d{1,4})", str(code).strip(), re.I)))
+        date_value = display_action.get("date")
+        plan = [("train.schedule", {"train": code, "date": date_value, "include_reference": True})
+                for code in trains]
+        if not trains:
+            plan_notes.append("未发起批量时刻查询：缺少有效车次")
 
     # 知识型问题：实时数据源不适用（如"样车车组号"查 emu.routing 必然落空），
     # 改为 web 搜索取据，让模型在"有据可依"的前提下结合自身知识作答。
@@ -642,6 +687,18 @@ async def retrieve(
     elif question_type == "mixed":
         q = (message or f"{loc or ''} {tgt or ''} 中国铁路").strip()
         plan = plan + [("web.search", {"q": q, "limit": 5})]
+
+    # 结构化 UI 动作优先于模型意图路由，车次列表始终由参数提供。
+    if isinstance(display_action, dict) and display_action.get("kind") == "train_schedule_batch":
+        action_trains = list(dict.fromkeys(str(code).strip().upper() for code in display_action.get("trains", [])
+                                           if re.fullmatch(r"(?:0?[GDCTZKYSLBN]\d{1,5}[A-Z]?|\d{1,4})", str(code).strip(), re.I)))
+        plan = [("train.schedule", {"train": code, "date": display_action.get("date"), "include_reference": True})
+                for code in action_trains]
+    elif isinstance(display_action, dict) and display_action.get("kind") == "emu_routing":
+        query_value = str(display_action.get("query") or "").strip()
+        if query_value:
+            param_key = "train" if _is_train_code(query_value) else "emu_no"
+            plan = [("emu.routing", {param_key: query_value, "date": display_action.get("date")})]
 
     # ---- 车站档案（rail.mileage）：问"编号/接算站/营业限制/电报码"时补一次本地字典查询 ----
     # 本地缓存命中即毫秒级；未命中才联网抓一次并回填（见 app/data/dict.py）。
@@ -701,15 +758,23 @@ async def retrieve(
 
     async def _run_one(name: str, params: dict) -> ToolResult:
         async with sem:
+            started = time.perf_counter()
             try:
                 # 投机预取命中（同名同参）→ 直接复用，省下一次外部往返
                 hit = prefetch.take(name, params) if prefetch is not None else None
                 if hit is not None:
                     result = await hit
                     if isinstance(result, ToolResult):
+                        from app.metrics import record_tool
+                        record_tool(name, result.ok, (time.perf_counter() - started) * 1000)
                         return result
-                return await registry.invoke_by_name(name, params)
+                result = await registry.invoke_by_name(name, params)
+                from app.metrics import record_tool
+                record_tool(name, result.ok, (time.perf_counter() - started) * 1000)
+                return result
             except Exception as e:  # noqa: BLE001 —— 单个工具异常不得拖垮整体检索
+                from app.metrics import record_tool
+                record_tool(name, False, (time.perf_counter() - started) * 1000)
                 _log.warning("工具 %s 调用异常: %s: %s", name, type(e).__name__, e)
                 return ToolResult(
                     ok=False,
@@ -718,6 +783,42 @@ async def retrieve(
                 )
 
     results = await asyncio.gather(*(_run_one(n, p) for n, p in plan)) if plan else []
+
+    # 用户问具体车组的“今天时刻表”时，先由 rail.re 找当日担当车次，再逐车查 12306。
+    # rail.re 的时间字段只作交路记录时间使用，绝不作为列车到发时刻。
+    if intent == "schedule":
+        emu_result = next((
+            result for (name, params), result in zip(plan, results)
+            if name == "emu.routing" and params.get("emu_no")
+            and isinstance(result, ToolResult) and result.ok
+        ), None)
+        emu_data = emu_result.data if emu_result and isinstance(emu_result.data, dict) else {}
+        if emu_data.get("kind") == "emu" and emu_data.get("match_mode") == "exact":
+            focus_date = emu_data.get("focus_date")
+            records = emu_data.get("today_records") or []
+            unit_trains = list(dict.fromkeys(
+                str(row.get("train_code") or "").strip().upper()
+                for row in records
+                if row.get("date") == focus_date and row.get("train_code")
+            ))
+            if unit_trains:
+                unit_plan = [("train.schedule", {
+                    "train": code, "date": focus_date,
+                    "include_reference": _wants_stops(message) or None,
+                }) for code in unit_trains]
+                unit_results = await asyncio.gather(*(
+                    _run_one(name, params) for name, params in unit_plan
+                ))
+                plan.extend(unit_plan)
+                results.extend(unit_results)
+                plan_notes.append(
+                    f"已按 {focus_date} 的车组交路记录找到担当车次，并分别查询这些车次的 12306 时刻；"
+                    "交路记录时间不作为列车时刻。"
+                )
+            else:
+                plan_notes.append(
+                    f"车组交路数据未提供 {focus_date} 的担当车次，无法据此查询该车组当日列车时刻。"
+                )
 
     for (name, _params), result in zip(plan, results):
         ok = isinstance(result, ToolResult) and result.ok
@@ -742,6 +843,10 @@ async def retrieve(
         if result.note:
             notes.append(f"[{name}] {result.note}")
         if not ok and result.error:
+            if name in {"train.schedule", "emu.routing"}:
+                display_errors.append({"tool": name, "train_code": str(_params.get("train") or ""),
+                                       "query": str(_params.get("train") or _params.get("emu_no") or ""),
+                                       "date": str(_params.get("date") or ""), "message": result.error})
             # 失败原因必须透传：否则生成层只能说"工具调用失败"（实测 F05/C06 被误述）
             notes.append(f"[{name}] 失败原因：{result.error}")
 
@@ -749,4 +854,4 @@ async def retrieve(
     note = "；".join(dict.fromkeys(plan_notes + notes)) or (
         "已完成工具调用（部分数据源依赖外部服务，结果见 tool_trace）。"
     )
-    return {"data": data, "sources": list(dict.fromkeys(sources)), "tool_trace": trace, "note": note}
+    return {"data": data, "display_errors": display_errors, "sources": list(dict.fromkeys(sources)), "tool_trace": trace, "note": note}

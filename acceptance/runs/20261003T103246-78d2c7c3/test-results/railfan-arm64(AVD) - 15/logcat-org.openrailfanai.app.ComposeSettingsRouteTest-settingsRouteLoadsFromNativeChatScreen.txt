@@ -1,0 +1,151 @@
+10-03 10:34:06.962  4397  4411 I TestRunner: started: settingsRouteLoadsFromNativeChatScreen(org.openrailfanai.app.ComposeSettingsRouteTest)
+10-03 10:34:07.003  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 88, 179581, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 88, 179581, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missing HWUI jank callback for vsyncId: 179581, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 73, 179589, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 73, 179589, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missing HWUI jank callback for vsyncId: 179589, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 88, 179605, 202749056, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 88, 179605, 202749056, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 74, 179660, 218749518, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 74, 179660, 218749518, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 328, 179686, 230902564, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:07.004  1226  1273 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-78 - not enough time since last trigger
+10-03 10:34:07.034  4397  4411 D IdlingRegistry: Registering idling resources: [androidx.compose.ui.test.EspressoLink@306142b]
+10-03 10:34:07.044  4397  4411 W Settings: Setting always_finish_activities has moved from android.provider.Settings.System to android.provider.Settings.Global, returning read-only value.
+10-03 10:34:07.052   556  2995 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10163, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:34:07.065  1226  1226 W SplitSelectStateCtor: Missing session instanceIds
+10-03 10:34:07.065  1226  1226 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+10-03 10:34:07.068   807   970 D SplashScreenView: Build android.window.SplashScreenView{b785e0b V.E...... ......ID 0,0-0,0}
+10-03 10:34:07.068   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:34:07.068   807   970 D SplashScreenView: Branding: view: android.view.View{66994e8 G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:34:07.085   556  1556 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:07.087  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=164, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=org.openrailfanai.app.debug/org.openrailfanai.app.MainComposeActivity }
+10-03 10:34:07.090   556  1556 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:07.090   404   404 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-03 10:34:07.090   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:07.105  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@3903aad in: PRE_ON_CREATE
+10-03 10:34:07.106  4397  4397 V ActivityScenario: Activity lifecycle changed event received but ignored because the reported transition was not ON_CREATE while the last known transition was PRE_ON_CREATE
+10-03 10:34:07.107   359   359 I netd    : tetherGetStats() -> {[]} <1.01ms>
+10-03 10:34:07.167  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@3903aad in: CREATED
+10-03 10:34:07.167  4397  4397 V ActivityScenario: Update currentActivityStage to CREATED, currentActivity=org.openrailfanai.app.MainComposeActivity@3903aad
+10-03 10:34:07.173  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@3903aad in: STARTED
+10-03 10:34:07.173  4397  4397 V ActivityScenario: Update currentActivityStage to STARTED, currentActivity=org.openrailfanai.app.MainComposeActivity@3903aad
+10-03 10:34:07.174  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@3903aad in: RESUMED
+10-03 10:34:07.174  4397  4397 V ActivityScenario: Update currentActivityStage to RESUMED, currentActivity=org.openrailfanai.app.MainComposeActivity@3903aad
+10-03 10:34:07.205  4397  4397 D AutofillManager: Fill dialog is enabled:false, hints=[]
+10-03 10:34:07.255  1226  1359 D EGL_emulation: app_time_stats: avg=114.73ms min=1.96ms max=437.57ms count=11
+10-03 10:34:07.318   556   589 W ziparchive: Unable to open '/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.dm': No such file or directory
+10-03 10:34:07.325   556   589 I ActivityTaskManager: Displayed org.openrailfanai.app.debug/org.openrailfanai.app.MainComposeActivity for user 0: +266ms
+10-03 10:34:07.406   556   678 I ImeTracker: org.openrailfanai.app.debug:8a317bdf: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:34:07.409   556   678 I ImeTracker: org.openrailfanai.app.debug:8a317bdf: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:34:07.592  1226  1226 D VRI[QuickstepLauncher]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:34:07.657  1226  1226 D BaseDepthController: setSurface:
+10-03 10:34:07.657  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:34:07.657  1226  1226 D BaseDepthController: 	mSurface: null
+10-03 10:34:07.658  1226  1226 D BaseDepthController: mSurface is null and mCurrentBlur is: 0
+10-03 10:34:07.703  1226  1226 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+10-03 10:34:07.703  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:453)
+10-03 10:34:07.703  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:444)
+10-03 10:34:07.703  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:119)
+10-03 10:34:07.706  1226  1226 D StatsLog: LAUNCHER_ONSTOP
+10-03 10:34:07.720   807   969 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@fcbca32
+10-03 10:34:07.731   556  4275 W InputManager-JNI: Input channel object '7becbba Splash Screen org.openrailfanai.app.debug (client)' was disposed without first being removed with the input manager!
+10-03 10:34:07.728  4397  4397 W railfan-backend: type=1400 audit(0.0:1050): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/AssetFinder/stdlib-arm64-v8a/fcntl.cpython-312.so" dev="dm-42" ino=353438 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:07.736  4397  4397 W railfan-backend: type=1400 audit(0.0:1051): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/AssetFinder/stdlib-arm64-v8a/_posixsubprocess.cpython-312.so" dev="dm-42" ino=353432 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:07.748  4397  4397 W railfan-backend: type=1400 audit(0.0:1052): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/AssetFinder/stdlib-arm64-v8a/select.cpython-312.so" dev="dm-42" ino=353439 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:07.762  4397  4397 W WindowOnBackDispatcher: OnBackInvokedCallback is not enabled for the application.
+10-03 10:34:07.762  4397  4397 W WindowOnBackDispatcher: Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+10-03 10:34:07.772   807   969 W FrameTracker: Missed App frame:UNKNOWN: 10, 180050, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.772   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 10, 180050, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.772   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 180050, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.772   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 65, 180085, 91429133, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.772   807   969 W FrameTracker: Missed App frame:UNKNOWN: 73, 180099, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.772   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 73, 180099, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.772   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 180099, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.772   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 180122, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.775   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 180122, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.775   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 180122, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.775   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 180174, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.775   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 180174, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.775   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 180174, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.775   807   969 W FrameTracker: Missed App frame:UNKNOWN: 328, 180211, 158409180, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:07.775   807   881 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-39 - not enough time since last trigger
+10-03 10:34:07.832  4397  4397 W railfan-backend: type=1400 audit(0.0:1053): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/AssetFinder/stdlib-arm64-v8a/_heapq.cpython-312.so" dev="dm-42" ino=353442 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:07.848  4397  4397 W railfan-backend: type=1400 audit(0.0:1054): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/AssetFinder/stdlib-arm64-v8a/_socket.cpython-312.so" dev="dm-42" ino=353443 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:07.901   807  1006 D EGL_emulation: app_time_stats: avg=275.53ms min=3.78ms max=2776.40ms count=12
+10-03 10:34:08.001  4397  4511 W python.stderr: INFO railfan.android: [启动] 选择本地端口…
+10-03 10:34:08.005  4397  4511 W python.stderr: INFO railfan.android: [启动] 准备 TLS 信任库…
+10-03 10:34:08.012  4397  4511 W python.stderr: INFO railfan.android: TLS 信任库改用证书束文件：/data/data/org.openrailfanai.app.debug/files/chaquopy/AssetFinder/requirements/certifi/cacert.pem
+10-03 10:34:08.012  4397  4511 W python.stderr: INFO railfan.android: [启动] 导入 app 包（含依赖兼容层）…
+10-03 10:34:08.093   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:08.094   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:08.095   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:08.115  4397  4511 W python.stderr: INFO railfan.android: 已启用依赖替身：['jiter', 'pydantic_settings']
+10-03 10:34:08.115  4397  4511 W python.stderr: INFO railfan.android: [启动] 导入后端应用 app.main…
+10-03 10:34:09.099   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:09.100   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:09.101   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:10.107   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:10.108   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:10.109   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:10.963  4397  4511 W python.stderr: WARNING mcp_12306.utils.config: 环境配置文件 /data/data/org.openrailfanai.app.debug/files/.env 不存在，使用默认配置
+10-03 10:34:10.993  4397  4511 W python.stderr: INFO mcp_12306.utils.config: 配置加载成功 - 主机: 0.0.0.0, 端口: 8000, 调试模式: False, 日志级别: INFO
+10-03 10:34:11.112   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:11.112   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:11.112   556  1555 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:11.240  4397  4397 W railfan-backend: type=1400 audit(0.0:1067): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/AssetFinder/stdlib-arm64-v8a/_sqlite3.cpython-312.so" dev="dm-42" ino=354132 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:11.315  4397  4511 W python.stderr: INFO railfan.android: 本地字典：不可用（/data/user/0/org.openrailfanai.app.debug/files/dict.db）
+10-03 10:34:11.316  4397  4511 W python.stderr: INFO railfan.android: [启动] 导入 uvicorn…
+10-03 10:34:11.328  4397  4397 W railfan-backend: type=1400 audit(0.0:1068): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/AssetFinder/stdlib-arm64-v8a/_queue.cpython-312.so" dev="dm-42" ino=354135 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:11.380  4397  4397 W railfan-backend: type=1400 audit(0.0:1069): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/AssetFinder/stdlib-arm64-v8a/_multiprocessing.cpython-312.so" dev="dm-42" ino=354136 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:11.400  4397  4511 W python.stderr: INFO railfan.android: [启动] 构造 ASGI 配置…
+10-03 10:34:11.401  4397  4511 W python.stderr: INFO railfan.android: [启动] 启动 uvicorn 服务…
+10-03 10:34:11.435  4397  4511 W python.stderr: INFO:     Started server process [4397]
+10-03 10:34:11.435  4397  4511 W python.stderr: INFO:     Waiting for application startup.
+10-03 10:34:11.436  4397  4511 W python.stderr: INFO:     Application startup complete.
+10-03 10:34:11.436  4397  4511 W python.stderr: INFO:     Uvicorn running on http://127.0.0.1:47993 (Press CTRL+C to quit)
+10-03 10:34:11.455  4397  4511 W python.stderr: INFO railfan.android: [启动] 服务已监听 127.0.0.1:47993，执行前端自检…
+10-03 10:34:11.456  4397  4511 W python.stderr: INFO railfan.android: 本地后端已监听 http://127.0.0.1:47993
+10-03 10:34:11.481  4397  4511 W python.stderr: INFO railfan.android: 自检通过：/ → HTTP 200（4000B）；/src/main.js → HTTP 200（4000B）
+10-03 10:34:11.498  4397  4524 D TrafficStats: tagSocket(134) with statsTag=0xffffffff, statsUid=-1
+10-03 10:34:11.620  4397  4527 D TrafficStats: tagSocket(134) with statsTag=0xffffffff, statsUid=-1
+10-03 10:34:11.645  4397  4413 D EGL_emulation: app_time_stats: avg=722.85ms min=31.16ms max=3695.54ms count=6
+10-03 10:34:11.758   556  1555 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10164, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:34:11.777   807   970 D SplashScreenView: Build android.window.SplashScreenView{3854d3a V.E...... ......ID 0,0-0,0}
+10-03 10:34:11.777   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:34:11.777   807   970 D SplashScreenView: Branding: view: android.view.View{225bdeb G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:34:11.801  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=165, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity }
+10-03 10:34:11.820   359   359 I netd    : tetherGetStats() -> {[]} <5.06ms>
+10-03 10:34:11.822  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@3903aad in: PAUSED
+10-03 10:34:11.822  4397  4397 V ActivityScenario: Update currentActivityStage to PAUSED, currentActivity=org.openrailfanai.app.MainComposeActivity@3903aad
+10-03 10:34:11.828   404   404 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-03 10:34:12.024  4425  4439 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+10-03 10:34:12.024  4425  4439 I EGL_emulation: Opening libGLESv2_emulation.so
+10-03 10:34:12.029  4425  4439 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-03 10:34:12.029  4425  4439 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-03 10:34:12.098  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=56, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.android.launcher3/.uioverrides.QuickstepLauncher }
+10-03 10:34:12.104   556   589 W ziparchive: Unable to open '/data/app/~~wzuiqpQmgryeutH8EUIuuQ==/org.openrailfanai.app.debug.test-Nzgn8L37NaL3PPJmcb8Low==/base.dm': No such file or directory
+10-03 10:34:12.107   556   589 I ActivityTaskManager: Displayed org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity for user 0: +331ms
+10-03 10:34:12.121   556  1556 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:12.121   556  1556 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:12.121   556  2995 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:12.140  1226  1226 D BaseDepthController: setSurface:
+10-03 10:34:12.140  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:34:12.140  1226  1226 D BaseDepthController: 	mSurface: Surface(name=com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher)/@0xd8ec6e0
+10-03 10:34:12.163  1226  1226 D StatsLog: LAUNCHER_ONRESUME
+10-03 10:34:12.219  4397  4397 D VRI[MainComposeActivity]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:34:12.224  1226  1359 D EGL_emulation: app_time_stats: avg=275.24ms min=1.65ms max=4363.40ms count=17
+10-03 10:34:12.228   807  1006 D EGL_emulation: app_time_stats: avg=423.09ms min=1.76ms max=4167.62ms count=10
+10-03 10:34:12.251  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@3903aad in: STOPPED
+10-03 10:34:12.251  4397  4397 V ActivityScenario: Update currentActivityStage to STOPPED, currentActivity=org.openrailfanai.app.MainComposeActivity@3903aad
+10-03 10:34:12.257  1226  1226 D StateManager: createAtomicAnimation - fromState: Background, toState: Normal, partial trace:
+10-03 10:34:12.257  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.prepareToAnimate(WorkspaceRevealAnim.java:130)
+10-03 10:34:12.257  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.<init>(WorkspaceRevealAnim.java:66)
+10-03 10:34:12.257  1226  1226 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(QuickstepTransitionManager.java:1716)
+10-03 10:34:12.260  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@3903aad in: DESTROYED
+10-03 10:34:12.261  4397  4397 V ActivityScenario: Update currentActivityStage to DESTROYED, currentActivity=null
+10-03 10:34:12.261  4397  4397 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@1b31d7d
+10-03 10:34:12.269   556  2995 W InputManager-JNI: Input channel object '3c77a74 org.openrailfanai.app.debug/org.openrailfanai.app.MainComposeActivity (client)' was disposed without first being removed with the input manager!
+10-03 10:34:12.271  4397  4411 D IdlingRegistry: Unregistering idling resources: [androidx.compose.ui.test.EspressoLink@306142b]
+10-03 10:34:12.284  4397  4411 I TestRunner: finished: settingsRouteLoadsFromNativeChatScreen(org.openrailfanai.app.ComposeSettingsRouteTest)

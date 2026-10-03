@@ -53,6 +53,52 @@ def test_history_injected_once_into_generation():
     print(f"[PASS] 生成层历史深度 = {GEN_HISTORY_LIMIT}（意图/抽取层为 4，刻意不对称）")
 
 
+def test_fact_injection_entry_limit():
+    """`fact_max_entries` 必须**默认不改变行为**，且裁剪时要如实声明。
+
+    背景（本地小模型实测）：给 4B 灌 15 条候选车次，它一边列出「G1 二等座余 12 张」，
+    一边在结论里写「明天上午没有票」。根因是候选条数超出小模型注意力容量 ——
+    收敛条数同时降 prefill。但裁剪必须声明，否则模型会把「我只看到 8 条」
+    讲成「资料就这 8 条」，与项目的完整性契约冲突。
+    """
+    from types import SimpleNamespace
+    from unittest.mock import patch
+
+    from app.pipeline import generate
+
+    entries = [
+        {"tool": f"t{i}", "text": f"事实{i}", "sources": [f"s/{i}"], "note": ""}
+        for i in range(12)
+    ]
+    retrieval = {"data": entries, "sources": [], "tool_trace": [], "note": ""}
+
+    def _prompt(limit: int) -> str:
+        cfg = SimpleNamespace(
+            fact_max_entries=limit, fact_text_max_chars=4000, fact_table_max_rows=40
+        )
+        with patch.object(generate, "get_settings", lambda: cfg):
+            return generate.build_prompt("查一下", Slots(), retrieval)
+
+    # 0 = 不限制：12 条全进，且**不得**出现裁剪声明（云端行为零变化）
+    p0 = _prompt(0)
+    for i in range(12):
+        assert f"事实{i}" in p0, f"默认（0=不限）时丢了事实{i}"
+    assert "受注入上限约束" not in p0, "未裁剪时不应出现裁剪声明"
+    print("[PASS] fact_max_entries=0：12 条全注入，无裁剪声明（默认行为不变）")
+
+    # 8 = 只留前 8 条，且**必须如实声明**总数/已列/dropped
+    p8 = _prompt(8)
+    for i in range(8):
+        assert f"事实{i}" in p8, f"裁剪后丢了应保留的事实{i}"
+    for i in range(8, 12):
+        assert f"事实{i}" not in p8, f"超出上限的事实{i}仍然被注入"
+    assert "受注入上限约束" in p8, "裁剪后缺少显式声明"
+    assert "共 12 条" in p8 and "仅列出前 8 条" in p8 and "另有 4 条未列出" in p8, (
+        "裁剪声明的数字不对（必须给出总数/已列/dropped 三个数）"
+    )
+    print("[PASS] fact_max_entries=8：只注入前 8 条，并如实声明「共 12 条 / 仅列 8 / 另有 4 条」")
+
+
 def test_orchestrator_does_not_pass_history_to_llm_messages():
     """编排层调用生成时不得再传 history=（否则等于二次注入）。"""
     captured: dict = {}
@@ -72,7 +118,7 @@ def test_orchestrator_does_not_pass_history_to_llm_messages():
     async def _fill(message, intent=None, history=None):
         return Slots(target="G1")
 
-    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None):
+    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None, display_action=None):
         return {"data": [], "sources": [], "tool_trace": [], "note": ""}
 
     original = (orchestrator.planner.intent.classify, orchestrator.planner.extract.fill,
@@ -220,6 +266,7 @@ def _force_legacy():
 
 def main():
     test_history_injected_once_into_generation()
+    test_fact_injection_entry_limit()
     test_orchestrator_does_not_pass_history_to_llm_messages()
     test_tools_run_concurrently_and_keep_order()
     test_tool_exception_does_not_break_retrieval()

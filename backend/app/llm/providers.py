@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -246,6 +247,23 @@ class Provider:
     #   {"reasoning_effort": "none"}→ **生效**：44 token / 0.9s，正文就是那个 JSON
     # 所以 ollama 预设带上这一条，用户只要 `LLM_PROVIDER=ollama` 就自动正确。
     no_think_body: dict[str, Any] = field(default_factory=dict)
+    # 该供应商的单次请求超时（秒）；0 = 用全局 LLM_TIMEOUT_S。
+    #
+    # 为什么必须能按供应商配：本机推理**天生慢一个量级**，而且慢在 prefill 上。
+    # 实测（Android 15 arm64 模拟器跑 Qwen3.5-0.8B、6096 token 提示词）：
+    #     prefill 6096 tok @ 39 tok/s = **156 秒**，decode 仅 16 秒
+    # 而全局默认 `LLM_TIMEOUT_S=60` 是给云端定的 —— 于是本地生成**必然超时**，
+    # 表现成"语言模型当前不可用"并降级到规则排版（用户完全看不出是超时）。
+    # 手机上会比模拟器快得多，但"比云端慢一个量级"这件事不会变。
+    timeout_s: float = 0.0
+    # 这家供应商**永远**关思考（不等调用方决定）。
+    #
+    # 为什么需要它而不是只靠全局 `LLM_GENERATION_NO_THINK`：那个配置在进程启动时就
+    # 冻结了（`get_settings()` 带 lru_cache）。而"设备端模型"是**运行期**才装上的 ——
+    # 用户点"一键下载"之后服务才起来，此时改环境变量已经无效。
+    # 而设备端要不要关思考不是偏好问题：实测不关则思考吃光输出预算、**正文一个字都没有**。
+    # 所以它必须跟供应商走，而不是跟进程走。
+    always_no_think: bool = False
     key_required: bool | None = None      # None = 按地址自动推断
     source: str = "builtin"               # builtin | file | env | legacy | request
     note: str = ""
@@ -310,6 +328,13 @@ def provider_from_dict(pid: str, data: dict[str, Any], *, source: str) -> Provid
     if api not in DIALECTS:
         raise ValueError(f"供应商 {pid} 的 api 非法：{api}（可选 {'/'.join(DIALECTS)}）")
 
+    always_no_think = bool(data.get("always_no_think", data.get("alwaysNoThink", False)))
+    timeout_raw = data.get("timeout_s", data.get("timeoutS", 0)) or 0
+    try:
+        timeout_s = float(timeout_raw)
+    except (TypeError, ValueError):
+        timeout_s = 0.0
+
     key_required = data.get("key_required", data.get("keyRequired", None))
     if key_required is not None:
         key_required = bool(key_required)
@@ -326,6 +351,8 @@ def provider_from_dict(pid: str, data: dict[str, Any], *, source: str) -> Provid
         extra_body=_as_dict(data.get("extra_body") or data.get("extraBody")),
         no_think_body=_as_dict(data.get("no_think_body") or data.get("noThinkBody")),
         key_required=key_required,
+        timeout_s=timeout_s,
+        always_no_think=always_no_think,
         source=source,
         note=str(data.get("note") or ""),
     )
@@ -338,6 +365,8 @@ def _canonical_keys(data: dict[str, Any]) -> dict[str, Any]:
         "extraHeaders": "extra_headers", "extraBody": "extra_body",
         "noThinkBody": "no_think_body",
         "keyRequired": "key_required", "dialect": "api",
+        "alwaysNoThink": "always_no_think",
+        "timeout": "timeout_s", "timeoutS": "timeout_s",
     }
     return {alias.get(k, k): v for k, v in data.items() if k != "id"}
 
@@ -348,7 +377,8 @@ def _provider_to_dict(p: Provider) -> dict[str, Any]:
         "label": p.label, "base_url": p.base_url, "api_key": p.api_key, "api": p.api,
         "model": p.model, "structured_model": p.structured_model,
         "extra_headers": p.extra_headers, "extra_body": p.extra_body,
-        "no_think_body": p.no_think_body,
+        "no_think_body": p.no_think_body, "timeout_s": p.timeout_s,
+        "always_no_think": p.always_no_think,
         "key_required": p.key_required, "note": p.note,
     }
 
@@ -470,7 +500,10 @@ def load_providers(settings=None) -> dict[str, Provider]:
         settings = get_settings()
 
     providers: dict[str, Provider] = {}
+    lm_variant = os.environ.get("APP_VARIANT", "main").lower() == "lm"
     for pid, data in BUILTIN_PROVIDERS.items():
+        if not lm_variant and pid in {"ollama", "lmstudio", "vllm"}:
+            continue
         try:
             providers[pid] = provider_from_dict(pid, data, source="builtin")
         except ValueError as e:  # 内置目录写错属于本仓库 bug，不该静默
@@ -505,6 +538,28 @@ def load_providers(settings=None) -> dict[str, Provider]:
             updates["structured_model"] = fallback_structured
         if updates:
             providers[explicit] = replace(p, **updates)
+
+    # 设备端本地推理：就绪时把自己注册成一个**配置级**供应商（source != "request"）。
+    #
+    # 为什么走这里而不是让前端下发 base_url：请求级供应商会撞上 SSRF 守卫
+    # （`guard_request_base_url` 只放行公网地址），于是"点一下按钮启用本地模型"会被
+    # 400 拦下，除非把 `LLM_ALLOW_PRIVATE_BASE_URL` 这个**全局**口子打开 ——
+    # 为一个已知的、固定的本机端口开全局后门，代价远大于收益。
+    # 按 id 选中则 source 是配置，守卫直接早返回。
+    item = None
+    if lm_variant:
+        try:
+            from app import local_inference
+
+            item = local_inference.provider_item()
+        except Exception as e:  # noqa: BLE001 —— 本地推理的问题绝不该拖垮供应商装载
+            _log.debug("本地推理供应商不可用：%s", e)
+    if item:
+        pid, data = item
+        try:
+            providers[pid] = provider_from_dict(pid, data, source="config")
+        except ValueError as e:
+            _log.warning("本地推理供应商配置非法：%s", e)
     return providers
 
 
@@ -518,6 +573,11 @@ def default_provider_id(settings=None) -> str:
     if explicit:
         return explicit
     return "default"
+
+
+def _same_base(a: str, b: str) -> bool:
+    """两个 base_url 是否指向同一个地址（忽略末尾斜杠与大小写差异）。"""
+    return normalize_base_url(a).rstrip("/") == normalize_base_url(b).rstrip("/")
 
 
 def resolve_provider(
@@ -547,6 +607,19 @@ def resolve_provider(
         raise ValueError(f"未知供应商：{wanted}（可用：{available}）")
 
     ov = {k: v for k, v in (overrides or {}).items() if v not in (None, "")}
+
+    # **只把"真的不一样"的 base_url 当作覆盖。**
+    #
+    # 为什么：请求里带 base_url 会把供应商降级成 `source="request"`，从而撞上 SSRF 守卫
+    # （生产环境下内网/回环地址一律拒绝）。而客户端把**服务端自己告诉它的地址原样回传**
+    # 是极自然的行为 —— 前端就是这样：选中预设时同时下发 id 与 base_url（为了支持中转站覆盖）。
+    # 实测踩到：设备端本地模型的地址被回传 → 被判成"用户可控的出站目标" → 拒绝 127.0.0.1，
+    # 生成整条降级到规则排版，而原因只出现在一行日志里。
+    #
+    # 等价地址不构成覆盖，因此不该改变 provider 的可信级别。真正改了地址（中转站场景）
+    # 仍然按请求级处理、仍然过守卫。
+    if ov.get("base_url") and _same_base(ov["base_url"], base.base_url):
+        ov = {k: v for k, v in ov.items() if k != "base_url"}
     if not ov:
         return base
 
@@ -560,6 +633,7 @@ def resolve_provider(
         "extra_headers": base.extra_headers,
         "extra_body": base.extra_body,
         "no_think_body": base.no_think_body,
+        "timeout_s": base.timeout_s, "always_no_think": base.always_no_think,
         "key_required": base.key_required,
         "note": base.note,
     }

@@ -57,27 +57,22 @@ def test_renderer_is_a_separate_module():
 
 
 def test_answer_layout_and_focus():
-    """回答气泡里的元素顺序与"生成完不要弹键盘"是用户明确提的需求，钉住它们。
-
-    顺序：流程日志 → 思考过程 → **正文** → 统计 → **数据来源**
-    （用户在实测反馈里要求把日志与思考放到正文上方，来源留在下方。）
+    """回答先显示正文与来源，排查信息保留在其后；生成完不弹键盘。
 
     焦点：生成结束后**不能**无条件聚焦输入框 —— 手机上这会立刻弹出软键盘，
     把刚生成的回答顶走半屏。判据是 `(hover: hover)`（是否真有指针设备），
     桌面端保聚焦以便接着打下一句。
     """
     js = (REPO_ROOT / "frontend/src/main.js").read_text(encoding="utf-8")
-    i_logs = js.index('流程日志（意图 / 抽取 / 检索 / 生成）')
-    i_think = js.index('思考过程（think）')
-    i_ans = js.index('const ans = el("div", "md")')
-    i_src = js.index('"数据来源："')
-    assert i_logs < i_ans, "流程日志又跑到正文下面了"
-    assert i_think < i_ans, "思考过程又跑到正文下面了"
-    assert i_src > i_ans, "数据来源必须在正文之后（它是结论的出处）"
+    i_ans = js.index('bubble.appendChild(ans)')
+    i_src = js.index('bubble.appendChild(sourcesBox)')
+    i_logs = js.index('bubble.appendChild(logs)')
+    i_think = js.index('bubble.appendChild(thinkDetails)')
+    assert i_ans < i_src < i_logs < i_think, "回答应先显示结论与来源，再显示排查信息"
     assert 'matchMedia("(hover: hover)")' in js, (
         "生成结束后又无条件聚焦输入框了：手机会每次弹软键盘把回答顶走"
     )
-    print("[PASS] 气泡顺序为 流程日志→思考→正文→来源，且触屏设备不再自动弹键盘")
+    print("[PASS] 气泡顺序为 正文→来源→流程日志→思考，且触屏设备不自动弹键盘")
 
 
 def test_interrupted_answer_is_visible():

@@ -1,0 +1,1010 @@
+{
+  "coordinateConvention": {
+    "imageOrigin": "top-left",
+    "rect": "[x,y,width,height] in source-image pixels",
+    "designClassification": {
+      "application_ui": "functional page content and controls",
+      "device_illustration": "device shell, system time/status icons, notch, Home Indicator and status-bar background; excluded from implementation and acceptance",
+      "annotation": "canvas titles, module numbers, dimensions and explanatory labels; excluded from application copy and acceptance"
+    },
+    "desi1": {
+      "file": "desi1.png",
+      "size": [
+        1476,
+        1065
+      ],
+      "applicationFrames": {
+        "train_schedule": [
+          49,
+          174,
+          438,
+          828
+        ],
+        "emu_routing": [
+          521,
+          174,
+          435,
+          828
+        ],
+        "history": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "cssScale": "390 / selected full screen-surface frame width (438, 435, or 438 by state)",
+      "cssOrigin": "Subtract the selected screen-surface frame origin, then multiply visual coordinates by 390 / that state frame width; preserve page side whitespace as application UI. Device shell, status illustration, Home Indicator and annotations remain outside the measured frame.",
+      "historicalInnerContentFrames": {
+        "train_schedule": [
+          65,
+          174,
+          406,
+          828
+        ],
+        "emu_routing": [
+          536,
+          174,
+          406,
+          828
+        ],
+        "history": [
+          1005,
+          174,
+          406,
+          828
+        ]
+      },
+      "screenSurfacePixelEdgesInclusive": {
+        "train_schedule": [
+          48,
+          488
+        ],
+        "emu_routing": [
+          519,
+          958
+        ],
+        "history": [
+          987,
+          1428
+        ]
+      },
+      "referenceFrameDecision": {
+        "status": "user_confirmed",
+        "decision": "保留原稿屏幕内应用页面留白，按完整屏幕内应用表面修正390目标基准。",
+        "confirmed_by_user": true,
+        "page_padding_classification": "application_ui",
+        "frame_meaning": "screen surface inside phone display; excludes device shell, status illustration, Home Indicator and canvas annotations",
+        "surface_rects_source_pixels": {
+          "train_schedule": [
+            49,
+            174,
+            438,
+            828
+          ],
+          "emu_routing": [
+            521,
+            174,
+            435,
+            828
+          ],
+          "history": [
+            989,
+            174,
+            438,
+            828
+          ]
+        },
+        "historical_inner_content_frames_preserved_as_metadata_only": {
+          "train_schedule": [
+            65,
+            174,
+            406,
+            828
+          ],
+          "emu_routing": [
+            536,
+            174,
+            406,
+            828
+          ],
+          "history": [
+            1005,
+            174,
+            406,
+            828
+          ]
+        },
+        "historical_frames_live_conversion": false,
+        "source_image_unchanged": true,
+        "surface_edges_evidence": "Original desi1.png pixel inspection at y=180, 400 and 900: train border x=47/48 and 487/488, flat app surface x=49..486; routing border x=519/520 and 956/957, surface x=521..955; history border x=987/988 and 1427/1428, surface x=989..1426. Rect widths count the pixel surface spans.",
+        "operating_system_geometry": "Real Android system insets remain platform-owned and are not multiplied by the reference transform."
+      }
+    },
+    "desi2": {
+      "file": "desi2.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "moduleFrames": {
+        "query_loading": [
+          44,
+          136,
+          458,
+          343
+        ],
+        "batch_partial": [
+          542,
+          136,
+          454,
+          343
+        ],
+        "routing_empty": [
+          1034,
+          136,
+          462,
+          343
+        ],
+        "connection_error": [
+          44,
+          536,
+          458,
+          399
+        ],
+        "reading_followup": [
+          542,
+          536,
+          454,
+          399
+        ],
+        "query_details": [
+          1034,
+          536,
+          462,
+          399
+        ]
+      },
+      "cssScale": "390 / moduleFrame.width",
+      "cssOrigin": "subtract module frame x/y; no whole-page CSS coordinates"
+    }
+  },
+  "knownDesignConflicts": {
+    "reading_followup.fixed_input_and_send": {
+      "desi1FullPhoneInputHeightCss": 51.64,
+      "desi2ModuleInputHeightCss": 42.95,
+      "differenceCssPx": 8.69,
+      "resolution": "Use the full screen-surface desi1.png input height for the fixed page footer at 58 * 390 / 438 = 51.64 CSS px; preserve the 406px inner-content projection (55.71px) as historical metadata and the desi2.png module value (42.95px) as an explicit conflicting reference.",
+      "resolved_reference": {
+        "state": "train_schedule",
+        "element": "fixed_input",
+        "source_frame": [
+          49,
+          174,
+          438,
+          828
+        ],
+        "height_formula": "58 * 390 / 438"
+      },
+      "historicalInnerContentFrameHeightCss": 55.71
+    }
+  },
+  "states": {
+    "train_schedule": {
+      "source": "desi1.png",
+      "frame": [
+        49,
+        174,
+        438,
+        828
+      ],
+      "elements": {
+        "topbar": [
+          65,
+          174,
+          406,
+          42
+        ],
+        "prompt": [
+          168,
+          236,
+          260,
+          51
+        ],
+        "result_card": [
+          118,
+          303,
+          353,
+          526
+        ],
+        "title": [
+          135,
+          319,
+          321,
+          32
+        ],
+        "route_summary": [
+          135,
+          351,
+          321,
+          31
+        ],
+        "date_duration": [
+          134,
+          389,
+          324,
+          38
+        ],
+        "station_timeline_table": [
+          130,
+          441,
+          327,
+          270
+        ],
+        "source_note": [
+          130,
+          726,
+          327,
+          39
+        ],
+        "source_details_row": [
+          130,
+          776,
+          327,
+          41
+        ],
+        "result_actions": [
+          120,
+          840,
+          191,
+          27
+        ],
+        "suggestions": [
+          143,
+          884,
+          261,
+          44
+        ],
+        "fixed_input": [
+          65,
+          944,
+          404,
+          58
+        ],
+        "train_code_ink_region": [
+          134,
+          315,
+          172,
+          38
+        ],
+        "route_ink_region": [
+          134,
+          348,
+          225,
+          39
+        ],
+        "station_header_ink_region": [
+          163,
+          445,
+          52,
+          37
+        ],
+        "arrival_header_ink_region": [
+          292,
+          445,
+          57,
+          37
+        ],
+        "departure_header_ink_region": [
+          387,
+          445,
+          58,
+          37
+        ],
+        "station_1_ink_region": [
+          165,
+          491,
+          89,
+          38
+        ],
+        "station_2_ink_region": [
+          165,
+          543,
+          75,
+          28
+        ],
+        "station_3_ink_region": [
+          165,
+          609,
+          75,
+          28
+        ],
+        "station_4_ink_region": [
+          165,
+          683,
+          85,
+          30
+        ],
+        "stopover_2_ink_region": [
+          164,
+          570,
+          85,
+          28
+        ],
+        "stopover_3_ink_region": [
+          164,
+          640,
+          85,
+          28
+        ],
+        "arrival_1_ink_region": [
+          288,
+          491,
+          61,
+          33
+        ],
+        "departure_1_ink_region": [
+          382,
+          491,
+          67,
+          33
+        ],
+        "arrival_2_ink_region": [
+          288,
+          550,
+          61,
+          33
+        ],
+        "departure_2_ink_region": [
+          382,
+          550,
+          67,
+          33
+        ],
+        "arrival_3_ink_region": [
+          288,
+          620,
+          61,
+          33
+        ],
+        "departure_3_ink_region": [
+          382,
+          620,
+          67,
+          33
+        ],
+        "arrival_4_ink_region": [
+          288,
+          685,
+          61,
+          33
+        ],
+        "departure_4_ink_region": [
+          382,
+          685,
+          67,
+          33
+        ]
+      }
+    },
+    "emu_routing": {
+      "source": "desi1.png",
+      "frame": [
+        521,
+        174,
+        435,
+        828
+      ],
+      "elements": {
+        "topbar": [
+          536,
+          174,
+          406,
+          42
+        ],
+        "prompt": [
+          641,
+          236,
+          256,
+          53
+        ],
+        "result_card": [
+          589,
+          308,
+          351,
+          476
+        ],
+        "title_date": [
+          605,
+          324,
+          319,
+          31
+        ],
+        "date_record": [
+          605,
+          361,
+          319,
+          21
+        ],
+        "time_semantics_note": [
+          603,
+          395,
+          324,
+          48
+        ],
+        "records_table": [
+          603,
+          458,
+          324,
+          258
+        ],
+        "source_details_row": [
+          603,
+          727,
+          324,
+          43
+        ],
+        "batch_action": [
+          589,
+          799,
+          218,
+          48
+        ],
+        "integrity_note": [
+          589,
+          860,
+          352,
+          42
+        ],
+        "fixed_input": [
+          536,
+          944,
+          405,
+          58
+        ],
+        "leaf_routing_title_ink_region": [
+          605,
+          324,
+          176,
+          32
+        ],
+        "leaf_routing_date_record_ink_region": [
+          605,
+          360,
+          210,
+          24
+        ],
+        "leaf_routing_time_semantics_text_ink_region": [
+          649,
+          408,
+          260,
+          25
+        ],
+        "leaf_routing_train_C2203_ink_region": [
+          620,
+          510,
+          120,
+          38
+        ],
+        "leaf_routing_time_C2203_ink_region": [
+          746,
+          511,
+          95,
+          29
+        ],
+        "leaf_routing_record_link_C2203_ink_region": [
+          748,
+          541,
+          112,
+          17
+        ],
+        "leaf_routing_train_G8927_ink_region": [
+          620,
+          582,
+          120,
+          38
+        ],
+        "leaf_routing_time_G8927_ink_region": [
+          746,
+          586,
+          95,
+          26
+        ],
+        "leaf_routing_record_link_G8927_ink_region": [
+          748,
+          617,
+          112,
+          17
+        ],
+        "leaf_routing_train_G8928_ink_region": [
+          620,
+          652,
+          120,
+          55
+        ],
+        "leaf_routing_time_G8928_ink_region": [
+          746,
+          661,
+          105,
+          26
+        ],
+        "leaf_routing_record_link_G8928_ink_region": [
+          748,
+          693,
+          112,
+          17
+        ],
+        "leaf_routing_batch_label_ink_region": [
+          610,
+          807,
+          178,
+          31
+        ]
+      }
+    },
+    "history": {
+      "source": "desi1.png",
+      "frame": [
+        989,
+        174,
+        438,
+        828
+      ],
+      "elements": {
+        "topbar": [
+          1005,
+          174,
+          406,
+          42
+        ],
+        "search": [
+          1007,
+          228,
+          403,
+          47
+        ],
+        "create_action": [
+          1007,
+          284,
+          403,
+          50
+        ],
+        "today_group_and_rows": [
+          1004,
+          353,
+          406,
+          267
+        ],
+        "yesterday_group_and_rows": [
+          1004,
+          647,
+          406,
+          75
+        ],
+        "action_panel": [
+          1006,
+          731,
+          405,
+          154
+        ],
+        "cancel_action": [
+          1006,
+          893,
+          405,
+          57
+        ],
+        "fixed_bottom_links": [
+          1037,
+          972,
+          344,
+          27
+        ],
+        "leaf_history_title_selected_ink_region": [
+          1032,
+          395,
+          280,
+          33
+        ],
+        "leaf_history_subtitle_selected_ink_region": [
+          1032,
+          428,
+          220,
+          28
+        ],
+        "leaf_history_title_tomorrow_ink_region": [
+          1032,
+          476,
+          300,
+          35
+        ],
+        "leaf_history_subtitle_tomorrow_ink_region": [
+          1032,
+          511,
+          200,
+          30
+        ],
+        "leaf_history_title_schedule_ink_region": [
+          1032,
+          559,
+          242,
+          35
+        ],
+        "leaf_history_subtitle_schedule_ink_region": [
+          1032,
+          589,
+          220,
+          31
+        ],
+        "leaf_history_title_yesterday_ink_region": [
+          1032,
+          682,
+          240,
+          34
+        ],
+        "leaf_history_group_今天_ink_region": [
+          1008,
+          345,
+          65,
+          37
+        ],
+        "leaf_history_group_昨天_ink_region": [
+          1008,
+          641,
+          65,
+          38
+        ]
+      }
+    },
+    "query_loading": {
+      "source": "desi2.png",
+      "frame": [
+        44,
+        136,
+        458,
+        343
+      ],
+      "elements": {
+        "module_frame": [
+          44,
+          136,
+          458,
+          343
+        ],
+        "loading_card": [
+          64,
+          155,
+          419,
+          183
+        ],
+        "spinner": [
+          91,
+          184,
+          54,
+          54
+        ],
+        "loading_title_and_stage": [
+          172,
+          187,
+          220,
+          54
+        ],
+        "skeletons": [
+          88,
+          267,
+          370,
+          49
+        ],
+        "editable_input_and_stop": [
+          64,
+          368,
+          419,
+          60
+        ],
+        "preserve_note": [
+          164,
+          450,
+          218,
+          20
+        ]
+      }
+    },
+    "batch_partial": {
+      "source": "desi2.png",
+      "frame": [
+        542,
+        136,
+        454,
+        343
+      ],
+      "elements": {
+        "module_frame": [
+          542,
+          136,
+          454,
+          343
+        ],
+        "batch_card": [
+          560,
+          152,
+          418,
+          203
+        ],
+        "retry_failed_only": [
+          561,
+          367,
+          415,
+          51
+        ],
+        "retain_success_note": [
+          560,
+          428,
+          418,
+          25
+        ]
+      }
+    },
+    "routing_empty": {
+      "source": "desi2.png",
+      "frame": [
+        1034,
+        136,
+        462,
+        343
+      ],
+      "elements": {
+        "module_frame": [
+          1034,
+          136,
+          462,
+          343
+        ],
+        "empty_icon_group": [
+          1228,
+          162,
+          104,
+          76
+        ],
+        "empty_title": [
+          1158,
+          259,
+          217,
+          28
+        ],
+        "empty_message": [
+          1144,
+          292,
+          247,
+          23
+        ],
+        "date_pill": [
+          1180,
+          328,
+          173,
+          45
+        ],
+        "change_date_action": [
+          1055,
+          387,
+          203,
+          48
+        ],
+        "recent_records_action": [
+          1271,
+          387,
+          208,
+          48
+        ],
+        "history_note": [
+          1180,
+          448,
+          182,
+          20
+        ]
+      }
+    },
+    "connection_error": {
+      "source": "desi2.png",
+      "frame": [
+        44,
+        536,
+        458,
+        399
+      ],
+      "elements": {
+        "module_frame": [
+          44,
+          536,
+          458,
+          399
+        ],
+        "error_icon_and_title": [
+          80,
+          576,
+          325,
+          63
+        ],
+        "error_explanation": [
+          182,
+          612,
+          239,
+          20
+        ],
+        "retry_action": [
+          65,
+          661,
+          191,
+          46
+        ],
+        "settings_action": [
+          270,
+          661,
+          210,
+          46
+        ],
+        "error_details_collapsed": [
+          65,
+          723,
+          415,
+          53
+        ],
+        "api_key_label": [
+          66,
+          802,
+          55,
+          19
+        ],
+        "api_key_field": [
+          65,
+          826,
+          417,
+          52
+        ],
+        "field_error": [
+          66,
+          885,
+          185,
+          20
+        ]
+      }
+    },
+    "reading_followup": {
+      "source": "desi2.png",
+      "frame": [
+        542,
+        536,
+        454,
+        399
+      ],
+      "elements": {
+        "module_frame": [
+          542,
+          536,
+          454,
+          399
+        ],
+        "answer_intro": [
+          581,
+          554,
+          283,
+          23
+        ],
+        "schedule_table": [
+          574,
+          589,
+          389,
+          181
+        ],
+        "return_to_bottom_cue": [
+          653,
+          736,
+          229,
+          44
+        ],
+        "followup_actions": [
+          562,
+          797,
+          241,
+          37
+        ],
+        "fixed_input_and_send": [
+          562,
+          846,
+          414,
+          50
+        ],
+        "reading_hint": [
+          596,
+          909,
+          326,
+          18
+        ]
+      }
+    },
+    "query_details": {
+      "source": "desi2.png",
+      "frame": [
+        1034,
+        536,
+        462,
+        399
+      ],
+      "elements": {
+        "module_frame": [
+          1034,
+          536,
+          462,
+          399
+        ],
+        "details_panel": [
+          1053,
+          553,
+          425,
+          275
+        ],
+        "details_heading_and_source": [
+          1053,
+          553,
+          425,
+          107
+        ],
+        "date_row": [
+          1053,
+          660,
+          425,
+          42
+        ],
+        "time_basis_row": [
+          1053,
+          702,
+          425,
+          42
+        ],
+        "latency_row": [
+          1053,
+          744,
+          425,
+          42
+        ],
+        "usage_row": [
+          1053,
+          786,
+          425,
+          42
+        ],
+        "technical_log_action": [
+          1053,
+          842,
+          425,
+          53
+        ]
+      }
+    }
+  },
+  "derived_text_regions": {
+    "train_schedule": {
+      "source": "desi1.png",
+      "purpose": "原始文字选择区域；正式边界由相同阈值读取原图墨迹，不以选择框替代字形边界。",
+      "elements": [
+        "train_code_ink_region",
+        "route_ink_region",
+        "station_header_ink_region",
+        "arrival_header_ink_region",
+        "departure_header_ink_region",
+        "station_1_ink_region",
+        "station_2_ink_region",
+        "station_3_ink_region",
+        "station_4_ink_region",
+        "stopover_2_ink_region",
+        "stopover_3_ink_region",
+        "arrival_1_ink_region",
+        "departure_1_ink_region",
+        "arrival_2_ink_region",
+        "departure_2_ink_region",
+        "arrival_3_ink_region",
+        "departure_3_ink_region",
+        "arrival_4_ink_region",
+        "departure_4_ink_region"
+      ]
+    }
+  }
+}

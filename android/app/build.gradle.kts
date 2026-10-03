@@ -4,6 +4,8 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("com.chaquo.python")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 // Chaquopy 需要**与 App 同主次版本**的本机 Python 来生成部分产物。
@@ -48,6 +50,37 @@ val appVersionCode: Int = run {
 val includeDict: Boolean = (project.findProperty("includeDict") as String?)?.toBoolean() ?: false
 
 /**
+ * 本地模型版（LM 轨）的独立版本标识：`-PlmLabel=lm1`。
+ *
+ * 为什么要独立：LM 轨是**内部封测/实验**通道，每次改动都要出一个能彼此区分的新包，
+ * 但不能占用正式版本线 —— 改仓库根的 VERSION 会让正式构建跟着跳号；若沿用同一个号，
+ * dist/ 里就会出现"同名不同内容"的包（build.sh 注释里明说要消灭的东西）。
+ * 因此 LM 轨自带前缀 + 自增数字（lm1 / lm2 / …），与 VERSION 完全解耦。
+ *
+ * versionCode 取 100000 + 数字，而不是 1/2/3：必须**单调递增且高于正式线**，
+ * 否则测试者手机上已有的 debug 包（0.1.6 → 106）会让 Android 拒绝安装更低版本的包。
+ */
+val lmLabel: String? = (project.findProperty("lmLabel") as String?)?.trim()?.takeIf { it.isNotEmpty() }
+val effectiveVersionCode: Int = lmLabel
+    ?.let { 100000 + (Regex("(\\d+)$").find(it)?.groupValues?.get(1)?.toIntOrNull() ?: 0) }
+    ?: appVersionCode
+val effectiveVersionName: String = lmLabel ?: appVersion
+
+/**
+ * 内部调试轨（`build.sh --internal`）：把 release 包做成 `debuggable`。
+ *
+ * 为什么需要：内部调试轨的全部意义是"看得见、改得动"。`debuggable` 才能让
+ * `adb shell run-as` 进应用私有目录（llama-server.log、state.json、npu-java-report.txt 都在那儿），
+ * 也才能挂 `am profile` / `dumpsys` 这类系统级观测。
+ *
+ * 为什么只在 release 上开关而不是直接出 debug 包：debug 构建带 `.debug` 包名后缀
+ * （见 buildTypes），那会让它变成**另一个应用**，既不能覆盖升级、也不能沿用现有数据。
+ * 内部调试轨要的恰恰是"同包名、能直接覆盖已装的 lmN"。
+ */
+val internalDebug: Boolean =
+    (project.findProperty("internalDebug") as String?)?.toBoolean() ?: false
+
+/**
  * release 签名配置：android/keystore.properties 存在时才启用
  * （由 scripts/android/make-keystore.sh 生成，含口令，已 gitignore）。
  *
@@ -66,14 +99,28 @@ android {
     namespace = "org.openrailfanai.app"
     compileSdk = 35
 
+    buildFeatures {
+        compose = true
+    }
+
     defaultConfig {
         applicationId = "org.openrailfanai.app"
         // WebView 需要能被 Play 更新以获得现代 JS/ES module 支持；24 起覆盖绝大多数在用机型
         minSdk = 24
         targetSdk = 35
-        // 每次出包递增：用户报障时需要能区分版本
-        versionCode = appVersionCode
-        versionName = appVersion
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // 每次出包递增：用户报障时需要能区分版本（LM 轨用自己的 100000+ 计数，见上）
+        versionCode = effectiveVersionCode
+        versionName = effectiveVersionName
+        // Main opens the accepted native UI; LM retains its existing WebView entry.
+        resValue("bool", "main_native_ui", (lmLabel == null).toString())
+
+        // 内部调试轨：**独立包名**（见 internalDebug 的注释）。
+        // 独立包名让两条轨并存、互不影响，随时能退回 lmN —— 也就不会出现
+        // "lm1000 的 versionCode 把回退路堵死"那个不可逆后果。权限注入见文件末尾。
+        if (internalDebug) {
+            applicationIdSuffix = ".internal"
+        }
 
         // 只打 arm64：原生库（CPython 运行时）体积直接减半。
         // 需要覆盖 32 位老机时在此追加 "armeabi-v7a"。
@@ -99,6 +146,8 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
             signingConfig = signingConfigs.findByName("release")
+            // 只有内部调试轨打开（见 internalDebug 的注释）。正式包恒为 false。
+            isDebuggable = internalDebug
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -106,12 +155,19 @@ android {
     }
 
     compileOptions {
+        // Native Main uses java.time for history/date actions on minSdk 24.
+        isCoreLibraryDesugaringEnabled = lmLabel == null
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
     packaging {
-        jniLibs { useLegacyPackaging = false }   // 原生库保持未压缩对齐
+        // 正常版本保持未压缩对齐（体积小、装得快）。
+        // **LM 轨必须置 true**：设为 false 时原生库只在 APK 内被 mmap、**不落地成真实文件**，
+        // 而设备端推理二进制必须是一个真实且可执行的文件才能被 exec ——
+        // Android 10+ 的 W^X 只允许 `nativeLibraryDir`（只读）里的文件被执行。
+        // 这一处与 build-llama.sh 把产物命名成 `lib*.so` 是**一对**，改一个必须改另一个。
+        jniLibs { useLegacyPackaging = (lmLabel != null) }
         resources { excludes += setOf("META-INF/*.kotlin_module") }
     }
 
@@ -120,19 +176,49 @@ android {
     // 注意用 srcDir(...) 方法而不是给 srcDirs 属性赋值 —— 后者是只读 Set<File>。
     sourceSets.getByName("main") {
         assets.srcDir(layout.buildDirectory.dir("staged-assets").get().asFile)
+        // 设备端推理二进制只在 LM 轨打进包：正常版本不该为它多背几 MB，
+        // 更不该因此被要求把 extractNativeLibs 打开。
+        if (lmLabel != null) {
+            jniLibs.srcDir("src/lm/jniLibs")
+        }
+        // 注：`libcdsprpc.so` 的 `<uses-native-library>` 声明放在 **src/main/AndroidManifest.xml**，
+        // **不**在这里按 LM 轨分流。原因：`AndroidSourceSet.manifest.srcFile()` 是**替换**
+        // 而不是追加 —— 曾经以为它会合并，于是产出了一个没有 label、没有 icon、
+        // 连 LAUNCHER 入口都没有的包（lm33：装完桌面没图标、安装器只显示包名）。
+        // 那条声明带 `required="false"`，对非骁龙设备是惰性的，放 main 里没有行为代价。
     }
 }
 
+dependencies {
+    if (lmLabel == null) coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
+    // 固定在 Compose 1.9 系列，兼容当前 compileSdk 35 / AGP 8.7.3。
+    val composeBom = platform("androidx.compose:compose-bom:2025.08.00")
+    implementation(composeBom)
+    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    testImplementation("junit:junit:4.13.2")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
 // ---- 把仓库里的前端与后端源码"暂存"到构建目录（避免把 backend/.venv、tests 也打进包）----
-val stageBackendPython by tasks.registering(Copy::class) {
+val stageBackendPython by tasks.registering(Sync::class) {
     description = "把 backend/app 复制到构建目录，供 Chaquopy 打进 APK"
-    from(repoRoot.resolve("backend/app")) { into("app") }
+    from(repoRoot.resolve("backend/app")) {
+        into("app")
+        if (lmLabel == null) exclude("local_inference.py", "api/local_model.py")
+    }
     // 排除字节码缓存：它们是本机产物，进包只会变胖且可能与目标 Python 版本不符
     exclude("**/__pycache__/**", "**/*.pyc")
+    inputs.property("lmVariant", lmLabel != null)
     into(layout.buildDirectory.dir("python-staging"))
 }
 
-val stageWebApp by tasks.registering(Copy::class) {
+val stageWebApp by tasks.registering(Sync::class) {
     description = "把仓库里的 frontend/ 复制为 assets/webapp"
     from(repoRoot.resolve("frontend")) {
         exclude("tests/**")            // 前端测试脚本不必随包分发
@@ -144,14 +230,22 @@ val stageWebApp by tasks.registering(Copy::class) {
     // "0.1.2 / 0683b89-dirty" —— 一个专门用来消除"我装的是哪一版"疑惑的机制，自己先撒了谎。
     inputs.file(repoRoot.resolve("VERSION"))
     inputs.property("gitHead", gitShortHead())
+    // 版本标签也要声明成输入：LM 轨只改 -PlmLabel（VERSION 文件没动），
+    // 不声明的话 Gradle 会判 UP-TO-DATE，build.json 里仍写着上一版的标签 ——
+    // 正是上面那段注释里"标记自己先撒了谎"的同一个坑，只是换了触发方式。
+    inputs.property("versionLabel", effectiveVersionName)
+    if (lmLabel != null) inputs.dir(repoRoot.resolve("android/lm-webapp"))
     // 写入构建标记，让"我装的到底是哪一次的包"能直接在界面（设置 → 关于）上看到。
     // 起因：每次修完只能反复叮嘱"需要重新下载"，而静态资源的 URL 跨安装**完全不变**
     // （端口是刻意固定的，为了保住本机状态），光看界面分不出新旧，
     // 用户无从判断重装到底生效了没有。
     doLast {
         val dst = layout.buildDirectory.dir("staged-assets/webapp").get().asFile
+        if (lmLabel != null) {
+            repoRoot.resolve("android/lm-webapp").copyRecursively(dst, overwrite = true)
+        }
         File(dst, "build.json").writeText(
-            """{"version":"$appVersion","commit":"${gitShortHead()}","builtAt":"${buildTimeIso()}"}"""
+            """{"version":"$effectiveVersionName","commit":"${gitShortHead()}","builtAt":"${buildTimeIso()}"}"""
         )
     }
 }
@@ -236,6 +330,47 @@ chaquopy {
             // 缺失的两个包由 backend/app/_compat.py 提供替身。
             options("--no-deps")
             install("-r", "../requirements.txt")
+        }
+    }
+}
+
+// ---------------------------------------------------------------- 内部调试轨的 manifest 注入
+//
+// 为什么不用更"正统"的写法 —— 三条路都实测排除过，别再回头试：
+//   1) `sourceSets.main.manifest.srcFile("src/lm/AndroidManifest.xml")`
+//      → 是**替换**不是追加（`AndroidSourceFile` 只有 srcFile()/getSrcFile()，
+//        没有追加 API，用 javap 在 AGP 8.7.3 的 jar 上确认过）。实测产出了
+//        没有 label / 没有 icon / 没有 LAUNCHER 入口的包（lm33）。
+//   2) `manifestPlaceholders` + `tools:node="${...}"`
+//      → 占位符**不作用于 tools: 属性**，报
+//        `No enum constant com.android.manifmerger.NodeOperationType.${ALL_FILES_PERMISSION_NODE}`。
+//   3) product flavor
+//      → 会让 `assembleRelease` 这个任务名消失（变成 assemble<Flavor>Release），
+//        等于改动正式轨的构建入口 —— 而"别碰正式包"是硬约束。
+//
+// 所以走**构建后注入**：源 manifest **一个字都不改**，
+// 正式轨与封测轨的 merged manifest 因此**从构造上**就不可能被碰到（不是"应该不会"）。
+// 代价是多一个自定义步骤 —— 用下面的断言把它钉住：
+// 注入失败 / 重复注入 / 注错构建类型，都会让构建**当场失败**，而不是悄悄出错包。
+//
+// 要这份权限的原因：内部调试轨是独立包名（`.internal`），因而看不到另一个包
+// `/Android/data/org.openrailfanai.app/files/models/` 里已经下好的模型 ——
+// Android 11+ 禁止应用读取**其它包**的 Android/data 目录。
+// 有 MANAGE_EXTERNAL_STORAGE 才能按路径直接读那份文件（**原地使用，不拷贝不重下**）。
+if (internalDebug) {
+    tasks.matching { it.name == "processReleaseMainManifest" }.configureEach {
+        doLast {
+            val manifest = outputs.files.files.firstOrNull { it.name == "AndroidManifest.xml" }
+                ?: throw GradleException("找不到 merged manifest，权限注入无法进行")
+            val text = manifest.readText()
+            val perm = "android.permission.MANAGE_EXTERNAL_STORAGE"
+            if (text.contains(perm)) {
+                throw GradleException("$perm 已存在 —— 注入逻辑重复执行了，先查清楚再说")
+            }
+            check(text.contains("</manifest>")) { "merged manifest 结构异常，拒绝注入" }
+            manifest.writeText(text.replace("</manifest>",
+                "    <uses-permission android:name=\"$perm\" />\n</manifest>"))
+            logger.lifecycle("内部调试轨：已注入 $perm（正式/封测轨不受影响）")
         }
     }
 }

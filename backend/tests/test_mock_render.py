@@ -261,7 +261,7 @@ def _events_with_retrieval(retrieval: dict) -> list[dict]:
     async def _fill(message, intent=None, history=None):
         return _StubSlots()
 
-    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None):
+    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None, display_action=None):
         return retrieval
 
     async def _gen(*_a, **_kw):
@@ -286,21 +286,29 @@ def _events_with_retrieval(retrieval: dict) -> list[dict]:
 def _facts_only() -> dict:
     return {
         "data": [{"tool": "train.schedule", "text": "G1 经停：北京南 06:30 → 上海虹桥 11:24",
+                  "data": {"train_code": "G1", "train_date": "2026-09-30", "source": "12306-timetable",
+                           "stops_with_times": True, "from_station": "北京南", "to_station": "上海虹桥",
+                           "stops": [{"station": "北京南", "station_no": "1", "start_time": "06:30"},
+                                     {"station": "上海虹桥", "station_no": "2", "arrive_time": "11:24"}]},
                   "sources": ["https://www.12306.cn/"], "note": "图定时刻", "integrity": ""}],
         "sources": ["https://www.12306.cn/"], "tool_trace": ["train.schedule: ok"], "note": "n",
     }
 
 
 def test_degraded_render_when_facts_exist():
-    """模型挂掉但检索成功 → 规则排版出可交付的回复，并如实标注 degraded。"""
-    events = _events_with_retrieval(_facts_only())
+    """普通非卡片事实在模型失败时仍可规则排版；错误同时可见。"""
+    events = _events_with_retrieval({
+        "data": [{"tool": "station.lookup", "text": "北京南在北京市丰台区。",
+                  "sources": ["https://www.12306.cn/"], "note": "站点字典", "integrity": ""}],
+        "sources": ["https://www.12306.cn/"], "tool_trace": ["station.lookup: ok"], "note": "n",
+    })
     answer = "".join(e.get("delta", "") for e in events if e["type"] == "answer")
     dones = [e for e in events if e["type"] == "done"]
     assert len(dones) == 1, events
     done = dones[0]
 
     assert answer, "有事实却没产出降级回复"
-    assert "北京南 06:30 → 上海虹桥 11:24" in answer, answer
+    assert "北京南在北京市丰台区" in answer, answer
     assert "未经过模型" in answer or "未经模型" in answer, answer
     assert done["degraded"] is True, done
     # answer_done 语义不变：模型确实没答上（否则会把故障说成成功）
@@ -308,6 +316,20 @@ def test_degraded_render_when_facts_exist():
     assert done["error"], "错误提示必须同时可见，不得被降级回复掩盖"
     assert any(e["type"] == "error" for e in events), events
     print("[PASS] 有事实 → 降级排版(degraded=True) + error 同时可见 + answer_done=False")
+
+
+def test_structured_degraded_facts_stay_in_cards():
+    events = _events_with_retrieval(_facts_only())
+    assert not any(event["type"] in {"answer", "think"} for event in events), events
+    done = next(event for event in events if event["type"] == "done")
+    assert done["degraded"] and not done["answer_done"] and done["error"], done
+    assert any(event["type"] == "error" for event in events), events
+    card = done["display_results"][0]
+    assert card["kind"] == "train_schedule" and card["status"] == "success", card
+    assert card["schema_version"] == 1 and card["time_basis"] == "reference", card
+    assert [stop["station"] for stop in card["stops"]] == ["北京南", "上海虹桥"], card
+    assert card["stops"][0]["start_time"] == "06:30", card
+    print("[PASS] 结构化降级保持 error/卡片/参考时刻，不把事实重新流入正文")
 
 
 def test_no_degraded_render_without_facts():
@@ -341,7 +363,7 @@ def test_degraded_render_can_be_disabled():
 
 def test_block_path_degrades_too():
     """块式 run() 与流式保持同一套降级语义。"""
-    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None):
+    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None, display_action=None):
         return _facts_only()
 
     async def _boom(*_a, **_kw):
@@ -366,7 +388,7 @@ def test_block_path_degrades_too():
 
 def test_block_path_no_facts_still_reports_error():
     """块式无事实时仍返回可操作提示（不被降级吞掉）。"""
-    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None):
+    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None, display_action=None):
         return {"data": [], "sources": [], "tool_trace": [], "note": "n"}
 
     async def _boom(*_a, **_kw):
@@ -409,6 +431,7 @@ def main():
     test_render_never_invents_facts()
     test_knowledge_question_without_facts_states_inability()
     test_degraded_render_when_facts_exist()
+    test_structured_degraded_facts_stay_in_cards()
     test_no_degraded_render_without_facts()
     test_degraded_render_can_be_disabled()
     test_block_path_degrades_too()

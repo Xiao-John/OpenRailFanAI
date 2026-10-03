@@ -35,6 +35,13 @@ SUITES=(
   test_routing
   test_orchestrator_semantics
   test_cost_governance
+  test_metrics
+  test_backend_performance
+  test_rt_performance
+  test_llm_pool
+  test_pipeline_performance
+  test_local_inference
+  test_output_guard
   test_hardening
   test_config_docs
   # 产品实测（96 条车迷测试集）问题修复回归

@@ -1,0 +1,24 @@
+{
+  "mode": "real configured provider",
+  "mock": false,
+  "results": [
+    {
+      "case": "train_schedule",
+      "provider": "default",
+      "model": "deepseek-ai/DeepSeek-V4-Flash",
+      "prompt_summary": "查 G8932 今天的时刻表",
+      "raw_model_text": "G8932 的图定时刻如下（数据日期为 2026-09-25，仅供参考）：\n\n- 秦皇岛 20:42 发车\n- 唐山 21:10 到 / 21:22 开\n- 天津 21:55 到 / 21:58 开\n- 北京南 22:34 到达\n\n全程历时约 1 小时 52 分。\n\n需要说明的是，以上为图定时刻表，**今日（2026-09-27）的实际运行时刻我未能检索到**，无法确认当天是否有晚点或临时调整。如需当日实时信息，建议以 12306 或车站公告为准。\n\n（时刻数据来自检索结果，今日实际运行情况未检索到。）",
+      "duplicate_fact_guard_triggered": true,
+      "final_model_text": ""
+    },
+    {
+      "case": "emu_routing",
+      "provider": "default",
+      "model": "deepseek-ai/DeepSeek-V4-Flash",
+      "prompt_summary": "查 CR400BF-5033 今天的交路",
+      "raw_model_text": "根据检索结果，CR400BF-5033 今天的交路记录如下：\n\n- C2203（记录时间 07:42）\n- G8927（记录时间 11:06）\n- G8928（记录时间 13:26）\n\n需要说明：以上为 rail.re 车组交路记录时间，**并非发车、到达或停站时刻**，仅表示该车组在这些时间点有相关交路记录。如需具体开行时刻或担当车次详情，建议结合 12306 或路内信息进一步确认。\n\n以上交路记录来自 rail.re 检索结果。",
+      "duplicate_fact_guard_triggered": true,
+      "final_model_text": ""
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+10-03 10:34:24.797  4397  4411 I TestRunner: started: diagnosesTrainCaptureScrollPosition(org.openrailfanai.app.NativeAcceptanceCaptureTest)
+10-03 10:34:24.814  4397  4411 D IdlingRegistry: Registering idling resources: [androidx.compose.ui.test.EspressoLink@4304d15]
+10-03 10:34:24.836  4397  4411 W Settings: Setting always_finish_activities has moved from android.provider.Settings.System to android.provider.Settings.Global, returning read-only value.
+10-03 10:34:24.849   807   969 W FrameTracker: Missed App frame:UNKNOWN: 10, 185445, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 10, 185445, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 185445, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 185459, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 185466, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 185466, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 185466, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 185473, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 185473, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 185473, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed App frame:UNKNOWN: 88, 185488, 137207781, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 88, 185488, 137207781, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 185510, 103287534, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 185510, 103287534, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 185533, 132687869, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 185533, 132687869, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missed App frame:UNKNOWN: 72, 185551, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.849   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 185551, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:24.855  1226  1359 D EGL_emulation: app_time_stats: avg=211.55ms min=2.73ms max=1858.99ms count=10
+10-03 10:34:24.887  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=167
+10-03 10:34:24.887  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=167
+10-03 10:34:24.902   807   881 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-39 - not enough time since last trigger
+10-03 10:34:24.923   556  4275 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10163, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:34:24.933   556   678 I ImeTracker: com.android.launcher3:b104c9d7: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:34:24.933   556   678 I ImeTracker: com.android.launcher3:b104c9d7: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:34:24.967   807   970 D SplashScreenView: Build android.window.SplashScreenView{7d2f096 V.E...... ......ID 0,0-0,0}
+10-03 10:34:24.967   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:34:24.967   807   970 D SplashScreenView: Branding: view: android.view.View{4225417 G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:34:25.088   807  1006 D EGL_emulation: app_time_stats: avg=188.98ms min=7.79ms max=877.39ms count=7
+10-03 10:34:25.207  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=169, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=org.openrailfanai.app.debug/androidx.activity.ComponentActivity }
+10-03 10:34:25.236  1226  1226 W SplitSelectStateCtor: Missing session instanceIds
+10-03 10:34:25.238  1226  1226 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+10-03 10:34:25.267  4425  4425 D VRI[InstrumentationActivityInvoker$EmptyActivity]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:34:25.328  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@88e75c9 in: PRE_ON_CREATE
+10-03 10:34:25.328  4397  4397 V ActivityScenario: Activity lifecycle changed event received but ignored because the reported transition was not ON_CREATE while the last known transition was PRE_ON_CREATE
+10-03 10:34:25.375  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@88e75c9 in: CREATED
+10-03 10:34:25.375  4397  4397 V ActivityScenario: Update currentActivityStage to CREATED, currentActivity=androidx.activity.ComponentActivity@88e75c9
+10-03 10:34:25.376  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@88e75c9 in: STARTED
+10-03 10:34:25.376  4397  4397 V ActivityScenario: Update currentActivityStage to STARTED, currentActivity=androidx.activity.ComponentActivity@88e75c9
+10-03 10:34:25.377  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@88e75c9 in: RESUMED
+10-03 10:34:25.387  4397  4397 V ActivityScenario: Update currentActivityStage to RESUMED, currentActivity=androidx.activity.ComponentActivity@88e75c9
+10-03 10:34:25.437   556  1555 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:25.438   556  1555 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:25.441   556  1555 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:25.551  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 74, 185724, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:25.553  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 74, 185724, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:25.554  1226  1226 W FrameTracker: Missing HWUI jank callback for vsyncId: 185724, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:25.554  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 74, 185767, 237275175, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:25.554  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 74, 185767, 237275175, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:25.554  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 74, 185803, 375553302, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:25.554  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 74, 185803, 375553302, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:25.554  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 88, 185881, 284799727, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:25.554  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 88, 185881, 284799727, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:25.596  1226  1273 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-78 - not enough time since last trigger
+10-03 10:34:25.688   556   589 W ziparchive: Unable to open '/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.dm': No such file or directory
+10-03 10:34:25.701   556   589 I ActivityTaskManager: Displayed org.openrailfanai.app.debug/androidx.activity.ComponentActivity for user 0: +799ms
+10-03 10:34:25.718  4425  4425 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@894a44a
+10-03 10:34:25.769   556  1555 W InputManager-JNI: Input channel object '492ea37 org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity (client)' was disposed without first being removed with the input manager!
+10-03 10:34:25.829   556   678 I ImeTracker: org.openrailfanai.app.debug:2ddc8316: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:34:25.829   556   678 I ImeTracker: org.openrailfanai.app.debug:2ddc8316: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:34:25.848  4397  4397 D AutofillManager: Fill dialog is enabled:false, hints=[]
+10-03 10:34:25.907  4397  4397 I NativeAcceptance: MT1_SAFE_INSETS|applied=[0, 0, 0, 0]|platformPx=[0, 0, 0, 0]|platformDensity=1.0|localDensity=1.0
+10-03 10:34:25.968   359   359 I netd    : tetherGetStats() -> {[]} <0.78ms>
+10-03 10:34:25.976  1226  1226 D VRI[QuickstepLauncher]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:34:26.025  1226  1359 D EGL_emulation: app_time_stats: avg=140.48ms min=31.76ms max=356.56ms count=7
+10-03 10:34:26.056  1226  1226 D BaseDepthController: setSurface:
+10-03 10:34:26.056  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:34:26.056  1226  1226 D BaseDepthController: 	mSurface: null
+10-03 10:34:26.056  1226  1226 D BaseDepthController: mSurface is null and mCurrentBlur is: 0
+10-03 10:34:26.057  1226  1226 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+10-03 10:34:26.057  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:453)
+10-03 10:34:26.057  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:444)
+10-03 10:34:26.057  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:119)
+10-03 10:34:26.057  1226  1226 D StatsLog: LAUNCHER_ONSTOP
+10-03 10:34:26.063  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=168
+10-03 10:34:26.063  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=168
+10-03 10:34:26.134   556  2995 D WifiNl80211Manager: Scan result ready event
+10-03 10:34:26.134   556  2995 D WifiNative: Scan result ready event
+10-03 10:34:26.146   807   969 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@adab7e9
+10-03 10:34:26.155   556   788 W InputManager-JNI: Input channel object 'b201fcc Splash Screen org.openrailfanai.app.debug (client)' was disposed without first being removed with the input manager!
+10-03 10:34:26.159   556   706 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+10-03 10:34:26.201   807   969 W FrameTracker: Missed App frame:UNKNOWN: 10, 186158, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:26.201   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 10, 186158, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:26.201   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 186158, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:26.201   807   969 W FrameTracker: Missing SF jank callback for vsyncId: 186187, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:26.201   807   881 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-39 - not enough time since last trigger
+10-03 10:34:26.228  4397  4397 I NativeAcceptance: MT1_SAFE_INSETS|applied=[0, 24, 0, 48]|platformPx=[0, 24, 0, 48]|platformDensity=1.0|localDensity=1.0
+10-03 10:34:26.457   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:26.458   556  4275 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:26.458   556  1555 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:26.504   807  1006 D EGL_emulation: app_time_stats: avg=159.36ms min=9.02ms max=569.59ms count=8
+10-03 10:34:27.462   556  2995 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:27.463   556  2995 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:27.464   556  1555 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:27.682  4397  4413 D EGL_emulation: app_time_stats: avg=668.02ms min=213.89ms max=1229.45ms count=3
+10-03 10:34:27.913  4397  4397 I NativeAcceptance: MT1_SAFE_INSETS|applied=[0, 24, 0, 48]|platformPx=[0, 24, 0, 48]|platformDensity=1.0|localDensity=1.0
+10-03 10:34:28.468   556  1555 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:28.469   556  1555 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:28.472   556  1555 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:29.154  4397  4402 I fanai.app.debug: Background concurrent mark compact GC freed 7345KB AllocSpace bytes, 0(0B) LOS objects, 49% free, 6226KB/12MB, paused 505us,6.066ms total 40.807ms
+10-03 10:34:29.317  4397  4413 D EGL_emulation: app_time_stats: avg=817.61ms min=396.42ms max=1238.81ms count=2
+10-03 10:34:29.391  4397  4411 I NativeAcceptance: MT1_BASIS|/storage/emulated/0/Android/data/org.openrailfanai.app.debug/files/acceptance/mt1-train-basis.json|{"sample":1,"root":[0,0,390,844],"platformDensity":1,"localDensity":1,"rootConstraintsDp":[390,844],"fontScale":1,"safeDrawingInsetsFixturePx":[0,24,0,48],"safeDrawingInsetsPlatformPx":[0,24,0,48],"scrollValue":0,"scrollMax":0,"scroll":{"firstVisibleItemIndex":0,"firstVisibleItemScrollOffset":0,"viewportStartOffset":0,"viewportEndOffset":619,"visibleItemIndices":[0,1]},"rects":{"main-safe-content":[0,24,390,796],"main-topbar":[15,24,375,68],"main-user-prompt-frame":[105,80,336,126],"main-message-list":[15,68,375,687],"schedule-G8932-success":[61,139,375,606],"result-actions":[65,608,222,652],"result-suggestions":[85,687,316,731],"main-fixed-input":[15,744,375,796]},"layoutConstraints":{"main-topbar":{"constraints_px":[360,44,360,44],"measured_size_px":[360,44]},"result-suggestions":{"constraints_px":[0,0,360,722],"measured_size_px":[231,44]},"main-fixed-input":{"constraints_px":[360,52,360,671],"measured_size_px":[360,52]},"main-user-prompt-text":{"constraints_px":[0,0,291,2147483647],"measured_size_px":[199,24]},"main-user-prompt-frame":{"constraints_px":[231,46,321,2147483647],"measured_size_px":[231,46]},"main-user-prompt-row":{"constraints_px":[360,0,360,2147483647],"measured_size_px":[360,46]},"result-card":{"constraints_px":[314,0,314,2147483647],"measured_size_px":[314,467]},"result-card-host":{"constraints_px":[360,0,360,2147483647],"measured_size_px":[360,467]},"result-actions":{"constraints_px":[0,0,310,2147483647],"measured_size_px":[157,44]},"main-message-list":{"constraints_px":[360,619,360,619],"measured_size_px":[360,619]},"main-list-container":{"constraints_px":[360,619,360,619],"measured_size_px":[360,619]},"main-safe-content":{"constraints_px":[390,772,390,772],"measured_size_px":[390,772]}}}, {"sample":2,"root":[0,0,390,844],"platformDensity":1,"localDensity":1,"rootConstraintsDp":[390,844],"fontScale":1,"safeDrawingInsetsFixturePx":[0,24,0,48],"safeDrawingInsetsPlatformPx":[0,24,0,48],"scrollValue":0,"scrollMax":0,"scroll":{"firstVisibleItemIndex":0,"firstVisibleItemScrollOffset":0,"viewportStartOffset":0,"viewportEndOffset":619,"visibleItemIndices":[0,1]},"rects":{"main-safe-content":[0,24,390,796],"main-topbar":[15,24,375,68],"main-user-prompt-frame":[105,80,336,126],"main-message-list":[15,68,375,687],"schedule-G8932-success":[61,139,375,606],"result-actions":[65,608,222,652],"result-suggestions":[85,687,316,731],"main-fixed-input":[15,744,375,796]},"layoutConstraints":{"main-topbar":{"constraints_px":[360,44,360,44],"measured_size_px":[360,44]},"result-suggestions":{"constraints_px":[0,0,360,722],"measured_size_px":[231,44]},"main-fixed-input":{"constraints_px":[360,52,360,671],"measured_size_px":[360,52]},"main-user-prompt-text":{"constraints_px":[0,0,291,2147483647],"measured_size_px":[199,24]},"main-user-prompt-frame":{"constraints_px":[231,46,321,2147483647],"measured_size_px":[231,46]},"main-user-prompt-row":{"constraints_px":[360,0,360,2147483647],"measured_size_px":[360,46]},"result-card":{"constraints_px":[314,0,314,2147483647],"measured_size_px":[314,467]},"result-card-host":{"constraints_px":[360,0,360,2147483647],"measured_size_px":[360,467]},"result-actions":{"constraints_px":[0,0,310,2147483647],"measured_size_px":[157,44]},"main-message-list":{"constraints_px":[360,619,360,619],"measured_size_px":[360,619]},"main-list-container":{"constraints_px":[360,619,360,619],"measured_size_px":[360,619]},"main-safe-content":{"constraints_px":[390,772,390,772],"measured_size_px":[390,772]}}}|deltas={"main-safe-content":[0,0,0,0],"main-topbar":[0,0,0,0],"main-user-prompt-frame":[0,0,0,0],"main-message-list":[0,0,0,0],"schedule-G8932-success":[0,0,0,0],"result-actions":[0,0,0,0],"result-suggestions":[0,0,0,0],"main-fixed-input":[0,0,0,0]}
+10-03 10:34:29.398   556  2828 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10164, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:34:29.412   807   970 D SplashScreenView: Build android.window.SplashScreenView{9c5c9ce V.E...... ......ID 0,0-0,0}
+10-03 10:34:29.412   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:34:29.412   807   970 D SplashScreenView: Branding: view: android.view.View{7e0ef G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:34:29.414  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=170, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity }
+10-03 10:34:29.415  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@88e75c9 in: PAUSED
+10-03 10:34:29.415  4397  4397 V ActivityScenario: Update currentActivityStage to PAUSED, currentActivity=androidx.activity.ComponentActivity@88e75c9
+10-03 10:34:29.423   404   404 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-03 10:34:29.442   359   359 I netd    : tetherGetStats() -> {[]} <2.51ms>
+10-03 10:34:29.491   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:29.492   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:29.493   556  3292 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:29.584   807  1006 D EGL_emulation: app_time_stats: avg=758.77ms min=10.90ms max=2977.00ms count=4
+10-03 10:34:29.647  4425  4439 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+10-03 10:34:29.648  4425  4439 I EGL_emulation: Opening libGLESv2_emulation.so
+10-03 10:34:29.669  4425  4439 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-03 10:34:29.673  4425  4439 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-03 10:34:29.907   556   589 W ziparchive: Unable to open '/data/app/~~wzuiqpQmgryeutH8EUIuuQ==/org.openrailfanai.app.debug.test-Nzgn8L37NaL3PPJmcb8Low==/base.dm': No such file or directory
+10-03 10:34:29.913   556   589 I ActivityTaskManager: Displayed org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity for user 0: +502ms
+10-03 10:34:29.921  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=56, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.android.launcher3/.uioverrides.QuickstepLauncher }
+10-03 10:34:29.988  1226  1226 D StatsLog: LAUNCHER_ONRESUME
+10-03 10:34:30.005  1226  1226 D BaseDepthController: setSurface:
+10-03 10:34:30.005  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:34:30.005  1226  1226 D BaseDepthController: 	mSurface: Surface(name=com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher)/@0xd8ec6e0
+10-03 10:34:30.038  4397  4397 D VRI[ComponentActivity]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:34:30.113  1226  1226 D StateManager: createAtomicAnimation - fromState: Background, toState: Normal, partial trace:
+10-03 10:34:30.113  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.prepareToAnimate(WorkspaceRevealAnim.java:130)
+10-03 10:34:30.113  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.<init>(WorkspaceRevealAnim.java:66)
+10-03 10:34:30.113  1226  1226 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(QuickstepTransitionManager.java:1716)
+10-03 10:34:30.168  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@88e75c9 in: STOPPED
+10-03 10:34:30.169  4397  4397 V ActivityScenario: Update currentActivityStage to STOPPED, currentActivity=androidx.activity.ComponentActivity@88e75c9
+10-03 10:34:30.176  1226  1359 D EGL_emulation: app_time_stats: avg=1378.03ms min=30.15ms max=4070.08ms count=3
+10-03 10:34:30.193  4397  4397 D LifecycleMonitor: Lifecycle status change: androidx.activity.ComponentActivity@88e75c9 in: DESTROYED
+10-03 10:34:30.194  4397  4397 V ActivityScenario: Update currentActivityStage to DESTROYED, currentActivity=null
+10-03 10:34:30.212  4397  4397 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@212003d
+10-03 10:34:30.227   556   788 W InputManager-JNI: Input channel object '3113ecd org.openrailfanai.app.debug/androidx.activity.ComponentActivity (client)' was disposed without first being removed with the input manager!
+10-03 10:34:30.227  4397  4411 D IdlingRegistry: Unregistering idling resources: [androidx.compose.ui.test.EspressoLink@4304d15]
+10-03 10:34:30.244  4397  4411 I TestRunner: finished: diagnosesTrainCaptureScrollPosition(org.openrailfanai.app.NativeAcceptanceCaptureTest)

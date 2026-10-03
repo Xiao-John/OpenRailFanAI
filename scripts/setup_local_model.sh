@@ -18,6 +18,8 @@
 #   bash scripts/setup_local_model.sh              # 装好并冒烟，只打印变量
 #   bash scripts/setup_local_model.sh --write      # 同时写进 .env（会先备份）
 #   bash scripts/setup_local_model.sh --bench      # 冒烟后再跑语料基准
+#   bash scripts/setup_local_model.sh --target=android   # 手机端甜点位：只打印配置，不装任何东西
+#   ANDROID_CTX=16384 bash scripts/setup_local_model.sh --target=android   # 手机端要更大上下文
 #   MODEL=minicpm5-2b:2b bash scripts/setup_local_model.sh   # 换成别的模型
 #   CTX=32768 bash scripts/setup_local_model.sh    # 更大的上下文（更吃内存）
 set -euo pipefail
@@ -33,14 +35,123 @@ LOCAL_NAME="${LOCAL_NAME:-railfan-slm}"
 HOST="${OLLAMA_HOST_URL:-http://127.0.0.1:11434}"
 WRITE=0
 BENCH=0
+TARGET="${TARGET:-host}"
 for arg in "$@"; do
   case "$arg" in
     --write) WRITE=1 ;;
     --bench) BENCH=1 ;;
-    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
-    *) echo "[错误] 未知参数：${arg}（可用：--write / --bench）"; exit 1 ;;
+    --target) echo "[错误] --target 需要带值：--target=android"; exit 1 ;;
+    --target=*) TARGET="${arg#--target=}" ;;
+    -h|--help) sed -n '2,31p' "$0"; exit 0 ;;
+    *) echo "[错误] 未知参数：${arg}（可用：--write / --bench / --target=android）"; exit 1 ;;
   esac
 done
+case "$TARGET" in
+  host|android) ;;
+  *) echo "[错误] 未知 target：${TARGET}（可用：host / android）"; exit 1 ;;
+esac
+
+# 把「KEY=VALUE 行」合并进 .env：已存在的键**原位替换**，缺失的追加到末尾；先备份。
+write_env_lines() {  # $1 = 每行一个 KEY=VALUE 的文件
+  if [ -f "$ENV_FILE" ]; then
+    cp "$ENV_FILE" "$ENV_FILE.bak.$(date +%Y%m%d%H%M%S)"
+    echo "    （已备份原 .env）"
+  fi
+  "$PY" - "$ENV_FILE" "$1" <<'PYEOF'
+import sys
+from pathlib import Path
+
+path, kvfile = Path(sys.argv[1]), Path(sys.argv[2])
+wanted: dict[str, str] = {}
+for ln in kvfile.read_text(encoding="utf-8").splitlines():
+    ln = ln.strip()
+    if ln and not ln.startswith("#") and "=" in ln:
+        k, v = ln.split("=", 1)
+        wanted[k.strip()] = v.strip()
+lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+seen, out = set(), []
+for ln in lines:
+    key = ln.split("=", 1)[0].strip() if "=" in ln and not ln.lstrip().startswith("#") else None
+    if key in wanted:
+        out.append(f"{key}={wanted[key]}")
+        seen.add(key)
+    else:
+        out.append(ln)
+if out and out[-1].strip():
+    out.append("")
+out.append("# ---- 本地小模型（scripts/setup_local_model.sh 写入）----")
+for k, v in wanted.items():
+    if k not in seen:
+        out.append(f"{k}={v}")
+path.write_text("\n".join(out) + "\n", encoding="utf-8")
+print(f"    已写入 {path}")
+PYEOF
+}
+
+# ---- 手机端（--target=android）：只输出配置，不在本机装/拉任何东西 ----
+# 每个参数都有实测依据，见 docs/local-model.md「手机端甜点位」一节。
+if [ "$TARGET" = "android" ]; then
+  DEV_MODEL="${ANDROID_MODEL:-Qwen3.5-4B-Q4_K_M.gguf}"
+  DEV_CTX="${ANDROID_CTX:-8192}"   # 手机上 8192 够用（检索事实 ~1000 token + 历史 + 正文）
+  echo "==> 目标设备：8 Elite Gen 5 / 16 GB —— 甜点位配置"
+  echo
+  echo "    ★ 用 4B，不用 2B（192 条语料实测）"
+  echo "        意图 81.4% vs 68.1% ｜ 槽位 73.9% vs 64.8% ｜ 云端对照 82.3% / 70.5%"
+  echo "      → 4B 意图追平云端、槽位反超；2B 掉 13 个点，'完全免费'只有 4B 撑得住"
+  echo "      → 规划是 prefill 主导（~1400 token 进 / ~44 token 出），4B 只比 2B 慢 1.4×"
+  echo
+  echo "    ★ 用 llama-server，不用 Ollama"
+  echo "        同权重同机器实测 38.0 vs 33.0 tok/s（+15%），且 --cache-reuse 等开关 Ollama 不暴露"
+  echo
+  echo "    ★ 关闭推测解码（实测三种配置**全部负收益**）"
+  echo "        ngram-simple     −39%（接受率仅 20%：答案是'续写'不是'复制'）"
+  echo "        0.8B 草稿·GPU    −57%（接受率 84% 却更慢：验证开销吃掉全部收益）"
+  echo "        0.8B 草稿·CPU    −71%"
+  echo
+  echo "    ★ 输出上限 192 token"
+  echo "        实测 4B 的合格答案用 143–183 token；放到 224 会把 11s 目标顶到 12.7s"
+  echo
+  echo "==> 在手机上拉起推理服务（模型先 adb push 到 /data/local/tmp/）："
+  cat <<EOF
+llama-server \\
+  -m /data/local/tmp/${DEV_MODEL} \\
+  -c ${DEV_CTX} -ngl 99 -fa on -t 4 -tb 6 -b 2048 -ub 512 \\
+  --cache-reuse 256 --jinja --host 127.0.0.1 --port 8081
+EOF
+  echo
+  echo "    -ngl 99 = 全部层卸载到 Adreno（最大单项提速）"
+  echo "    -c ${DEV_CTX} 必须与下面的 LLM_CONTEXT_TOKENS 一致（对不齐会**静默丢弃**上下文）"
+  echo
+  echo "==> 把下面几行写进 .env（或用 --write 让脚本代劳）："
+  DEV_KV="$(mktemp)"
+  cat >"$DEV_KV" <<EOF
+LLM_PROVIDER=ondevice
+LLM_PROVIDERS={"ondevice":{"type":"openai","base_url":"http://127.0.0.1:8081/v1","api_key":"local","model":"${DEV_MODEL%.gguf}","no_think_body":{"reasoning_effort":"none"}}}
+LLM_CONTEXT_TOKENS=${DEV_CTX}
+LLM_MAX_TOKENS=192
+LLM_TIMEOUT_S=90
+LLM_STRUCTURED_JSON_SCHEMA=true
+LLM_STRUCTURED_COMPACT_PROMPT=true
+LLM_STRUCTURED_NO_THINK=true
+LLM_FALLBACK_RENDER=true
+FACT_MAX_ENTRIES=8
+WEB_SEARCH_FETCH_CHARS=1000
+EOF
+  cat "$DEV_KV"
+  echo
+  echo "    模型名取自 LLM_PROVIDERS 的 model 字段。provider 由 LLM_PROVIDERS 定义时"
+  echo "    source != request，因此**不需要**打开 LLM_ALLOW_PRIVATE_BASE_URL 这个全局口子。"
+  echo "    JSON_SCHEMA 与 COMPACT_PROMPT 两个都开才是最优组合：schema 走 response_format"
+  echo "    做约束解码，正文里就不存在 schema 可被照抄（2B 上实测会被整段抄回来）。"
+  if [ "$WRITE" = "1" ]; then
+    write_env_lines "$DEV_KV"
+  fi
+  rm -f "$DEV_KV"
+  echo
+  echo "    时间账（设备端估算）：prefill 1.2s + decode 192/21 ≈ 9.1s = 约 10.3s，进 11s 目标"
+  echo "    未验：192 上限在真实问题分布下的截断率（要跑真实问题，不是几个案例）"
+  exit 0
+fi
 
 echo "==> [1/5] 检查 Ollama"
 if ! command -v ollama >/dev/null 2>&1; then
@@ -195,43 +306,18 @@ LLM_FALLBACK_RENDER=true
 EOF
 
 if [ "$WRITE" = "1" ]; then
-  if [ -f "$ENV_FILE" ]; then
-    cp "$ENV_FILE" "$ENV_FILE.bak.$(date +%Y%m%d%H%M%S)"
-    echo "    （已备份原 .env）"
-  fi
-  "$PY" - "$ENV_FILE" "$LOCAL_NAME" "$CTX" <<'PYEOF'
-import sys
-from pathlib import Path
-
-path, model, ctx = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
-wanted = {
-    "LLM_PROVIDER": "ollama",
-    "LLM_MODEL": model,
-    "LLM_CONTEXT_TOKENS": ctx,
-    "LLM_STRUCTURED_JSON_SCHEMA": "true",
-    "LLM_STRUCTURED_COMPACT_PROMPT": "true",
-    "LLM_STRUCTURED_NO_THINK": "true",
-    "LLM_FALLBACK_RENDER": "true",
-}
-lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
-seen = set()
-out = []
-for ln in lines:
-    key = ln.split("=", 1)[0].strip() if "=" in ln and not ln.lstrip().startswith("#") else None
-    if key in wanted:
-        out.append(f"{key}={wanted[key]}")
-        seen.add(key)
-    else:
-        out.append(ln)
-if out and out[-1].strip():
-    out.append("")
-out.append("# ---- 本地小模型（scripts/setup_local_model.sh 写入）----")
-for k, v in wanted.items():
-    if k not in seen:
-        out.append(f"{k}={v}")
-path.write_text("\n".join(out) + "\n", encoding="utf-8")
-print(f"    已写入 {path}")
-PYEOF
+  HOST_KV="$(mktemp)"
+  cat >"$HOST_KV" <<EOF
+LLM_PROVIDER=ollama
+LLM_MODEL=$LOCAL_NAME
+LLM_CONTEXT_TOKENS=$CTX
+LLM_STRUCTURED_JSON_SCHEMA=true
+LLM_STRUCTURED_COMPACT_PROMPT=true
+LLM_STRUCTURED_NO_THINK=true
+LLM_FALLBACK_RENDER=true
+EOF
+  write_env_lines "$HOST_KV"
+  rm -f "$HOST_KV"
 fi
 
 if [ "$BENCH" = "1" ]; then

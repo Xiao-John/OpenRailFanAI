@@ -1,0 +1,230 @@
+10-03 10:34:05.106  4397  4411 I TestRunner: started: trainScheduleQueryRendersStructuredBackendResult(org.openrailfanai.app.ComposeScheduleQueryTest)
+10-03 10:34:05.115  4397  4411 D IdlingRegistry: Registering idling resources: [androidx.compose.ui.test.EspressoLink@3df40ea]
+10-03 10:34:05.127  4397  4411 W Settings: Setting always_finish_activities has moved from android.provider.Settings.System to android.provider.Settings.Global, returning read-only value.
+10-03 10:34:05.157   556  2169 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10163, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:34:05.160  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=160
+10-03 10:34:05.160  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=160
+10-03 10:34:05.219  4425  4425 D VRI[InstrumentationActivityInvoker$EmptyActivity]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:34:05.236   807   969 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@df226f1
+10-03 10:34:05.244   807  2039 E BLASTBufferQueue: [VRI[test]#105](f:0,a:1) Applying pending transactions on dtor 1
+10-03 10:34:05.246   556  2828 W InputManager-JNI: Input channel object '87519c Splash Screen org.openrailfanai.app.debug.test (client)' was disposed without first being removed with the input manager!
+10-03 10:34:05.257  1226  1226 W SplitSelectStateCtor: Missing session instanceIds
+10-03 10:34:05.257  1226  1226 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+10-03 10:34:05.298   807   970 D SplashScreenView: Build android.window.SplashScreenView{53b6e6 V.E...... ......ID 0,0-0,0}
+10-03 10:34:05.298   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:34:05.298   807   970 D SplashScreenView: Branding: view: android.view.View{1432427 G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:34:05.302  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=162, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=org.openrailfanai.app.debug/org.openrailfanai.app.MainComposeActivity }
+10-03 10:34:05.322   807   969 W FrameTracker: Missed App frame:UNKNOWN: 10, 178455, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:05.322   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 10, 178455, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:05.322   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 178455, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:05.322   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 178477, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:05.322   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 178477, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:05.322   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 178477, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:05.322   807   969 W FrameTracker: Missed App frame:UNKNOWN: 328, 178529, 120203496, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:05.322   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 178559, 138277914, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:05.322   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 178559, 138277914, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:05.338   807   881 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-39 - not enough time since last trigger
+10-03 10:34:05.339  4425  4425 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@6993bf5
+10-03 10:34:05.347   556  1555 W InputManager-JNI: Input channel object '1d014a3 org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity (client)' was disposed without first being removed with the input manager!
+10-03 10:34:05.347  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@27eedaf in: PRE_ON_CREATE
+10-03 10:34:05.351  4397  4397 V ActivityScenario: Activity lifecycle changed event received but ignored because the reported transition was not ON_CREATE while the last known transition was PRE_ON_CREATE
+10-03 10:34:05.391   404  1149 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 74, 178440, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 74, 178440, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missing HWUI jank callback for vsyncId: 178440, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 328, 178513, 153496286, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 88, 178574, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 88, 178574, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missing HWUI jank callback for vsyncId: 178574, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 74, 178626, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 74, 178626, 0, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missing HWUI jank callback for vsyncId: 178626, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missed App frame:UNKNOWN: 88, 178671, 124677879, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 W FrameTracker: Missed SF frame:UNKNOWN: 88, 178671, 124677879, CUJ=J<LAUNCHER_APP_CLOSE_TO_HOME_FALLBACK>
+10-03 10:34:05.417  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=161
+10-03 10:34:05.417  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=161
+10-03 10:34:05.420  1226  1273 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-78 - not enough time since last trigger
+10-03 10:34:05.443  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@27eedaf in: CREATED
+10-03 10:34:05.444  4397  4397 V ActivityScenario: Update currentActivityStage to CREATED, currentActivity=org.openrailfanai.app.MainComposeActivity@27eedaf
+10-03 10:34:05.445  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@27eedaf in: STARTED
+10-03 10:34:05.445  4397  4397 V ActivityScenario: Update currentActivityStage to STARTED, currentActivity=org.openrailfanai.app.MainComposeActivity@27eedaf
+10-03 10:34:05.459  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@27eedaf in: RESUMED
+10-03 10:34:05.459  4397  4397 V ActivityScenario: Update currentActivityStage to RESUMED, currentActivity=org.openrailfanai.app.MainComposeActivity@27eedaf
+10-03 10:34:05.516  4397  4397 D AutofillManager: Fill dialog is enabled:false, hints=[]
+10-03 10:34:05.869  1226  1226 D VRI[QuickstepLauncher]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:34:05.869   556   589 W ziparchive: Unable to open '/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.dm': No such file or directory
+10-03 10:34:05.888   556   589 I ActivityTaskManager: Displayed org.openrailfanai.app.debug/org.openrailfanai.app.MainComposeActivity for user 0: +704ms
+10-03 10:34:05.891  1226  1359 D EGL_emulation: app_time_stats: avg=46.45ms min=7.63ms max=340.41ms count=17
+10-03 10:34:05.898  1226  1226 D BaseDepthController: setSurface:
+10-03 10:34:05.898  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:34:05.898  1226  1226 D BaseDepthController: 	mSurface: null
+10-03 10:34:05.898  1226  1226 D BaseDepthController: mSurface is null and mCurrentBlur is: 0
+10-03 10:34:05.901  1226  1226 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+10-03 10:34:05.901  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:453)
+10-03 10:34:05.901  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:444)
+10-03 10:34:05.901  1226  1226 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:119)
+10-03 10:34:05.901  1226  1226 D StatsLog: LAUNCHER_ONSTOP
+10-03 10:34:05.936   359   359 I netd    : tetherGetStats() -> {[]} <0.41ms>
+10-03 10:34:05.944   556   678 I ImeTracker: org.openrailfanai.app.debug:903a66a5: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:34:05.946   556   678 I ImeTracker: org.openrailfanai.app.debug:903a66a5: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:34:05.948   556  4275 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10164, packageName = null, attributionTag = null, token = android.os.Binder@d24d849, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-03 10:34:06.000  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@27eedaf in: PAUSED
+10-03 10:34:06.000  4397  4397 V ActivityScenario: Update currentActivityStage to PAUSED, currentActivity=org.openrailfanai.app.MainComposeActivity@27eedaf
+10-03 10:34:06.033  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=163, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity }
+10-03 10:34:06.044   404   404 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-03 10:34:06.045   556   602 I libprocessgroup: Removed cgroup /sys/fs/cgroup/uid_10108/pid_1692
+10-03 10:34:06.052   360   360 I Zygote  : Process 1692 exited due to signal 9 (Killed)
+10-03 10:34:06.066   556  2995 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:06.067   556  2995 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:06.068   807   970 D SplashScreenView: Build android.window.SplashScreenView{7f8a046 V.E...... ......ID 0,0-0,0}
+10-03 10:34:06.068   807   970 D SplashScreenView: Icon: view: null drawable: null size: 0
+10-03 10:34:06.068   807   970 D SplashScreenView: Branding: view: android.view.View{1d5c207 G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-03 10:34:06.076   556   788 W BestClock: java.time.DateTimeException: Missing network time fix
+10-03 10:34:06.083  1226  1226 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=56, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.android.launcher3/.uioverrides.QuickstepLauncher }
+10-03 10:34:06.098  4425  4439 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+10-03 10:34:06.100  4425  4439 I EGL_emulation: Opening libGLESv2_emulation.so
+10-03 10:34:06.122  4425  4439 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-03 10:34:06.125  4425  4439 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-03 10:34:06.184   807   969 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@5b3dbc3
+10-03 10:34:06.188   556   848 W InputManager-JNI: Input channel object '79bc81d Splash Screen org.openrailfanai.app.debug (client)' was disposed without first being removed with the input manager!
+10-03 10:34:06.234   807   969 W FrameTracker: Missed App frame:UNKNOWN: 264, 179146, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.234   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 179146, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.234   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 66, 179175, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.234   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 179175, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.234   807   969 W FrameTracker: Missed App frame:UNKNOWN: 88, 179183, 70019158, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.234   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 88, 179183, 70019158, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.234   807   969 W FrameTracker: Missed App frame:UNKNOWN: 88, 179190, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 88, 179190, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 179190, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missed App frame:UNKNOWN: 88, 179205, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 88, 179205, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 179205, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 80, 179228, 100902828, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missed App frame:UNKNOWN: 88, 179274, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 88, 179274, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 179274, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.239   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 80, 179334, 46584125, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.245   807   881 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-39 - not enough time since last trigger
+10-03 10:34:06.246  4397  4402 I fanai.app.debug: Background concurrent mark compact GC freed 3741KB AllocSpace bytes, 54(3240KB) LOS objects, 49% free, 6100KB/11MB, paused 660us,13.443ms total 94.001ms
+10-03 10:34:06.255  1226  1226 D StatsLog: LAUNCHER_ONRESUME
+10-03 10:34:06.287  4397  4511 D nativeloader: Load /data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!/lib/arm64-v8a/libcrypto_chaquopy.so using ns clns-7 from class loader (caller=/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!classes5.dex): ok
+10-03 10:34:06.301  1226  1226 D BaseDepthController: setSurface:
+10-03 10:34:06.301  1226  1226 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-03 10:34:06.301  1226  1226 D BaseDepthController: 	mSurface: Surface(name=com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher)/@0xd8ec6e0
+10-03 10:34:06.316  4397  4511 D nativeloader: Load /data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!/lib/arm64-v8a/libssl_chaquopy.so using ns clns-7 from class loader (caller=/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!classes5.dex): ok
+10-03 10:34:06.321  4397  4511 D nativeloader: Load /data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!/lib/arm64-v8a/libsqlite3_chaquopy.so using ns clns-7 from class loader (caller=/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!classes5.dex): ok
+10-03 10:34:06.324  4397  4511 D nativeloader: Load /data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!/lib/arm64-v8a/libcrypto_python.so using ns clns-7 from class loader (caller=/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!classes5.dex): ok
+10-03 10:34:06.325  4397  4511 D nativeloader: Load /data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!/lib/arm64-v8a/libssl_python.so using ns clns-7 from class loader (caller=/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!classes5.dex): ok
+10-03 10:34:06.325  4397  4511 D nativeloader: Load /data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!/lib/arm64-v8a/libsqlite3_python.so using ns clns-7 from class loader (caller=/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!classes5.dex): ok
+10-03 10:34:06.335  4397  4511 D nativeloader: Load /data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!/lib/arm64-v8a/libpython3.12.so using ns clns-7 from class loader (caller=/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!classes5.dex): ok
+10-03 10:34:06.363  1226  1226 D StateManager: createAtomicAnimation - fromState: Background, toState: Normal, partial trace:
+10-03 10:34:06.363  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.prepareToAnimate(WorkspaceRevealAnim.java:130)
+10-03 10:34:06.363  1226  1226 D StateManager: 	at com.android.quickstep.util.WorkspaceRevealAnim.<init>(WorkspaceRevealAnim.java:66)
+10-03 10:34:06.363  1226  1226 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(QuickstepTransitionManager.java:1716)
+10-03 10:34:06.364  4397  4511 D nativeloader: Load /data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!/lib/arm64-v8a/libchaquopy_java.so using ns clns-7 from class loader (caller=/data/app/~~VHq82n49tk5Dnd30b7yhMw==/org.openrailfanai.app.debug-CnrlSZCPxAc8fIQ7wkqKRA==/base.apk!classes5.dex): ok
+10-03 10:34:06.366  4397  4511 D CompatChangeReporter: Compat change id reported: 312399441; UID 10163; state: ENABLED
+10-03 10:34:06.476  4397  4397 W railfan-backend: type=1400 audit(0.0:1038): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/bootstrap-native/arm64-v8a/zlib.cpython-312.so" dev="dm-42" ino=353431 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:06.620   556   678 I ImeTracker: com.android.launcher3:ab197eb5: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:34:06.620   556   678 I ImeTracker: com.android.launcher3:ab197eb5: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:34:06.704  4397  4397 W railfan-backend: type=1400 audit(0.0:1039): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/bootstrap-native/arm64-v8a/java/chaquopy.so" dev="dm-42" ino=353418 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:06.700  4397  4402 I fanai.app.debug: Background concurrent mark compact GC freed 656KB AllocSpace bytes, 18(15MB) LOS objects, 49% free, 5679KB/11MB, paused 178us,21.739ms total 259.083ms
+10-03 10:34:06.740  4397  4397 W railfan-backend: type=1400 audit(0.0:1040): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/bootstrap-native/arm64-v8a/_ctypes.cpython-312.so" dev="dm-42" ino=353424 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:06.756  4397  4397 W railfan-backend: type=1400 audit(0.0:1041): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/bootstrap-native/arm64-v8a/_struct.cpython-312.so" dev="dm-42" ino=353421 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:06.780  4397  4397 D VRI[MainComposeActivity]: visibilityChanged oldVisibility=true newVisibility=false
+10-03 10:34:06.789  4425  4425 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@801edeb
+10-03 10:34:06.808  4397  4397 W railfan-backend: type=1400 audit(0.0:1042): avc:  granted  { execute } for  path="/data/data/org.openrailfanai.app.debug/files/chaquopy/bootstrap-native/arm64-v8a/_bz2.cpython-312.so" dev="dm-42" ino=353416 scontext=u:r:untrusted_app:s0:c163,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c163,c256,c512,c768 tclass=file app=org.openrailfanai.app.debug
+10-03 10:34:06.817   556   788 W InputManager-JNI: Input channel object '626f9b4 org.openrailfanai.app.debug.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity (client)' was disposed without first being removed with the input manager!
+10-03 10:34:06.826   556  2995 W InputManager-JNI: Input channel object '713fd20 Splash Screen org.openrailfanai.app.debug.test (client)' was disposed without first being removed with the input manager!
+10-03 10:34:06.839  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=163
+10-03 10:34:06.839  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=163
+10-03 10:34:06.884   807   969 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@f92caa0
+10-03 10:34:06.887  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@27eedaf in: STOPPED
+10-03 10:34:06.888  4397  4397 V ActivityScenario: Update currentActivityStage to STOPPED, currentActivity=org.openrailfanai.app.MainComposeActivity@27eedaf
+10-03 10:34:06.908  4397  4397 D LifecycleMonitor: Lifecycle status change: org.openrailfanai.app.MainComposeActivity@27eedaf in: DESTROYED
+10-03 10:34:06.908  4397  4397 V ActivityScenario: Update currentActivityStage to DESTROYED, currentActivity=null
+10-03 10:34:06.918  4397  4411 D IdlingRegistry: Unregistering idling resources: [androidx.compose.ui.test.EspressoLink@3df40ea]
+10-03 10:34:06.918  4397  4397 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@9f2e321
+10-03 10:34:06.923   556  2995 W InputManager-JNI: Input channel object '7836c42 org.openrailfanai.app.debug/org.openrailfanai.app.MainComposeActivity (client)' was disposed without first being removed with the input manager!
+10-03 10:34:06.932  4397  4411 E TestRunner: assumption failed: trainScheduleQueryRendersStructuredBackendResult(org.openrailfanai.app.ComposeScheduleQueryTest)
+10-03 10:34:06.933  4397  4411 E TestRunner: ----- begin exception -----
+10-03 10:34:06.933  4397  4411 E TestRunner: org.junit.AssumptionViolatedException: Live railway lookup is opt-in; repeatable visual fixtures never call external sources.
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at org.junit.Assume.assumeTrue(Assume.java:68)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at org.openrailfanai.app.ComposeScheduleQueryTest.trainScheduleQueryRendersStructuredBackendResult(ComposeScheduleQueryTest.kt:28)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at java.lang.reflect.Method.invoke(Native Method)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.junit4.AndroidComposeTestRule$apply$testWithDisposal$1.evaluate(AndroidComposeTestRule.android.kt:306)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at org.junit.rules.ExternalResource$1.evaluate(ExternalResource.java:54)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.junit4.AndroidComposeTestRule$apply$1$evaluate$1.invokeSuspend(AndroidComposeTestRule.android.kt:318)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.junit4.AndroidComposeTestRule$apply$1$evaluate$1.invoke(Unknown Source:8)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.junit4.AndroidComposeTestRule$apply$1$evaluate$1.invoke(Unknown Source:4)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$runTest$1$1$1$1$1.invokeSuspend(ComposeUiTest.android.kt:569)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$runTest$1$1$1$1$1.invoke(Unknown Source:8)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$runTest$1$1$1$1$1.invoke(Unknown Source:2)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.EspressoLink.withStrategy(EspressoLink.android.kt:69)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$runTest$1$1.invokeSuspend(ComposeUiTest.android.kt:566)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$runTest$1$1.invoke(Unknown Source:8)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$runTest$1$1.invoke(Unknown Source:4)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:316)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:99)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:322)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:310)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(Unknown Source:1)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:168)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(Unknown Source:1)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment.runTest(ComposeUiTest.android.kt:549)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at androidx.compose.ui.test.junit4.AndroidComposeTestRule$apply$1.evaluate(AndroidComposeTestRule.android.kt:318)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+10-03 10:34:06.933  4397  4411 E TestRunner: 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.Suite.runChild(Suite.java:128)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.Suite.runChild(Suite.java:27)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:68)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:59)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:463)
+10-03 10:34:06.934  4397  4411 E TestRunner: 	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2594)
+10-03 10:34:06.934  4397  4411 E TestRunner: ----- end exception -----
+10-03 10:34:06.939   807   969 W FrameTracker: Missed App frame:UNKNOWN: 24, 179645, 17819434, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.939   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 24, 179645, 17819434, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.939   807   969 W FrameTracker: Missed App frame:UNKNOWN: 10, 179653, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.939   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 10, 179653, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.939   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 179653, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.939   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 179668, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.939   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 179668, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.939   807   969 W FrameTracker: Missing HWUI jank callback for vsyncId: 179668, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.939   807   969 W FrameTracker: Missed App frame:UNKNOWN: 74, 179676, 212425229, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.939   807   969 W FrameTracker: Missed SF frame:UNKNOWN: 74, 179676, 212425229, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-03 10:34:06.950  4397  4411 I TestRunner: finished: trainScheduleQueryRendersStructuredBackendResult(org.openrailfanai.app.ComposeScheduleQueryTest)

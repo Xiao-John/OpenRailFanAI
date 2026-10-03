@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import logging
 import time
+from contextvars import ContextVar
+from typing import Callable
 
 from app.config import get_settings
 from app.llm.client import LLMOutputInvalid, LLMUnavailable, chat_structured
@@ -30,6 +32,12 @@ _log = logging.getLogger("railfan.planner")
 
 _VALID_INTENTS = {i.value for i in Intent}
 _VALID_Q_TYPES = {"realtime", "knowledge", "mixed"}
+
+# Internal request hook, deliberately outside decide's public signature so existing
+# callers and test substitutes retain their compatibility.
+on_llm_decision: ContextVar[Callable[[], None] | None] = ContextVar(
+    "planner_on_llm_decision", default=None
+)
 
 
 # 本地小模型的输出模板（`LLM_STRUCTURED_COMPACT_PROMPT=true` 时用它替代 schema 原文）。
@@ -57,6 +65,11 @@ _SLM_OUTPUT_TEMPLATE = (
     "  emu_routing(交路/担当车组/车底/哪个局/什么型号) rail_line(线路/径路/里程)\n"
     "  station(某座车站本身：大屏/检票口/电报码/在哪个城市) ticket(余票) news(资讯动态)\n"
     "  general(其他、铁路常识、闲聊)\n"
+    "判断口径（**intent 表示该调哪组数据源，不是这句话提到了什么**）：\n"
+    "  问题是「车型参数/技术规格（功率、最高速度、编组）/ 概念对比（有什么区别）/\n"
+    "  名称由来、发展历史 / 站外交通」这类**铁路实时接口给不了、要靠常识或网络搜索**的，\n"
+    "  即使提到了车次、车型或车站，intent 也取 general；question_type 取 knowledge。\n"
+    "  反例：问机位（photo_spot 有网络搜索兜底）、问开通/停运（news 同理）→ 保持原 intent。\n"
     "question_type 只能取这 3 个之一：realtime(必须查数据才能答准) knowledge(铁路常识即可) mixed\n"
     "location=地点 target=车次号/车型/车组号/线路名 time=时间原话"
     " direction=区间如「北京→上海」 extra=其他要点\n"
@@ -160,6 +173,7 @@ async def decide(message: str, history: list[dict] | None = None
     """
     settings = get_settings()
     t0 = time.perf_counter()
+    defer = None
 
     # 站点库是包内静态资源（3384 站，实测 ~0ms，不联网）；必须先加载，
     # 否则快路径里的"站名最长匹配"会静默退回空串、白白丢掉快路径命中率。
@@ -179,6 +193,10 @@ async def decide(message: str, history: list[dict] | None = None
             _log.info("快路径命中：%s（%s）· %.0fms", fp.reason, ", ".join(fp.matched),
                       (time.perf_counter() - t0) * 1000)
             return Intent(fp.intent), fp.question_type, fp.slots, "deterministic", ""
+
+    callback = on_llm_decision.get()
+    if callback is not None:
+        callback()
 
     # ---- 2) 合并调用（1 次 LLM）----
     # 本地小模型走"模板 + 算例"，云端走 schema 原文（见 _SLM_OUTPUT_TEMPLATE 的实测理由）；

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 640 640"><rect width="640" height="640" fill="white"/><text x="28" y="45" font-family="sans-serif" font-size="22" fill="#101A36">RailFanAI · 原稿图标复绘</text>
+<rect x="24" y="80" width="184" height="230" rx="16" fill="#F6F7FB"/>
+<svg x="76" y="120" width="80" height="80" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="#075BFF">
+  <path d="M4.5 23 5.6 8C6 3.4 8.5 1.5 16 1.5S26 3.4 26.4 8l1.1 15a3 3 0 0 1-3 3h-17a3 3 0 0 1-3-3Z"/>
+  <path d="M8 28 3 31m21-3 5 3M6 29.5h20" fill="none" stroke="#075BFF" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M11 4h10v2H11zM8.5 9h6.5v6H8zM17 9h6.5l.5 6h-7z" fill="white"/>
+  <circle cx="10" cy="21" r="1.65" fill="white"/>
+  <circle cx="22" cy="21" r="1.65" fill="white"/>
+</svg>
+
+<text x="116" y="266" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#101A36">品牌</text>
+<rect x="224" y="80" width="184" height="230" rx="16" fill="#F6F7FB"/>
+<svg x="276" y="120" width="80" height="80" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#075BFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M5 5.5h22a2 2 0 0 1 2 2V11a5 5 0 0 0 0 10v3.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V21a5 5 0 0 0 0-10V7.5a2 2 0 0 1 2-2Z"/>
+  <path d="M12 10v4m0 4v4"/>
+</svg>
+
+<text x="316" y="266" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#101A36">查票价</text>
+<rect x="424" y="80" width="184" height="230" rx="16" fill="#F6F7FB"/>
+<svg x="476" y="120" width="80" height="80" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#075BFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="16" cy="16" r="13.5"/>
+  <path d="M16 8v9l5.5 3.5"/>
+</svg>
+
+<text x="516" y="266" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#101A36">查时刻</text>
+<rect x="24" y="338" width="184" height="230" rx="16" fill="#F6F7FB"/>
+<svg x="76" y="378" width="80" height="80" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#075BFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M6 22V9c0-4.5 2-6.5 10-6.5S26 4.5 26 9v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2Z"/>
+  <path d="M6.5 8h19M6 15h20M9 27l-4 3m18-3 4 3M7 28.5h18"/>
+  <circle cx="10.5" cy="19.5" r="1.35" fill="#075BFF" stroke="none"/>
+  <circle cx="21.5" cy="19.5" r="1.35" fill="#075BFF" stroke="none"/>
+</svg>
+
+<text x="116" y="524" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#101A36">查交路</text>
+<rect x="224" y="338" width="184" height="230" rx="16" fill="#F6F7FB"/>
+<svg x="276" y="378" width="80" height="80" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#075BFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M6 7.5h4l2.2-3h7.6l2.2 3h4a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-15a3 3 0 0 1 3-3Z"/>
+  <circle cx="16" cy="18" r="5.25"/>
+</svg>
+
+<text x="316" y="524" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#101A36">找机位</text>
+<rect x="424" y="338" width="184" height="230" rx="16" fill="#F6F7FB"/>
+<svg x="476" y="378" width="80" height="80" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#075BFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="16" cy="16" r="12.75"/>
+  <path d="M16 10v12m-6-6h12"/>
+</svg>
+
+<text x="516" y="524" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#101A36">新建</text>
+</svg>

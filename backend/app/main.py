@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -20,6 +21,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
+from app.metrics import snapshot as metrics_snapshot
 
 _log = logging.getLogger("railfan.main")
 
@@ -28,15 +30,20 @@ settings = get_settings()
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
-    """进程退出时关掉共享的抓取 client（见 `app/tools/_http.py:get_client`）。
+    """Release query work before closing its HTTP and model connections."""
+    try:
+        yield
+    finally:
+        from app.tools.registry import close_queries
+        from app.tools._rt12306 import close_query_flights
+        from app.llm.client import shutdown_clients
+        from app.tools._http import aclose_client
 
-    不关会留一条 "Unclosed client session" 告警；这里只做收尾，不做启动预热
-    （首个请求自己会懒建连接池）。
-    """
-    yield
-    from app.tools._http import aclose_client
-
-    await aclose_client()
+        for close in (close_queries, close_query_flights, shutdown_clients, aclose_client):
+            try:
+                await close()
+            except Exception as error:
+                _log.warning("后端资源关闭失败：%s", type(error).__name__)
 
 
 app = FastAPI(
@@ -99,12 +106,22 @@ def version() -> dict:
     return {"version": app_version()}
 
 
+@app.get("/api/metrics")
+def metrics() -> dict:
+    """进程内脱敏性能快照；不含用户文本、密钥、URL 或原始异常。"""
+    return metrics_snapshot()
+
+
 def _include_routes() -> None:
     from app.api.chat import router as chat_router
     from app.api.providers import router as providers_router
 
     app.include_router(chat_router, prefix="/api")
     app.include_router(providers_router, prefix="/api")
+    if os.environ.get("APP_VARIANT", "main").lower() == "lm":
+        from app.api.local_model import router as local_model_router
+
+        app.include_router(local_model_router, prefix="/api")
 
 
 _include_routes()

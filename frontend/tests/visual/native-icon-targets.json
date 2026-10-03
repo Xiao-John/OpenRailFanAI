@@ -1,0 +1,1871 @@
+{
+  "schema_version": 1,
+  "coordinate_convention": {
+    "source_roi": "[x,y,width,height] in unmodified original PNG pixels; top-left origin",
+    "design_source": "desi1.png or desi2.png only",
+    "design_frame": "exact screen-surface application frame copied by value from design-targets.json; page side whitespace is included in the frame and ROI source pixels remain unchanged",
+    "coordinate_mode": "app_canvas unless a composite icon needs an explicitly stated component anchor",
+    "roi_policy": "Keep the full displayed glyph and at least 2 source pixels of its local background on every side. Do not include an avatar-circle edge in the person/train glyph ROI.",
+    "device_illustration_excluded": [
+      "status-bar clock",
+      "status-bar signal",
+      "status-bar wifi",
+      "battery",
+      "notch",
+      "home indicator",
+      "phone shell"
+    ],
+    "annotation_excluded": [
+      "canvas title",
+      "module number",
+      "explanatory canvas labels"
+    ],
+    "unresolved_classification": "The user avatar gray/background ROI and glyph/background boundary remain a classification question. Preserve the original ROI; do not crop or declare this target passed until separately resolved and measured."
+  },
+  "targets": [
+    {
+      "id": "chat-history-entry",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        111,
+        184,
+        27,
+        28
+      ],
+      "native_tag": "main-history-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "main-history-icon",
+        "rect_capture_px": [
+          16,
+          33,
+          24,
+          24
+        ]
+      },
+      "foreground_class": "dark",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "源图ROI保留完整图标并有每侧至少2px原背景。原生语义矩形是绘制bounds；base/loose墨迹触及该矩形边缘。外取2px采样背景以分离完整墨迹，仍由safe-content和capture-root边界guard检查。"
+    },
+    {
+      "id": "chat-brand-train-logo-34",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        202,
+        174,
+        38,
+        40
+      ],
+      "native_tag": "main-brand-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "main-brand-icon",
+        "rect_capture_px": [
+          133,
+          28,
+          34,
+          34
+        ]
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content",
+      "clip_contact_policy": {
+        "mode": "background_only",
+        "min_background_px": 1,
+        "evidence_ref": ".ai/reports/subagents/HR87-clip-background-contact.yaml"
+      }
+    },
+    {
+      "id": "chat-new-plus-24",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        436,
+        184,
+        24,
+        26
+      ],
+      "native_tag": "main-new-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "main-new-icon",
+        "rect_capture_px": [
+          350,
+          33,
+          24,
+          24
+        ]
+      },
+      "foreground_class": "dark",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content"
+    },
+    {
+      "id": "chat-topbar-back",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        70,
+        183,
+        21,
+        28
+      ],
+      "native_tag": "main-back-icon",
+      "foreground_class": "dark",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content"
+    },
+    {
+      "id": "user-avatar-background-circle",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        434,
+        242,
+        39,
+        39
+      ],
+      "native_tag": null,
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "main-user-avatar",
+        "rect_capture_px": [
+          354,
+          91,
+          36,
+          36
+        ]
+      },
+      "foreground_class": "gray",
+      "coordinate_mode": "app_canvas",
+      "note": "Background circle target kept separate from the person glyph.",
+      "app_origin_tag": "main-safe-content",
+      "unmeasured_reason": "头像圆底是容器填充背景，不是RailIcon墨迹；当前灰色前景分割不能证明圆形填充几何或颜色。",
+      "classification": "container_background"
+    },
+    {
+      "id": "user-avatar-person-glyph",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        442,
+        248,
+        24,
+        27
+      ],
+      "native_tag": "main-user-avatar-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "main-user-avatar-icon",
+        "rect_capture_px": [
+          361,
+          98,
+          22,
+          22
+        ]
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content",
+      "source_roi_original_px": [
+        444,
+        251,
+        20,
+        22
+      ],
+      "source_roi_padding_px": [
+        2,
+        3,
+        2,
+        2
+      ],
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原语义canvas ROI与完整源墨迹边缘相接；只扩展采样背景边距，不缩ROI、不删孔、不截墨迹；截图侧仍校验完整可见性与所有父裁切边界。"
+    },
+    {
+      "id": "assistant-avatar-background-circle",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        63,
+        302,
+        44,
+        44
+      ],
+      "native_tag": null,
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "main-assistant-avatar",
+        "rect_capture_px": [
+          5,
+          148,
+          40,
+          40
+        ]
+      },
+      "foreground_class": "gray",
+      "coordinate_mode": "app_canvas",
+      "note": "Background circle target kept separate from the train glyph.",
+      "app_origin_tag": "main-safe-content",
+      "unmeasured_reason": "头像圆底是容器填充背景，不是RailIcon墨迹；当前灰色前景分割不能证明圆形填充几何或颜色。",
+      "classification": "container_background"
+    },
+    {
+      "id": "assistant-avatar-train-glyph-28",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        71,
+        308,
+        30,
+        32
+      ],
+      "native_tag": "main-assistant-avatar-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "main-assistant-avatar-icon",
+        "rect_capture_px": [
+          11,
+          154,
+          28,
+          28
+        ]
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "app_canvas",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "正式截图的语义标签记录绘制画布而非墨迹采样余量；保留完整原图像素并外取2px背景，仍逐项检查可见性、父边界和完整墨迹。",
+      "app_origin_tag": "main-safe-content"
+    },
+    {
+      "id": "schedule-date-calendar-18",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        145,
+        396,
+        23,
+        24
+      ],
+      "native_tag": "schedule-date-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "schedule-date-icon",
+        "rect_capture_px": [
+          78,
+          240,
+          18,
+          18
+        ]
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "app_canvas",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "正式截图的语义标签记录绘制画布而非墨迹采样余量；保留完整原图像素并外取2px背景，仍逐项检查可见性、父边界和完整墨迹。",
+      "app_origin_tag": "main-safe-content"
+    },
+    {
+      "id": "schedule-duration-clock-18",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        294,
+        396,
+        24,
+        24
+      ],
+      "native_tag": "schedule-duration-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "schedule-duration-icon",
+        "rect_capture_px": null,
+        "evidence": "ScheduleCard.MetaPill tag derived from schedule-duration; explicit icon bounds were not included in verification measurements."
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content"
+    },
+    {
+      "id": "schedule-source-note-info-18",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        142,
+        735,
+        23,
+        23
+      ],
+      "native_tag": "icon-info",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "icon-info",
+        "evidence": "RailIcon default tag in the schedule source-note InfoCard; no dedicated layout rect in existing verification."
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content"
+    },
+    {
+      "id": "schedule-source-link-18",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        138,
+        786,
+        25,
+        25
+      ],
+      "native_tag": "details-source-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "details-source-icon",
+        "evidence": "SourceLink uses the schedule-details prefix; explicit icon bounds were not included in verification measurements."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content"
+    },
+    {
+      "id": "schedule-source-row-chevron-16",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        431,
+        790,
+        22,
+        22
+      ],
+      "native_tag": "query-details-chevron",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "query-details-chevron",
+        "evidence": "Native collapsed source row uses this tag; verification has no explicit glyph rect."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content"
+    },
+    {
+      "id": "result-copy-16",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        118,
+        841,
+        26,
+        29
+      ],
+      "native_tag": "result-copy-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "result-copy-icon",
+        "rect_capture_px": [
+          54,
+          668,
+          16,
+          13
+        ]
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content",
+      "source_roi_original_px": [
+        120,
+        844,
+        22,
+        24
+      ],
+      "source_roi_padding_px": [
+        2,
+        3,
+        2,
+        2
+      ],
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原语义canvas ROI与完整源墨迹边缘相接；只扩展采样背景边距，不缩ROI、不删孔、不截墨迹；截图侧仍校验完整可见性与所有父裁切边界。"
+    },
+    {
+      "id": "result-refresh-16",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        217,
+        842,
+        26,
+        28
+      ],
+      "native_tag": "result-regenerate-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "result-regenerate-icon",
+        "rect_capture_px": [
+          148,
+          668,
+          16,
+          13
+        ]
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "main-safe-content",
+      "source_roi_original_px": [
+        219,
+        844,
+        22,
+        24
+      ],
+      "source_roi_padding_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原语义canvas ROI与完整源墨迹边缘相接；只扩展采样背景边距，不缩ROI、不删孔、不截墨迹；截图侧仍校验完整可见性与所有父裁切边界。"
+    },
+    {
+      "id": "fixed-input-send-22",
+      "state": "train_schedule",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "train_schedule",
+        "rect_xywh": [
+          49,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        426,
+        955,
+        31,
+        30
+      ],
+      "native_tag": "main-send-icon",
+      "native_anchor": {
+        "state": "train_schedule",
+        "tag": "main-send-icon",
+        "evidence": "MainChatScreen uses this tag for the non-busy send glyph; explicit icon bounds were not included in verification measurements."
+      },
+      "foreground_class": "white",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "main-fixed-input",
+      "design_origin_element": "fixed_input"
+    },
+    {
+      "id": "history-back-20",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1010,
+        183,
+        25,
+        28
+      ],
+      "native_tag": "history-back-icon",
+      "native_anchor": {
+        "state": "history",
+        "tag": "history-back-icon",
+        "evidence": "Explicit RailIcon semantic tag in HistoryScreen; existing verification has no dedicated icon bounds."
+      },
+      "foreground_class": "dark",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "history-content"
+    },
+    {
+      "id": "history-close-20",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1382,
+        183,
+        27,
+        28
+      ],
+      "native_tag": "history-close-icon",
+      "native_anchor": {
+        "state": "history",
+        "tag": "history-close-icon",
+        "evidence": "Explicit RailIcon semantic tag in HistoryScreen; existing verification has no dedicated icon bounds."
+      },
+      "foreground_class": "dark",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "history-content",
+      "clip_contact_policy": {
+        "mode": "background_only",
+        "min_background_px": 1,
+        "evidence_ref": ".ai/reports/subagents/HR87-clip-background-contact.yaml"
+      }
+    },
+    {
+      "id": "history-search-18",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1022,
+        238,
+        25,
+        26
+      ],
+      "native_tag": "history-search-icon",
+      "native_anchor": {
+        "state": "history",
+        "tag": "history-search-icon",
+        "evidence": "Explicit RailIcon semantic tag in HistoryScreen; existing verification has no dedicated icon bounds."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "history-content"
+    },
+    {
+      "id": "history-create-plus-18",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1153,
+        298,
+        22,
+        24
+      ],
+      "native_tag": "icon-plus",
+      "native_anchor": {
+        "state": "history",
+        "tag": "icon-plus",
+        "evidence": "HistoryButton's default RailIcon tag in the new-conversation action; verification exposes the action and label, not a glyph rect."
+      },
+      "foreground_class": "white",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "history-content"
+    },
+    {
+      "id": "history-more-selected-20x16",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1364,
+        412,
+        27,
+        19
+      ],
+      "native_tag": "history-more-icon-selected",
+      "native_anchor": {
+        "state": "history",
+        "tag": "history-more-icon-selected",
+        "evidence": "HistoryScreen per-conversation icon tag; source tag is instantiated for the selected sample row."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "正式截图的语义标签记录绘制画布而非墨迹采样余量；保留完整原图像素并外取2px背景，仍逐项检查可见性、父边界和完整墨迹。",
+      "app_origin_tag": "history-content"
+    },
+    {
+      "id": "history-more-tomorrow-20x16",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1364,
+        495,
+        27,
+        19
+      ],
+      "native_tag": "history-more-icon-tomorrow",
+      "native_anchor": {
+        "state": "history",
+        "tag": "history-more-icon-tomorrow",
+        "evidence": "HistoryScreen per-conversation icon tag; source tag is instantiated for the tomorrow sample row."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "正式截图的语义标签记录绘制画布而非墨迹采样余量；保留完整原图像素并外取2px背景，仍逐项检查可见性、父边界和完整墨迹。",
+      "app_origin_tag": "history-content"
+    },
+    {
+      "id": "history-more-schedule-20x16",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1364,
+        578,
+        27,
+        19
+      ],
+      "native_tag": "history-more-icon-schedule",
+      "native_anchor": {
+        "state": "history",
+        "tag": "history-more-icon-schedule",
+        "evidence": "HistoryScreen per-conversation icon tag; source tag is instantiated for the schedule sample row."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "正式截图的语义标签记录绘制画布而非墨迹采样余量；保留完整原图像素并外取2px背景，仍逐项检查可见性、父边界和完整墨迹。",
+      "app_origin_tag": "history-content"
+    },
+    {
+      "id": "history-more-yesterday-20x16",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1364,
+        695,
+        27,
+        19
+      ],
+      "native_tag": "history-more-icon-yesterday",
+      "native_anchor": {
+        "state": "history",
+        "tag": "history-more-icon-yesterday",
+        "evidence": "HistoryScreen per-conversation icon tag; source tag is instantiated for the yesterday sample row."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "history-content",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原始完整三点glyph ROI含每侧至少2px背景。实际tag记录19x15绘制bounds，三档墨迹触边；向历史scroll viewport内扩2px采样背景，保留完整glyph与scroll clip guard。"
+    },
+    {
+      "id": "history-rename-edit-20",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1030,
+        790,
+        32,
+        32
+      ],
+      "native_tag": "icon-edit",
+      "native_anchor": {
+        "state": "history",
+        "tag": "icon-edit",
+        "evidence": "HistoryMenuItem's default RailIcon tag in the visible rename action; existing verification records the row label but not the inner icon rect."
+      },
+      "foreground_class": "dark",
+      "coordinate_mode": "component_local",
+      "source_roi_original_px": [
+        1032,
+        792,
+        28,
+        28
+      ],
+      "source_roi_padding_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原语义canvas ROI与完整源墨迹边缘相接；只扩展采样背景边距，不缩ROI、不删孔、不截墨迹；截图侧仍校验完整可见性与所有父裁切边界。",
+      "actual_origin_tag": "history-actions-panel",
+      "design_origin_element": "action_panel"
+    },
+    {
+      "id": "history-delete-trash-20",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1030,
+        844,
+        32,
+        31
+      ],
+      "native_tag": "icon-trash",
+      "native_anchor": {
+        "state": "history",
+        "tag": "icon-trash",
+        "evidence": "HistoryMenuItem's default RailIcon tag in the visible delete action; existing verification records the row label but not the inner icon rect."
+      },
+      "foreground_class": "red",
+      "coordinate_mode": "component_local",
+      "source_roi_original_px": [
+        1032,
+        846,
+        28,
+        27
+      ],
+      "source_roi_padding_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原语义canvas ROI与完整源墨迹边缘相接；只扩展采样背景边距，不缩ROI、不删孔、不截墨迹；截图侧仍校验完整可见性与所有父裁切边界。",
+      "actual_origin_tag": "history-actions-panel",
+      "design_origin_element": "action_panel"
+    },
+    {
+      "id": "history-footer-settings-20",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1034,
+        971,
+        30,
+        31
+      ],
+      "native_tag": "history-settings-icon",
+      "native_anchor": {
+        "state": "history",
+        "tag": "history-settings-icon",
+        "evidence": "Explicit RailIcon semantic tag in HistoryScreen; existing verification has a footer hit box but no dedicated icon rect. Placement uses the declared design-frame-bottom to same-capture history-content bottom relation; the full-width history-fixed-bottom-links row is not treated as the visible icon union."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "history-content",
+      "safe_bottom_registration": {
+        "mode": "safe_bottom",
+        "design_reference": "design_frame_bottom",
+        "actual_reference": "capture_content_bottom"
+      },
+      "source_roi_original_px": [
+        1036,
+        974,
+        26,
+        27
+      ],
+      "source_roi_padding_px": [
+        2,
+        3,
+        2,
+        1
+      ],
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原语义canvas ROI与完整源墨迹边缘相接；只扩展采样背景边距，不缩ROI、不删孔、不截墨迹；截图侧仍校验完整可见性与所有父裁切边界。"
+    },
+    {
+      "id": "history-footer-help-20",
+      "state": "history",
+      "design_source": "desi1.png",
+      "design_frame": {
+        "id": "history",
+        "rect_xywh": [
+          989,
+          174,
+          438,
+          828
+        ]
+      },
+      "roi": [
+        1274,
+        971,
+        33,
+        31
+      ],
+      "native_tag": "history-help-icon",
+      "native_anchor": {
+        "state": "history",
+        "tag": "history-help-icon",
+        "evidence": "Explicit RailIcon semantic tag in HistoryScreen; existing verification has a footer hit box but no dedicated icon rect. Placement uses the declared design-frame-bottom to same-capture history-content bottom relation; the full-width history-fixed-bottom-links row is not treated as the visible icon union."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "app_canvas",
+      "app_origin_tag": "history-content",
+      "safe_bottom_registration": {
+        "mode": "safe_bottom",
+        "design_reference": "design_frame_bottom",
+        "actual_reference": "capture_content_bottom"
+      },
+      "source_roi_original_px": [
+        1276,
+        973,
+        29,
+        28
+      ],
+      "source_roi_padding_px": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原语义canvas ROI与完整源墨迹边缘相接；只扩展采样背景边距，不缩ROI、不删孔、不截墨迹；截图侧仍校验完整可见性与所有父裁切边界。"
+    },
+    {
+      "id": "loading-spinner-54",
+      "state": "query_loading",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "query_loading",
+        "rect_xywh": [
+          44,
+          136,
+          458,
+          343
+        ]
+      },
+      "roi": [
+        89,
+        182,
+        58,
+        58
+      ],
+      "native_tag": "query-loading-spinner",
+      "native_anchor": {
+        "state": "query_loading",
+        "tag": "query-loading-spinner",
+        "rect_capture_px": [
+          37,
+          174,
+          46,
+          46
+        ]
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "app_canvas",
+      "roi_expansion_px": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "allow_stroke_bleed": true,
+      "expansion_reason": "Canvas.drawCircle默认半径为Canvas半宽，6dp描边向边界外延伸3dp；增加1px抗锯齿余量。"
+    },
+    {
+      "id": "loading-stop-18",
+      "state": "query_loading",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "query_loading",
+        "rect_xywh": [
+          44,
+          136,
+          458,
+          343
+        ]
+      },
+      "roi": [
+        438,
+        386,
+        26,
+        26
+      ],
+      "native_tag": "main-stop-icon",
+      "native_anchor": {
+        "state": "query_loading",
+        "tag": "main-stop-icon",
+        "evidence": "MainChatScreen busy submit state; existing verification has no dedicated stop-glyph rect."
+      },
+      "foreground_class": "white",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "main-fixed-input",
+      "design_origin_element": "editable_input_and_stop"
+    },
+    {
+      "id": "batch-status-success-C2203",
+      "state": "batch_partial",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "batch_partial",
+        "rect_xywh": [
+          542,
+          136,
+          454,
+          343
+        ]
+      },
+      "roi": [
+        820,
+        215,
+        30,
+        30
+      ],
+      "native_tag": "batch-status-icon-C2203",
+      "native_anchor": {
+        "state": "batch_partial",
+        "tag": "batch-status-icon-C2203",
+        "ancestor_tags": [
+          "batch-status-C2203",
+          "batch-row-C2203",
+          "batch-card",
+          "batch-result"
+        ],
+        "evidence": "ScheduleCard.BatchItemStatus draws the 24dp success Canvas tag for C2203; no native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "white",
+      "background_class": "green",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "batch-card",
+      "design_origin_element": "batch_card"
+    },
+    {
+      "id": "batch-status-success-G8927",
+      "state": "batch_partial",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "batch_partial",
+        "rect_xywh": [
+          542,
+          136,
+          454,
+          343
+        ]
+      },
+      "roi": [
+        820,
+        265,
+        30,
+        30
+      ],
+      "native_tag": "batch-status-icon-G8927",
+      "native_anchor": {
+        "state": "batch_partial",
+        "tag": "batch-status-icon-G8927",
+        "ancestor_tags": [
+          "batch-status-G8927",
+          "batch-row-G8927",
+          "batch-card",
+          "batch-result"
+        ],
+        "evidence": "ScheduleCard.BatchItemStatus source instantiates this tag for the G8927 success item. The capture tag list/available verification does not contain a measured glyph rect."
+      },
+      "foreground_class": "white",
+      "background_class": "green",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "batch-card",
+      "design_origin_element": "batch_card"
+    },
+    {
+      "id": "batch-status-warning-G8928",
+      "state": "batch_partial",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "batch_partial",
+        "rect_xywh": [
+          542,
+          136,
+          454,
+          343
+        ]
+      },
+      "roi": [
+        820,
+        315,
+        30,
+        30
+      ],
+      "native_tag": "batch-status-icon-G8928",
+      "native_anchor": {
+        "state": "batch_partial",
+        "tag": "batch-status-icon-G8928",
+        "ancestor_tags": [
+          "batch-status-G8928",
+          "batch-row-G8928",
+          "batch-card",
+          "batch-result"
+        ],
+        "evidence": "ScheduleCard.BatchItemStatus draws the G8928 warning Canvas; no native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "white",
+      "background_class": "amber",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "batch-card",
+      "design_origin_element": "batch_card"
+    },
+    {
+      "id": "routing-empty-train-search",
+      "state": "routing_empty",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "routing_empty",
+        "rect_xywh": [
+          1034,
+          136,
+          462,
+          343
+        ]
+      },
+      "roi": [
+        1226,
+        160,
+        108,
+        80
+      ],
+      "native_tag": "empty-icon-group",
+      "native_anchor": {
+        "state": "routing_empty",
+        "tag": "empty-icon-group",
+        "ancestor_tags": [
+          "routing-empty"
+        ],
+        "evidence": "ScheduleCard.EmptyCard renders the composite train-search glyph in this tagged Canvas; no native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "routing-empty",
+      "design_origin_element": "module_frame",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "正式截图的语义标签记录绘制画布而非墨迹采样余量；保留完整原图像素并外取2px背景，仍逐项检查可见性、父边界和完整墨迹。"
+    },
+    {
+      "id": "routing-empty-date-calendar",
+      "state": "routing_empty",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "routing_empty",
+        "rect_xywh": [
+          1034,
+          136,
+          462,
+          343
+        ]
+      },
+      "roi": [
+        1195,
+        330,
+        36,
+        35
+      ],
+      "native_tag": "empty-date-icon",
+      "native_anchor": {
+        "state": "routing_empty",
+        "tag": "empty-date-icon",
+        "ancestor_tags": [
+          "empty-date-pill",
+          "routing-empty"
+        ],
+        "evidence": "ScheduleCard.EmptyCard date pill contains the tagged 18dp calendar Canvas; no native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "muted",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "routing-empty",
+      "design_origin_element": "module_frame",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原语义canvas ROI与完整源墨迹边缘相接；只扩展采样背景边距，不缩ROI、不删孔、不截墨迹；截图侧仍校验完整可见性与所有父裁切边界。",
+      "source_roi_original_px": [
+        1197,
+        332,
+        31,
+        31
+      ],
+      "source_roi_padding_px": [
+        2,
+        2,
+        3,
+        2
+      ]
+    },
+    {
+      "id": "connection-error-cloud-alert",
+      "state": "connection_error",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "connection_error",
+        "rect_xywh": [
+          44,
+          536,
+          458,
+          399
+        ]
+      },
+      "roi": [
+        76,
+        572,
+        80,
+        68
+      ],
+      "native_tag": "error-icon",
+      "native_anchor": {
+        "state": "connection_error",
+        "tag": "error-icon",
+        "ancestor_tags": [
+          "connection-error"
+        ],
+        "evidence": "ScheduleCard.ConnectionErrorCard renders RailIcon cloud-error; the cloud and alert badge form one compound Canvas glyph. No native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "red",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "connection-error",
+      "design_origin_element": "module_frame",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "红色复合glyph的语义Canvas bounds在base/loose阈值包含触边抗锯齿墨迹；在完整父容器内外取2px背景，避免Canvas边界被当作ROI边界。完整源图墨迹ROI不变。"
+    },
+    {
+      "id": "connection-error-details-chevron",
+      "state": "connection_error",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "connection_error",
+        "rect_xywh": [
+          44,
+          536,
+          458,
+          399
+        ]
+      },
+      "roi": [
+        443,
+        733,
+        27,
+        28
+      ],
+      "native_tag": "error-details-chevron",
+      "native_anchor": {
+        "state": "connection_error",
+        "tag": "error-details-chevron",
+        "ancestor_tags": [
+          "error-details-toggle",
+          "connection-error"
+        ],
+        "evidence": "ScheduleCard.ConnectionErrorCard places the tagged chevron inside the 44dp error-details-toggle hit target; no native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "dark",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "connection-error",
+      "design_origin_element": "module_frame"
+    },
+    {
+      "id": "connection-error-api-key-warning",
+      "state": "connection_error",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "connection_error",
+        "rect_xywh": [
+          44,
+          536,
+          458,
+          399
+        ]
+      },
+      "roi": [
+        442,
+        838,
+        29,
+        29
+      ],
+      "native_tag": "api-key-error-icon",
+      "native_anchor": {
+        "state": "connection_error",
+        "tag": "api-key-error-icon",
+        "ancestor_tags": [
+          "api-key-field",
+          "connection-error"
+        ],
+        "evidence": "ScheduleCard auth field draws the tagged warning RailIcon inside a red circular background; no native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "white",
+      "background_class": "red",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "connection-error",
+      "design_origin_element": "module_frame"
+    },
+    {
+      "id": "reading-return-to-bottom-down",
+      "state": "reading_followup",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "reading_followup",
+        "rect_xywh": [
+          542,
+          536,
+          454,
+          399
+        ]
+      },
+      "roi": [
+        671,
+        746,
+        29,
+        28
+      ],
+      "native_tag": "return-to-bottom-icon",
+      "native_anchor": {
+        "state": "reading_followup",
+        "tag": "return-to-bottom-icon",
+        "ancestor_tags": [
+          "return-to-bottom-visual",
+          "return-to-bottom"
+        ],
+        "evidence": "MainChatScreen return cue renders the tagged down-arrow RailIcon inside its visual pill; no native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "return-to-bottom-visual",
+      "design_origin_element": "return_to_bottom_cue",
+      "safe_bottom_status": "unmeasured",
+      "safe_bottom_unmeasured_reason": "The cue is placed near the module bottom, but no verified design-frame-bottom to capture-content-bottom registration is available for this target."
+    },
+    {
+      "id": "reading-followup-search",
+      "state": "reading_followup",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "reading_followup",
+        "rect_xywh": [
+          542,
+          536,
+          454,
+          399
+        ]
+      },
+      "roi": [
+        571,
+        799,
+        27,
+        27
+      ],
+      "native_tag": "icon-search",
+      "native_anchor": {
+        "state": "reading_followup",
+        "tag": "icon-search",
+        "ancestor_tags": [
+          "result-followup-1-visual",
+          "result-followup-1",
+          "result-suggestions"
+        ],
+        "evidence": "MainChatScreen.ScheduleFollowupActions uses the tagged RailIcon for this choice. Register icon-local placement against the same-capture reading-followup-visual-union of the two painted capsules, not the 44dp result-suggestions touch parent."
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "reading-followup-visual-union",
+      "design_origin_element": "followup_actions"
+    },
+    {
+      "id": "reading-followup-calendar",
+      "state": "reading_followup",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "reading_followup",
+        "rect_xywh": [
+          542,
+          536,
+          454,
+          399
+        ]
+      },
+      "roi": [
+        687,
+        799,
+        27,
+        27
+      ],
+      "native_tag": "icon-calendar",
+      "native_anchor": {
+        "state": "reading_followup",
+        "tag": "icon-calendar",
+        "ancestor_tags": [
+          "result-followup-2-visual",
+          "result-followup-2",
+          "result-suggestions"
+        ],
+        "evidence": "MainChatScreen.ScheduleFollowupActions uses the tagged RailIcon for this choice. Register icon-local placement against the same-capture reading-followup-visual-union of the two painted capsules, not the 44dp result-suggestions touch parent."
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "reading-followup-visual-union",
+      "design_origin_element": "followup_actions",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "正式截图的语义标签记录绘制画布而非墨迹采样余量；保留完整原图像素并外取2px背景，仍逐项检查可见性、父边界和完整墨迹。"
+    },
+    {
+      "id": "reading-submit-arrow",
+      "state": "reading_followup",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "reading_followup",
+        "rect_xywh": [
+          542,
+          536,
+          454,
+          399
+        ]
+      },
+      "roi": [
+        936,
+        858,
+        26,
+        28
+      ],
+      "native_tag": "main-send-icon",
+      "native_anchor": {
+        "state": "reading_followup",
+        "tag": "main-send-icon",
+        "ancestor_tags": [
+          "main-submit-control",
+          "main-fixed-input"
+        ],
+        "evidence": "MainChatScreen fixed submit control renders this white send/up-arrow Canvas in the non-busy state; no native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "white",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "main-fixed-input",
+      "design_origin_element": "fixed_input_and_send",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "白色箭头沿RailIcon Canvas接近画布边缘；语义矩形是绘制画布而非背景采样框。外取2px蓝色背景，避免白色背景连通剔除吞掉箭杆；保留完整ROI与父级裁切检查。",
+      "safe_bottom_status": "unmeasured",
+      "safe_bottom_unmeasured_reason": "The fixed input is a bottom control, but no verified design-frame-bottom to capture-content-bottom registration is available for this target."
+    },
+    {
+      "id": "query-details-expanded-chevron",
+      "state": "query_details",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "query_details",
+        "rect_xywh": [
+          1034,
+          536,
+          462,
+          399
+        ]
+      },
+      "roi": [
+        1437,
+        564,
+        27,
+        27
+      ],
+      "native_tag": "query-details-chevron",
+      "native_anchor": {
+        "state": "query_details",
+        "tag": "query-details-chevron",
+        "ancestor_tags": [
+          "query-details-toggle",
+          "details-heading-and-source",
+          "query-details",
+          "query-details-host"
+        ],
+        "evidence": "ScheduleCard.QueryDetailsPanel expanded branch renders a -90 degree chevron beside the heading. The collapsed branch reuses the tag, but this target is the expanded source arrow; no native glyph rect was recorded in the available acceptance verification."
+      },
+      "foreground_class": "dark",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "query-details",
+      "design_origin_element": "details_panel"
+    },
+    {
+      "id": "query-details-source-link",
+      "state": "query_details",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "query_details",
+        "rect_xywh": [
+          1034,
+          536,
+          462,
+          399
+        ]
+      },
+      "roi": [
+        1073,
+        618,
+        28,
+        28
+      ],
+      "native_tag": "details-source-icon",
+      "native_anchor": {
+        "state": "query_details",
+        "tag": "details-source-icon",
+        "ancestor_tags": [
+          "details-source",
+          "details-heading-and-source",
+          "query-details",
+          "query-details-host"
+        ],
+        "evidence": "Expanded SourceLink wraps the tagged 22dp link glyph in the selected circular background. The icon's native bounds were not recorded in the available acceptance verification."
+      },
+      "foreground_class": "blue",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "query-details",
+      "design_origin_element": "details_panel"
+    },
+    {
+      "id": "query-details-technical-log-file",
+      "state": "query_details",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "query_details",
+        "rect_xywh": [
+          1034,
+          536,
+          462,
+          399
+        ]
+      },
+      "roi": [
+        1070,
+        845,
+        36,
+        39
+      ],
+      "native_tag": "technical-log-file-icon",
+      "native_anchor": {
+        "state": "query_details",
+        "tag": "technical-log-file-icon",
+        "ancestor_tags": [
+          "technical-log-toggle",
+          "query-details-host"
+        ],
+        "evidence": "Current ScheduleCard source renders the tagged RailIcon(file) within technical-log-toggle. The available acceptance verification predates this glyph tag and supplies no native rect."
+      },
+      "foreground_class": "dark",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "technical-log-toggle",
+      "design_origin_element": "technical_log_action",
+      "roi_expansion_px": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "roi_expansion_reason": "原语义canvas ROI与完整源墨迹边缘相接；只扩展采样背景边距，不缩ROI、不删孔、不截墨迹；截图侧仍校验完整可见性与所有父裁切边界。",
+      "source_roi_original_px": [
+        1072,
+        847,
+        32,
+        35
+      ],
+      "source_roi_padding_px": [
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "query-details-technical-log-chevron",
+      "state": "query_details",
+      "design_source": "desi2.png",
+      "design_frame": {
+        "id": "query_details",
+        "rect_xywh": [
+          1034,
+          536,
+          462,
+          399
+        ]
+      },
+      "roi": [
+        1437,
+        853,
+        27,
+        28
+      ],
+      "native_tag": "technical-log-chevron",
+      "native_anchor": {
+        "state": "query_details",
+        "tag": "technical-log-chevron",
+        "ancestor_tags": [
+          "technical-log-toggle",
+          "query-details-host"
+        ],
+        "evidence": "Current ScheduleCard source renders the tagged trailing chevron in technical-log-toggle (rotated only while logs are open). The available acceptance verification predates this glyph tag and supplies no native rect."
+      },
+      "foreground_class": "dark",
+      "coordinate_mode": "component_local",
+      "actual_origin_tag": "technical-log-toggle",
+      "design_origin_element": "technical_log_action"
+    }
+  ],
+  "need_capture_tags": [
+    {
+      "state": "batch_partial",
+      "tags": [
+        "batch-status-icon-C2203",
+        "batch-status-icon-G8927",
+        "batch-status-icon-G8928"
+      ],
+      "reason": "Source confirms each status Canvas tag; the current visual icon target capture list does not include the batch_partial state, and G8927 is also absent from the current batch acceptance node list."
+    },
+    {
+      "state": "routing_empty",
+      "tags": [
+        "empty-icon-group",
+        "empty-date-icon"
+      ],
+      "reason": "Source confirms both glyph tags; no fresh glyph bounds are present in the available formal verification."
+    },
+    {
+      "state": "connection_error",
+      "tags": [
+        "error-icon",
+        "error-details-chevron",
+        "api-key-error-icon"
+      ],
+      "reason": "Source confirms the compound cloud, toggle chevron, and API warning tags; no fresh glyph bounds are present in the available formal verification."
+    },
+    {
+      "state": "reading_followup",
+      "tags": [
+        "return-to-bottom-icon",
+        "icon-search",
+        "icon-calendar",
+        "main-send-icon"
+      ],
+      "reason": "Source confirms the down, search, calendar, and submit glyph tags; no fresh glyph bounds are present in the available formal verification."
+    },
+    {
+      "state": "query_details",
+      "tags": [
+        "query-details-chevron",
+        "details-source-icon",
+        "technical-log-file-icon",
+        "technical-log-chevron"
+      ],
+      "reason": "Tags exist in source and the current icon-target asset list, but available formal verification predates the newly implemented technical-log glyphs and contains no fresh glyph bounds."
+    }
+  ],
+  "unmeasured_source_icons": [],
+  "remaining_visual_targets": [],
+  "missing_native_shape_targets": [],
+  "related_observation_for_other_owner": {
+    "state": "query_details",
+    "design_source": "desi2.png",
+    "design_frame": [
+      1034,
+      536,
+      462,
+      399
+    ],
+    "source_heading_chevron_roi": [
+      1437,
+      560,
+      28,
+      29
+    ],
+    "observation": "In the existing query_details acceptance state, the native details heading text appears materially smaller and the chevron points right; the source expanded heading arrow points up. The separate technical-log row in the design includes a file glyph and trailing chevron, while current native source is text-only. This task records the target only; ScheduleCard is assigned to the routing owner and is unchanged here."
+  },
+  "user_resolutions": [
+    {
+      "state": "reading_followup",
+      "choice": "retain_full_schedule_card",
+      "confirmed_at": "2026-10-01",
+      "description": "用户确认不实现另一种五列表格，沿用完整时刻卡片。"
+    }
+  ]
+}

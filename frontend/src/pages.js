@@ -4,9 +4,14 @@
 // 侧栏「ℹ️ 关于」与顶栏「⚙️ 设置」并列，用户要找一个设置得先猜它在哪一边）。
 
 import { store } from "./store.js";
+import { UI_COPY } from "./ui-copy.js";
 import { native } from "./native.js";
 
 const API_BASE = window.__API_BASE__ || "";
+const FILE_PREVIEW = window.location.protocol === "file:" && !API_BASE;
+const CONNECTION_HELP = FILE_PREVIEW
+  ? "当前是本地文件预览，无法连接查询服务。请启动后端，再从 http://127.0.0.1:8000 打开应用。"
+  : "无法连接服务，请检查网络与后端运行状态后重试。";
 
 // 唯一的对外反馈入口（GitHub Issues）。写死在这里而不是可配置项：
 // 社区版没有工单系统，留一个"待填写"的客服邮箱只会让用户白等回复。
@@ -35,6 +40,7 @@ let _versionPromise = null;
 
 /** 取应用版本（只请求一次）。Android 优先读打包时写入的 build.json，桌面读 /api/version。 */
 export function loadAppVersion() {
+  if (FILE_PREVIEW) return Promise.resolve("");
   if (_versionPromise) return _versionPromise;
   const fromBuild = fetch("build.json", { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : null))
@@ -85,10 +91,20 @@ async function api(path, options = {}) {
   // 容错：忘了写 /api 前缀时自动补上。这个坑真实踩过 —— 设置页因此静默 404，
   // 界面只显示"服务端不可达"，而网络层才看得到真实 URL 少了 /api。
   const url = path.startsWith("/api/") ? path : "/api" + path;
-  const resp = await fetch(API_BASE + url, { ...options, headers });
+  if (FILE_PREVIEW) return connectionFailure();
+  let resp;
+  try {
+    resp = await fetch(API_BASE + url, { ...options, headers });
+  } catch {
+    return connectionFailure();
+  }
   let body = null;
   try { body = await resp.json(); } catch { /* 非 JSON */ }
   return { ok: resp.ok, status: resp.status, body };
+}
+
+function connectionFailure() {
+  return { ok: false, status: 0, body: { detail: { code: "CONNECTION_FAILED", message: CONNECTION_HELP } } };
 }
 
 function errText(res, fallback) {
@@ -381,9 +397,9 @@ function buttonEl(text, cls, onClick) {
 }
 
 /** 一个供应商条目行：名称 + 自定义标签 + 状态点 + 使用中标记 + 操作。 */
-function providerRow(entry, rerender, onEdit) {
+function providerRow(entry, rerender, onEdit, activeId, entryCount) {
   const row = el("div", "prov-row");
-  if (store.llm().activeId === entry.id) row.classList.add("active");
+  if (activeId === entry.id) row.classList.add("active");
 
   const left = el("div", "prov-main");
   left.appendChild(el("span", "prov-name", entry.label || entry.id));
@@ -391,18 +407,18 @@ function providerRow(entry, rerender, onEdit) {
   const dot = el("span", "prov-dot" + (entry.key ? " ok" : ""));
   dot.title = entry.key ? "已配置 API Key" : "尚未填写 API Key";
   left.appendChild(dot);
-  if (store.llm().activeId === entry.id) left.appendChild(el("span", "prov-tag using", "使用中"));
+  if (activeId === entry.id) left.appendChild(el("span", "prov-tag using", "使用中"));
   row.appendChild(left);
 
   const actions = el("div", "prov-actions");
   actions.appendChild(buttonEl("编辑", "", () => onEdit(entry)));
-  if (entry.custom || store.llmEntries().length > 1) {
+  if (entry.custom || entryCount > 1) {
     actions.appendChild(buttonEl("删除", "danger", () => {
       store.removeLlmEntry(entry.id);
       rerender();
     }));
   }
-  if (store.llm().activeId !== entry.id && entry.key) {
+  if (activeId !== entry.id && entry.key) {
     actions.appendChild(buttonEl("使用", "primary", () => {
       store.setActiveLlm(entry.id);
       rerender();
@@ -420,10 +436,21 @@ export function renderSettingsPage(deps) {
   const root = el("div");
   // 标题从「模型」改成「设置」：这一页现在同时承载模型供应商与关于，
   // 顶栏入口叫「⚙️ 设置」，进来看见「模型」会让人以为走错了地方。
-  root.appendChild(pageHeader("设置", onBack));
+  const leavePage = () => { if (typeof onBack === "function") onBack(); };
+  root.appendChild(pageHeader("设置", leavePage));
+  if (FILE_PREVIEW) {
+    const notice = card("请通过 Web 服务打开应用");
+    notice.setAttribute("role", "status");
+    notice.appendChild(el("p", "sub", CONNECTION_HELP));
+    const link = el("a", null, "打开本机 Web 应用 →");
+    link.href = "http://127.0.0.1:8000/#/settings";
+    notice.appendChild(link);
+    root.appendChild(notice);
+  }
 
   let presets = [];          // 服务端内置/已配置的供应商（仅作预设来源）
-  let editing = null;        // 正在编辑的条目副本（null = 不在编辑态）
+  const failedProvider = deps.apiKeyError?.provider ? store.llmEntry(deps.apiKeyError.provider) : null;
+  let editing = failedProvider ? { ...failedProvider } : null;
 
   const body = el("div");
   root.appendChild(body);
@@ -431,16 +458,17 @@ export function renderSettingsPage(deps) {
   function render() {
     body.innerHTML = "";
     const s = store.llm();
-    const entries = store.llmEntries();
+    const entries = store.llmEntries().filter((e) => !["ondevice", "ollama", "lmstudio", "vllm"].includes(e.id));
+    const activeId = entries.some((e) => e.id === s.activeId) ? s.activeId : entries[0]?.id;
 
-    const c = card(null);
-    c.appendChild(el("p", "sub", "填入各提供方的 API 密钥即可使用其模型。"));
+    const c = card("云端模型");
+    c.appendChild(el("p", "sub", "选择提供方、填写 API Key，再选一个对话模型。"));
 
     if (!entries.length) {
       c.appendChild(el("p", "sub", "还没有添加提供方。点下面的按钮选一个常用服务，或自己填地址。"));
     }
     for (const e of entries) {
-      c.appendChild(providerRow(e, () => { editing = null; render(); }, openEditor));
+      c.appendChild(providerRow(e, () => { editing = null; render(); }, openEditor, activeId, entries.length));
     }
 
     const addRow = el("div", "prov-add-row");
@@ -463,12 +491,16 @@ export function renderSettingsPage(deps) {
     rkRow.appendChild(rkLabel);
     c.appendChild(rkRow);
 
-    c.appendChild(el("p", "sub",
-      "以上只作用于当前浏览器。要让所有人都默认使用某供应商，请在服务端 .env 设置 "
-      + "LLM_PROVIDER / LLM_PROVIDERS（见 docs/run.md）。"));
+    c.appendChild(el("p", "sub", "配置仅保存在当前设备。请妥善保管 API Key。"));
     body.appendChild(c);
 
-    if (editing) body.appendChild(editorCard());
+    if (editing) {
+      const editor = editorCard();
+      body.appendChild(editor);
+      requestAnimationFrame(() => editor.scrollIntoView({ block: "start", behavior: "smooth" }));
+    }
+
+    // 云端配置是 Main 版主路径，编辑表单紧跟供应商列表。
   }
 
   /** 打开某个已添加条目的编辑表单（用副本，取消时不污染已存配置）。 */
@@ -497,7 +529,7 @@ export function renderSettingsPage(deps) {
     loading.remove();
     if (!presets.length) {
       c.appendChild(el("p", "sub",
-        "读取预设失败（服务端不可达）。可以改用「＋ 添加自定义提供方」手工填写地址。"));
+        errText(res, "读取预设失败，请检查服务状态后重试。")));
       c.appendChild(buttonEl("← 返回", "ghost", () => { editing = null; render(); }));
       return;
     }
@@ -530,6 +562,9 @@ export function renderSettingsPage(deps) {
     const nameInp = inputEl("text", "例如：公司网关", e.label);
     const baseInp = inputEl("text", "https://api.example.com/v1", e.base_url);
     const keyInp = inputEl("password", "sk-…（只保存在本机）", e.key);
+    const keyInvalid = deps.apiKeyError && deps.apiKeyError.provider === e.id;
+    if (keyInvalid) keyInp.classList.add("field-invalid");
+    keyInp.addEventListener("input", () => keyInp.classList.remove("field-invalid"));
     const manualInp = inputEl("text", "手工填写模型名", e.model);
     // 生成预算：BYOK 场景下 .env 往往不可达（尤其 Android），所以这两项要能在界面上调
     const maxTokInp = inputEl("text", "留空用服务端默认", e.max_tokens || "");
@@ -595,6 +630,7 @@ export function renderSettingsPage(deps) {
     if (e.custom) c.appendChild(formRow("名称", nameInp));
     c.appendChild(formRow("接口地址", baseInp));
     c.appendChild(formRow("API Key", keyWrap));
+    if (keyInvalid) c.appendChild(el("div", "field-error", deps.apiKeyError.message || UI_COPY.error.invalidKey));
 
     // 模型：下拉优先（探测结果），下拉里带"手工输入…"这一项兜底
     const modelWrap = el("div", "form-row");
@@ -606,7 +642,10 @@ export function renderSettingsPage(deps) {
     modelCol.appendChild(manualInp);
     modelWrap.appendChild(modelCol);
     c.appendChild(modelWrap);
-    c.appendChild(formRow("最大输出", maxTokInp));
+    const advanced = document.createElement("details");
+    advanced.className = "advanced-settings";
+    advanced.appendChild(el("summary", null, "高级设置"));
+    advanced.appendChild(formRow("最大输出", maxTokInp));
     const ctxWrap = el("div", "form-row");
     ctxWrap.appendChild(el("label", null, "上下文窗口"));
     const ctxCol = el("div");
@@ -614,11 +653,10 @@ export function renderSettingsPage(deps) {
     ctxCol.appendChild(ctxSel);
     ctxCol.appendChild(ctxCustom);
     ctxWrap.appendChild(ctxCol);
-    c.appendChild(ctxWrap);
-    c.appendChild(el("p", "sub",
-      "「最大输出」是单次生成的 token 上限（含思考 token，调小会让长回答在半句处被截断）；"
-      + "「上下文窗口」填所用模型的窗口大小（8k/32k/128k），用于把输出预算收进窗口内。"
-      + "两者留空即用服务端默认。"));
+    advanced.appendChild(ctxWrap);
+    advanced.appendChild(el("p", "sub",
+      "留空即用服务端默认。最大输出包含思考 token；上下文窗口用于控制历史消息预算。"));
+    c.appendChild(advanced);
 
     modelSel.addEventListener("change", () => {
       if (modelSel.value === "__manual__") {
@@ -676,7 +714,7 @@ export function renderSettingsPage(deps) {
     keyInp.addEventListener("blur", () => { if (keyInp.value.trim() && !currentModel()) void detect(false); });
     baseInp.addEventListener("blur", () => { if (keyInp.value.trim() && !currentModel()) void detect(false); });
 
-    const btnRow = el("div", "form-row");
+    const btnRow = el("div", "editor-actions");
     btnRow.appendChild(buttonEl("探测模型", "", () => detect(false)));
     btnRow.appendChild(buttonEl("显示全部", "", () => detect(true)));
     btnRow.appendChild(buttonEl("保存", "primary", () => {

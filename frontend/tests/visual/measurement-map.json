@@ -1,0 +1,839 @@
+{
+  "train_schedule": {
+    "source": "desi1.png",
+    "sourceFrame": [
+      48,
+      120,
+      440,
+      923
+    ],
+    "cssScale": 0.8863636363636364,
+    "rules": {
+      "topbar": {
+        "sourceRect": [
+          65,
+          174,
+          406,
+          42
+        ],
+        "pageSelector": [
+          ".main > header > .icon-btn",
+          ".main > header .title",
+          ".main > header .new-chat-top"
+        ]
+      },
+      "prompt": {
+        "sourceRect": [
+          168,
+          236,
+          260,
+          51
+        ],
+        "pageSelector": ".row.user .bubble"
+      },
+      "result_card": {
+        "sourceRect": [
+          118,
+          303,
+          353,
+          526
+        ],
+        "pageSelector": ".schedule-card"
+      },
+      "title": {
+        "sourceRect": [
+          135,
+          319,
+          321,
+          32
+        ],
+        "pageSelector": ".schedule-head"
+      },
+      "route_summary": {
+        "sourceRect": [
+          135,
+          351,
+          321,
+          31
+        ],
+        "pageSelector": ".schedule-route"
+      },
+      "date_duration": {
+        "sourceRect": [
+          134,
+          389,
+          324,
+          38
+        ],
+        "pageSelector": ".schedule-meta"
+      },
+      "station_timeline_table": {
+        "sourceRect": [
+          130,
+          441,
+          327,
+          270
+        ],
+        "pageSelector": ".schedule-table-wrap"
+      },
+      "source_note": {
+        "sourceRect": [
+          130,
+          726,
+          327,
+          39
+        ],
+        "pageSelector": ".schedule-note"
+      },
+      "source_details_row": {
+        "sourceRect": [
+          130,
+          776,
+          327,
+          41
+        ],
+        "pageSelector": ".schedule-source"
+      },
+      "result_actions": {
+        "sourceRect": [
+          120,
+          840,
+          191,
+          27
+        ],
+        "pageSelector": [
+          ".row.assistant > .actions > button:not([title^='分享'])"
+        ]
+      },
+      "suggestions": {
+        "sourceRect": [
+          143,
+          884,
+          261,
+          44
+        ],
+        "pageSelector": [
+          ".row.assistant > .followups > button"
+        ]
+      },
+      "fixed_input": {
+        "sourceRect": [
+          65,
+          944,
+          404,
+          58
+        ],
+        "pageSelector": "#input"
+      }
+    }
+  },
+  "emu_routing": {
+    "source": "desi1.png",
+    "sourceFrame": [
+      519,
+      120,
+      439,
+      923
+    ],
+    "cssScale": 0.8883826879271071,
+    "rules": {
+      "topbar": {
+        "sourceRect": [
+          536,
+          174,
+          406,
+          42
+        ],
+        "pageSelector": [
+          ".main > header > .icon-btn",
+          ".main > header .title",
+          ".main > header .new-chat-top"
+        ]
+      },
+      "prompt": {
+        "sourceRect": [
+          641,
+          236,
+          256,
+          53
+        ],
+        "pageSelector": ".row.user .bubble"
+      },
+      "result_card": {
+        "sourceRect": [
+          589,
+          308,
+          351,
+          476
+        ],
+        "pageSelector": ".routing-card"
+      },
+      "title_date": {
+        "sourceRect": [
+          605,
+          324,
+          319,
+          31
+        ],
+        "pageSelector": ".routing-card .schedule-head"
+      },
+      "date_record": {
+        "sourceRect": [
+          605,
+          361,
+          319,
+          21
+        ],
+        "pageSelector": ".routing-date"
+      },
+      "time_semantics_note": {
+        "sourceRect": [
+          603,
+          395,
+          324,
+          48
+        ],
+        "pageSelector": ".routing-card .schedule-note"
+      },
+      "records_table": {
+        "sourceRect": [
+          603,
+          458,
+          324,
+          258
+        ],
+        "pageSelector": ".routing-card .schedule-table-wrap"
+      },
+      "source_details_row": {
+        "sourceRect": [
+          603,
+          727,
+          324,
+          43
+        ],
+        "pageSelector": ".routing-card .schedule-source"
+      },
+      "batch_action": {
+        "sourceRect": [
+          589,
+          799,
+          218,
+          48
+        ],
+        "pageSelector": ".routing-batch"
+      },
+      "integrity_note": {
+        "sourceRect": [
+          589,
+          860,
+          352,
+          42
+        ],
+        "pageSelector": ".routing-integrity-note"
+      },
+      "fixed_input": {
+        "sourceRect": [
+          536,
+          944,
+          405,
+          58
+        ],
+        "pageSelector": "#input"
+      }
+    }
+  },
+  "history": {
+    "source": "desi1.png",
+    "sourceFrame": [
+      987,
+      120,
+      441,
+      923
+    ],
+    "cssScale": 0.8843537414965986,
+    "rules": {
+      "topbar": {
+        "sourceRect": [
+          1005,
+          174,
+          406,
+          42
+        ],
+        "pageSelector": ".history-header"
+      },
+      "search": {
+        "sourceRect": [
+          1007,
+          228,
+          403,
+          47
+        ],
+        "pageSelector": ".history-search"
+      },
+      "create_action": {
+        "sourceRect": [
+          1007,
+          284,
+          403,
+          50
+        ],
+        "pageSelector": ".history-create"
+      },
+      "today_group_and_rows": {
+        "sourceRect": [
+          1004,
+          353,
+          406,
+          267
+        ],
+        "pageSelector": [
+          ".history-list > :nth-child(1)",
+          ".history-list > :nth-child(2)",
+          ".history-list > :nth-child(3)",
+          ".history-list > :nth-child(4)"
+        ]
+      },
+      "yesterday_group_and_rows": {
+        "sourceRect": [
+          1004,
+          647,
+          406,
+          75
+        ],
+        "pageSelector": [
+          ".history-list > :nth-child(5)",
+          ".history-list > :nth-child(6)"
+        ]
+      },
+      "action_panel": {
+        "sourceRect": [
+          1006,
+          731,
+          405,
+          154
+        ],
+        "pageSelector": ".history-action-panel"
+      },
+      "cancel_action": {
+        "sourceRect": [
+          1006,
+          893,
+          405,
+          57
+        ],
+        "pageSelector": ".history-action-cancel"
+      },
+      "fixed_bottom_links": {
+        "sourceRect": [
+          1037,
+          972,
+          344,
+          27
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".history-footer > button"
+          ],
+          "content": true
+        }
+      }
+    }
+  },
+  "query_loading": {
+    "source": "desi2.png",
+    "sourceFrame": [
+      44,
+      136,
+      458,
+      343
+    ],
+    "cssScale": 0.851528384279476,
+    "rules": {
+      "loading_card": {
+        "sourceRect": [
+          64,
+          155,
+          419,
+          183
+        ],
+        "pageSelector": ".query-loading"
+      },
+      "spinner": {
+        "sourceRect": [
+          91,
+          184,
+          54,
+          54
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".query-spinner"
+          ],
+          "layout": true
+        }
+      },
+      "loading_title_and_stage": {
+        "sourceRect": [
+          172,
+          187,
+          220,
+          54
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".query-loading strong",
+            ".query-loading-stage"
+          ],
+          "text": true
+        }
+      },
+      "skeletons": {
+        "sourceRect": [
+          88,
+          267,
+          370,
+          49
+        ],
+        "pageSelector": [
+          ".query-skeletons > *"
+        ]
+      },
+      "editable_input_and_stop": {
+        "sourceRect": [
+          64,
+          368,
+          419,
+          60
+        ],
+        "pageSelector": {
+          "selectors": [
+            "#input",
+            "#send"
+          ],
+          "origin": "self"
+        }
+      },
+      "preserve_note": {
+        "sourceRect": [
+          164,
+          450,
+          218,
+          20
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".query-loading-foot"
+          ],
+          "text": true,
+          "origin": "self"
+        }
+      }
+    }
+  },
+  "batch_partial": {
+    "source": "desi2.png",
+    "sourceFrame": [
+      542,
+      136,
+      454,
+      343
+    ],
+    "cssScale": 0.8590308370044053,
+    "rules": {
+      "batch_card": {
+        "sourceRect": [
+          560,
+          152,
+          418,
+          203
+        ],
+        "pageSelector": ".batch-card"
+      },
+      "retry_failed_only": {
+        "sourceRect": [
+          561,
+          367,
+          415,
+          51
+        ],
+        "pageSelector": ".batch-card + .routing-batch"
+      },
+      "retain_success_note": {
+        "sourceRect": [
+          560,
+          428,
+          418,
+          25
+        ],
+        "pageSelector": ".batch-retain"
+      }
+    }
+  },
+  "routing_empty": {
+    "source": "desi2.png",
+    "sourceFrame": [
+      1034,
+      136,
+      462,
+      343
+    ],
+    "cssScale": 0.8441558441558441,
+    "rules": {
+      "empty_icon_group": {
+        "sourceRect": [
+          1228,
+          162,
+          104,
+          76
+        ],
+        "pageSelector": [
+          ".empty-routing-mark img"
+        ]
+      },
+      "empty_title": {
+        "sourceRect": [
+          1158,
+          259,
+          217,
+          28
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".empty-routing-title"
+          ],
+          "text": true
+        }
+      },
+      "empty_message": {
+        "sourceRect": [
+          1144,
+          292,
+          247,
+          23
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".empty-routing-copy"
+          ],
+          "text": true
+        }
+      },
+      "date_pill": {
+        "sourceRect": [
+          1180,
+          328,
+          173,
+          45
+        ],
+        "pageSelector": ".empty-routing-date"
+      },
+      "change_date_action": {
+        "sourceRect": [
+          1055,
+          387,
+          203,
+          48
+        ],
+        "pageSelector": ".empty-routing-actions .routing-batch"
+      },
+      "recent_records_action": {
+        "sourceRect": [
+          1271,
+          387,
+          208,
+          48
+        ],
+        "pageSelector": ".empty-routing-actions .routing-recent"
+      },
+      "history_note": {
+        "sourceRect": [
+          1180,
+          448,
+          182,
+          20
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".empty-routing-foot"
+          ],
+          "text": true
+        }
+      }
+    }
+  },
+  "connection_error": {
+    "source": "desi2.png",
+    "sourceFrame": [
+      44,
+      536,
+      458,
+      399
+    ],
+    "cssScale": 0.851528384279476,
+    "rules": {
+      "error_icon_and_title": {
+        "sourceRect": [
+          80,
+          576,
+          325,
+          63
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".connection-title-row"
+          ],
+          "content": true
+        }
+      },
+      "error_explanation": {
+        "sourceRect": [
+          182,
+          612,
+          239,
+          20
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".connection-error-copy"
+          ],
+          "text": true
+        }
+      },
+      "retry_action": {
+        "sourceRect": [
+          65,
+          661,
+          191,
+          46
+        ],
+        "pageSelector": ".connection-retry"
+      },
+      "settings_action": {
+        "sourceRect": [
+          270,
+          661,
+          210,
+          46
+        ],
+        "pageSelector": ".connection-settings"
+      },
+      "error_details_collapsed": {
+        "sourceRect": [
+          65,
+          723,
+          415,
+          53
+        ],
+        "pageSelector": ".connection-error details"
+      },
+      "api_key_label": {
+        "sourceRect": [
+          66,
+          802,
+          55,
+          19
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".connection-key-label"
+          ],
+          "text": true
+        }
+      },
+      "api_key_field": {
+        "sourceRect": [
+          65,
+          826,
+          417,
+          52
+        ],
+        "pageSelector": ".connection-key-invalid"
+      },
+      "field_error": {
+        "sourceRect": [
+          66,
+          885,
+          185,
+          20
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".connection-key-error"
+          ],
+          "text": true
+        }
+      }
+    }
+  },
+  "reading_followup": {
+    "source": "desi2.png",
+    "sourceFrame": [
+      542,
+      536,
+      454,
+      399
+    ],
+    "cssScale": 0.8590308370044053,
+    "rules": {
+      "answer_intro": {
+        "sourceRect": [
+          581,
+          554,
+          283,
+          23
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".row.assistant.has-table-answer .md"
+          ],
+          "firstText": true
+        }
+      },
+      "schedule_table": {
+        "sourceRect": [
+          574,
+          589,
+          389,
+          181
+        ],
+        "pageSelector": ".row.assistant.has-table-answer .table-wrap"
+      },
+      "return_to_bottom_cue": {
+        "sourceRect": [
+          653,
+          736,
+          229,
+          44
+        ],
+        "pageSelector": {
+          "selectors": [
+            "#new-content-cue"
+          ],
+          "origin": "self"
+        }
+      },
+      "followup_actions": {
+        "sourceRect": [
+          562,
+          797,
+          241,
+          37
+        ],
+        "pageSelector": [
+          ".row.assistant.has-table-answer .followups > button"
+        ]
+      },
+      "fixed_input_and_send": {
+        "sourceRect": [
+          562,
+          846,
+          414,
+          50
+        ],
+        "pageSelector": {
+          "selectors": [
+            "#input",
+            "#send"
+          ],
+          "origin": "self"
+        }
+      },
+      "reading_hint": {
+        "sourceRect": [
+          596,
+          909,
+          326,
+          18
+        ],
+        "pageSelector": {
+          "selectors": [
+            ".reading-guidance"
+          ],
+          "text": true,
+          "origin": "self"
+        }
+      }
+    }
+  },
+  "query_details": {
+    "source": "desi2.png",
+    "sourceFrame": [
+      1034,
+      536,
+      462,
+      399
+    ],
+    "cssScale": 0.8441558441558441,
+    "rules": {
+      "details_panel": {
+        "sourceRect": [
+          1053,
+          553,
+          425,
+          275
+        ],
+        "pageSelector": [
+          ".request-details > summary",
+          ".request-details-body"
+        ]
+      },
+      "details_heading_and_source": {
+        "sourceRect": [
+          1053,
+          553,
+          425,
+          107
+        ],
+        "pageSelector": [
+          ".request-details > summary",
+          ".request-details-body > .request-detail-row:first-child"
+        ]
+      },
+      "date_row": {
+        "sourceRect": [
+          1053,
+          660,
+          425,
+          42
+        ],
+        "pageSelector": ".request-details-body > .request-detail-row:nth-child(2)"
+      },
+      "time_basis_row": {
+        "sourceRect": [
+          1053,
+          702,
+          425,
+          42
+        ],
+        "pageSelector": ".request-details-body > .request-detail-row:nth-child(3)"
+      },
+      "latency_row": {
+        "sourceRect": [
+          1053,
+          744,
+          425,
+          42
+        ],
+        "pageSelector": ".request-details-body > .request-detail-row:nth-child(4)"
+      },
+      "usage_row": {
+        "sourceRect": [
+          1053,
+          786,
+          425,
+          42
+        ],
+        "pageSelector": ".request-details-body > .request-detail-row:nth-child(5)"
+      },
+      "technical_log_action": {
+        "sourceRect": [
+          1053,
+          842,
+          425,
+          53
+        ],
+        "pageSelector": ".request-tech"
+      }
+    }
+  }
+}

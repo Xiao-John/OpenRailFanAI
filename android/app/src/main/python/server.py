@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import collections
+import json
 import logging
 import os
 import socket
@@ -214,23 +215,38 @@ def _ensure_ca_bundle() -> str:
     return ""
 
 
-def serve(activity=None, webapp_dir: str = "", data_dir: str = "") -> None:
+def serve(host=None, webapp_dir: str = "", data_dir: str = "",
+          native_lib_dir: str = "", models_dir: str = "", sibling_dirs: str = "") -> None:
     """启动后端并回报结果。
 
-    activity   —— MainActivity 实例（Chaquopy 的 PyObject）；
-    webapp_dir —— Java 侧从 assets 解包出的前端目录（对应 FRONTEND_DIR）；
-    data_dir   —— 应用私有可写目录（放 dict.db 等运行期数据）。
+    host           —— Android 后台宿主（Activity 无关，负责持有启动状态回调）；
+    webapp_dir     —— Java 侧从 assets 解包出的前端目录（对应 FRONTEND_DIR）；
+    data_dir       —— 应用私有可写目录（放 dict.db 等运行期数据）；
+    native_lib_dir —— `applicationInfo.nativeLibraryDir`。**设备端推理二进制只在这里可执行**
+                      （Android 10+ 的 W^X：可写目录禁止 exec），所以必须由 Java 传进来；
+    models_dir     —— 放 *.gguf 的目录（外部应用目录，便于 adb push；可为空）；
+    sibling_dirs   —— **其它 RailFanAI 安装**的模型目录（`:` 分隔，可为空）。
+                      内部调试轨用独立包名，因而看不到封测轨已下好的模型；
+                      把那些目录报进来就能**原地复用**，不必重下几 GB。**只读**。
     """
-    _beat(activity, "选择本地端口…")
+    _beat(host, "选择本地端口…")
     port = _stable_port(data_dir)
 
     # 必须在任何 httpx2 客户端创建之前完成（openai SDK / mcp_12306 都会自建客户端）
-    _beat(activity, "准备 TLS 信任库…")
+    _beat(host, "准备 TLS 信任库…")
     _ensure_ca_bundle()
 
     # 配置读取发生在 import 时，环境变量必须在此前设好
     if webapp_dir:
         os.environ["FRONTEND_DIR"] = webapp_dir
+        try:
+            with open(os.path.join(webapp_dir, "build.json"), encoding="utf-8") as f:
+                build_info = json.load(f)
+            os.environ["APP_VARIANT"] = (
+                "lm" if str(build_info.get("version", "")).startswith("lm") else "main"
+            )
+        except (OSError, ValueError):
+            os.environ["APP_VARIANT"] = "main"
     os.environ.setdefault("APP_ENV", "production")
 
     # 工作目录切到可写目录：settings 里的相对路径（如 DICT_DB_PATH=data/dict.db）
@@ -246,8 +262,26 @@ def serve(activity=None, webapp_dir: str = "", data_dir: str = "") -> None:
         # 相关工具会一直如实报"本地字典尚未构建"。Java 侧把 dict.db 解包在数据目录根下。
         os.environ.setdefault("DICT_DB_PATH", os.path.join(data_dir, "dict.db"))
 
+    # 设备端本地推理：**必须在这里**拉起并设好供应商环境变量，因为配置是在 import 时
+    # 读取的（`get_settings()` 带 lru_cache，之后改环境变量不再生效）。
+    # 缺二进制/缺模型都只是"不启用"，绝不打断启动 —— 本地模型是增强项，
+    # 没有它云端路径和规则排版都还在。运行期启用走 API + 前端按 id 选中（见 local_inference）。
+    if os.environ.get("APP_VARIANT") == "lm":
+        try:
+            import atexit
+
+            from app import local_inference
+
+            atexit.register(local_inference.stop)   # 进程退出时别把推理子进程留成孤儿
+            _beat(host, "检查设备端本地模型…")
+            st = local_inference.setup(native_lib_dir=native_lib_dir, models_dir=models_dir,
+                                       data_dir=data_dir, sibling_dirs=sibling_dirs, log=_log)
+            _log.info("本地推理：%s（%s）", st.get("state"), st.get("detail"))
+        except Exception:  # noqa: BLE001 —— 增强项，绝不能让 App 起不来
+            _log.warning("本地推理初始化异常，按未启用处理", exc_info=True)
+
     try:
-        _beat(activity, "导入 app 包（含依赖兼容层）…")
+        _beat(host, "导入 app 包（含依赖兼容层）…")
         import app  # noqa: F401 —— 导入即完成依赖兼容层安装（app/__init__.py）
 
         from app import _compat
@@ -255,7 +289,7 @@ def serve(activity=None, webapp_dir: str = "", data_dir: str = "") -> None:
         if _compat.enabled_modules:
             _log.info("已启用依赖替身：%s", _compat.enabled_modules)
 
-        _beat(activity, "导入后端应用 app.main…")
+        _beat(host, "导入后端应用 app.main…")
         from app.main import app as asgi_app
 
         # 一条把"字典到底有没有用上"摆到明处的日志：这个能力以前是**静默**缺失的
@@ -268,24 +302,24 @@ def serve(activity=None, webapp_dir: str = "", data_dir: str = "") -> None:
         except Exception:  # 字典是增强能力，探测失败不该拖垮启动
             _log.warning("本地字典探测失败", exc_info=True)
 
-        _beat(activity, "导入 uvicorn…")
+        _beat(host, "导入 uvicorn…")
         import uvicorn
 
-        _beat(activity, "构造 ASGI 配置…")
+        _beat(host, "构造 ASGI 配置…")
         config = uvicorn.Config(
             asgi_app, host=HOST, port=port, log_level="info", access_log=False,
         )
         server = uvicorn.Server(config)
 
         async def run_until_ready() -> None:
-            _beat(activity, "启动 uvicorn 服务…")
+            _beat(host, "启动 uvicorn 服务…")
             task = asyncio.create_task(server.serve())
             # 轮询 server.started；**带超时**：上一版没有超时，若 uvicorn 因为任何原因
             # 既没 started 也没结束，这个循环会永远转下去 —— 界面就永远停在"调用 serve()…"。
             deadline = asyncio.get_running_loop().time() + STARTUP_TIMEOUT_S
             while not server.started and not task.done():
                 if asyncio.get_running_loop().time() > deadline:
-                    _notify(activity, "onStartupFailed",
+                    _notify(host, "onStartupFailed",
                             f"uvicorn 在 {STARTUP_TIMEOUT_S:.0f} 秒内未能开始监听"
                             f"（127.0.0.1:{port}）。\n最近日志：\n{recent_logs()}")
                     raise TimeoutError("uvicorn 启动超时")
@@ -294,25 +328,25 @@ def serve(activity=None, webapp_dir: str = "", data_dir: str = "") -> None:
                 await task          # 把启动异常抛到外层统一处理
                 return
 
-            _beat(activity, f"服务已监听 127.0.0.1:{port}，执行前端自检…")
+            _beat(host, f"服务已监听 127.0.0.1:{port}，执行前端自检…")
             _log.info("本地后端已监听 http://%s:%d", HOST, port)
             ok, detail = await asyncio.to_thread(_self_check, port)
             if not ok:
                 # 自检不过就直接把结论摆到用户面前，而不是让他对着白屏猜
-                _notify(activity, "onStartupFailed",
+                _notify(host, "onStartupFailed",
                         f"服务已在 127.0.0.1:{port} 启动，但前端自检未通过：\n{detail}\n\n"
                         f"FRONTEND_DIR={webapp_dir}\n\n最近日志：\n{recent_logs()}")
                 # 仍然继续提供服务，便于用户重试/进一步排查
             else:
                 _log.info("自检通过：%s", detail)
-            _notify(activity, "onServerReady", port, detail)
+            _notify(host, "onServerReady", port, detail)
             await task
 
         asyncio.run(run_until_ready())
     except Exception:
         detail = traceback.format_exc()
         _log.error("后端启动失败:\n%s", detail)
-        _notify(activity, "onStartupFailed", f"{detail}\n\n最近日志：\n{recent_logs()}")
+        _notify(host, "onStartupFailed", f"{detail}\n\n最近日志：\n{recent_logs()}")
         raise
 
 

@@ -478,6 +478,73 @@ def test_no_think_defaults_to_config() -> None:
     print("[PASS] no_think 不传时沿用 LLM_STRUCTURED_NO_THINK（兜底路径同样生效）")
 
 
+def test_generation_no_think_is_configurable() -> None:
+    """**生成路径**也要能关思考，且默认关（云端行为零变化）。
+
+    实测（llama-server + Qwen3.5-0.8B、max_tokens=64、问"G1 始发站"）：
+        不传关闭参数          → 正文 0 字、思考 202 字、finish_reason=length
+        reasoning_effort=none → 正文 15 字、思考 0 字、finish_reason=stop   ← 唯一有效
+        enable_thinking=false → 正文 0 字、思考 216 字（**被静默忽略**）
+    即本地生成不关思考 = **正文一个字都没有**，整条生成链路不可用。
+    而生成路径原先硬编码 `no_think=False`（早期只考虑云端），所以必须由配置接管。
+    """
+    from types import SimpleNamespace
+
+    seen: list[bool] = []
+
+    async def _create_once(client, ladder, kw):
+        seen.append("extra_body" in kw)
+        return _FakeResp("好的")
+
+    async def run(setting: bool):
+        with patch.object(llm, "_create_once", _create_once), \
+             patch.object(llm, "get_client", lambda *a, **kw: object()), \
+             patch.object(llm, "current_provider", lambda: _fake_provider()), \
+             patch.object(llm, "get_settings", lambda: SimpleNamespace(
+                 llm_mock=False, llm_generation_no_think=setting,
+                 llm_model="m", llm_context_tokens=8192, llm_max_tokens=192,
+                 llm_chars_per_token=1.5)):
+            return await llm.chat_with_reasoning("x")     # 故意不传 no_think
+
+    asyncio.run(run(True))
+    check(seen[-1] is True, "LLM_GENERATION_NO_THINK=true 时生成调用应带关思考字段")
+    asyncio.run(run(False))
+    check(seen[-1] is False, "默认（false）时生成调用**不得**带关思考字段 —— 云端行为不能变")
+    print("[PASS] 生成路径关思考可配（默认关）：LLM_GENERATION_NO_THINK")
+
+
+def test_reasoning_extraction_survives_missing_model_extra() -> None:
+    """`_reasoning_of` 必须在**没有思考**时也不炸。
+
+    这是个潜伏很久的 bug：它先试 `reasoning_content`/`reasoning`，拿到就 return；
+    只有两个都为空（= 这次没思考）才回落到 `message.model_extra`。
+    而本仓库锁的 openai SDK 版本上 `model_extra` **不存在** —— 于是
+    "关思考"这条路径 100% 抛 AttributeError。云端默认开思考，这段兜底从没被执行到，
+    直到本地推理把"关思考"变成必经之路才暴露。
+    """
+    class _MsgNoExtra:
+        content = "答案"
+        reasoning_content = None
+        reasoning = None
+
+    check(llm._reasoning_of(_MsgNoExtra()) == "",
+          "没有思考内容且 SDK 无 model_extra 时应返回空串，而不是抛 AttributeError")
+
+    class _MsgWithReasoning:
+        reasoning_content = "想了 3 个字"
+
+    check(llm._reasoning_of(_MsgWithReasoning()) == "想了 3 个字",
+          "有 reasoning_content 时应原样返回")
+
+    class _MsgWithExtra:
+        model_extra = {"reasoning_content": "藏在 extra 里"}
+
+    check(llm._reasoning_of(_MsgWithExtra()) == "藏在 extra 里",
+          "有 model_extra 时仍应能取到 reasoning_content")
+
+    print("[PASS] 思考提取对缺失字段免疫（关思考路径不再抛 AttributeError）")
+
+
 def test_variable_part_always_goes_last() -> None:
     """随请求变化的内容必须拼在提示词**最后** —— 本地推理吃到前缀缓存的前提。
 
@@ -557,6 +624,8 @@ def main() -> int:
     test_variable_part_always_goes_last()
     test_no_think_field_is_per_provider()
     test_no_think_defaults_to_config()
+    test_generation_no_think_is_configurable()
+    test_reasoning_extraction_survives_missing_model_extra()
 
     if _failures:
         print(f"\n失败 {len(_failures)} 条（共校验 {_checks} 项）：")

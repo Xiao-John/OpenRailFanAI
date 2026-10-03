@@ -1,0 +1,5 @@
+10-03 10:34:21.890  4397  4411 I TestRunner: started: migratesLegacyProviderAndEncryptsItsSavedKey(org.openrailfanai.app.MainSettingsRepositoryTest)
+10-03 10:34:21.894  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=166
+10-03 10:34:21.894  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=166
+10-03 10:34:21.935   556   706 E WifiScoringParams: Invalid frequency(-1), using 5G as default rssi array
+10-03 10:34:22.034  4397  4411 I TestRunner: finished: migratesLegacyProviderAndEncryptsItsSavedKey(org.openrailfanai.app.MainSettingsRepositoryTest)

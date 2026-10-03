@@ -1,0 +1,6 @@
+10-03 10:34:12.501  4397  4411 I TestRunner: started: oldSessionFormatSurvivesAndManagementKeepsUnknownFields(org.openrailfanai.app.ConversationStoreTest)
+10-03 10:34:12.511  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=164
+10-03 10:34:12.512  1226  1226 I TopTaskTracker: onTaskRemoved: taskId=164
+10-03 10:34:12.515   556   678 I ImeTracker: com.android.launcher3:688637f5: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-03 10:34:12.517   556   678 I ImeTracker: com.android.launcher3:688637f5: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-03 10:34:12.601  4397  4411 I TestRunner: finished: oldSessionFormatSurvivesAndManagementKeepsUnknownFields(org.openrailfanai.app.ConversationStoreTest)

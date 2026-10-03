@@ -1,0 +1,904 @@
+{
+  "schema_version": 1,
+  "design_copy_ref": "frontend/tests/visual/design-copy.json",
+  "scope": "Exact design-selector/native-leaf text pairing; not glyph appearance or visibility acceptance. Unresolved entries remain unmeasured.",
+  "states": {
+    "train_schedule": [
+      {
+        "selector": ".row.user .bubble",
+        "mode": "text",
+        "expected": "查一下 G8932 今天的时刻表",
+        "native_tag": "main-user-prompt",
+        "native_property": "text",
+        "required_ancestor": "main-user-prompt-frame"
+      },
+      {
+        "selector": ".schedule-card .schedule-code",
+        "mode": "text",
+        "expected": "G8932",
+        "native_tag": "schedule-title",
+        "native_property": "text",
+        "required_ancestor": "schedule-title-row"
+      },
+      {
+        "selector": ".schedule-card .schedule-example",
+        "mode": "text",
+        "expected": "图定时刻 · 示例数据",
+        "native_tag": "schedule-classification",
+        "native_property": "text",
+        "required_ancestor": "schedule-title-row"
+      },
+      {
+        "selector": ".schedule-card .schedule-route",
+        "mode": "text",
+        "expected": "秦皇岛 → 北京南",
+        "native_tag": "schedule-route",
+        "native_property": "text",
+        "required_ancestor": "schedule-route-summary"
+      },
+      {
+        "selector": ".schedule-card .schedule-meta span:nth-child(1)",
+        "mode": "text",
+        "expected": "09月25日",
+        "native_tag": "schedule-date-label",
+        "native_property": "text",
+        "required_ancestor": "schedule-date"
+      },
+      {
+        "selector": ".schedule-card .schedule-meta span:nth-child(2)",
+        "mode": "text",
+        "expected": "1小时52分",
+        "native_tag": "schedule-duration-label",
+        "native_property": "text",
+        "required_ancestor": "schedule-duration"
+      },
+      {
+        "selector": ".schedule-card thead th:nth-child(1)",
+        "mode": "text",
+        "expected": "车站",
+        "native_tag": "schedule-header-station",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".schedule-card thead th:nth-child(2)",
+        "mode": "text",
+        "expected": "到达",
+        "native_tag": "schedule-header-arrival",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".schedule-card thead th:nth-child(3)",
+        "mode": "text",
+        "expected": "出发",
+        "native_tag": "schedule-header-departure",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(1) .schedule-station-name",
+        "mode": "text",
+        "expected": "秦皇岛",
+        "native_tag": "schedule-station-1",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(2) .schedule-station-name",
+        "mode": "text",
+        "expected": "唐山",
+        "native_tag": "schedule-station-2",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(2) .schedule-stopover",
+        "mode": "text",
+        "expected": "停12分钟",
+        "native_tag": "schedule-stopover-2",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(3) .schedule-station-name",
+        "mode": "text",
+        "expected": "天津",
+        "native_tag": "schedule-station-3",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(3) .schedule-stopover",
+        "mode": "text",
+        "expected": "停3分钟",
+        "native_tag": "schedule-stopover-3",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".schedule-card tbody tr:nth-child(4) .schedule-station-name",
+        "mode": "text",
+        "expected": "北京南",
+        "native_tag": "schedule-station-4",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".schedule-card .schedule-note",
+        "mode": "text",
+        "expected": "图定时刻不代表实际正晚点。",
+        "native_tag": "schedule-source-note-text",
+        "native_property": "text",
+        "required_ancestor": "schedule-source-note"
+      },
+      {
+        "selector": ".schedule-card .schedule-source a",
+        "mode": "text",
+        "expected": "12306 · 列车时刻",
+        "native_tag": "details-source-label",
+        "native_property": "text",
+        "required_ancestor": "details-source"
+      },
+      {
+        "selector": ".schedule-card .schedule-detail-label",
+        "mode": "text",
+        "expected": "查询详情",
+        "native_tag": "query-details-toggle",
+        "native_property": "text",
+        "required_ancestor": "details-heading-and-source"
+      },
+      {
+        "selector": ".row.assistant.has-schedule-result > .actions > button:nth-child(1)",
+        "mode": "text",
+        "expected": "复制",
+        "native_tag": "result-copy-label",
+        "native_property": "text",
+        "required_ancestor": "result-copy-action"
+      },
+      {
+        "selector": ".row.assistant.has-schedule-result > .actions > button:nth-child(3)",
+        "mode": "text",
+        "expected": "重新生成",
+        "native_tag": "result-regenerate-label",
+        "native_property": "text",
+        "required_ancestor": "result-regenerate-action"
+      },
+      {
+        "selector": ".row.assistant.has-schedule-result > .followups > button:nth-child(1)",
+        "mode": "text",
+        "expected": "查票价",
+        "native_tag": "result-followup-1-label",
+        "native_property": "text",
+        "required_ancestor": "result-followup-1"
+      },
+      {
+        "selector": ".row.assistant.has-schedule-result > .followups > button:nth-child(2)",
+        "mode": "text",
+        "expected": "查担当车组",
+        "native_tag": "result-followup-2-label",
+        "native_property": "text",
+        "required_ancestor": "result-followup-2"
+      },
+      {
+        "selector": "#input",
+        "mode": "placeholder",
+        "expected": "继续追问…",
+        "native_tag": "main-input-placeholder",
+        "native_property": "text",
+        "required_ancestor": "main-input-field"
+      }
+    ],
+    "emu_routing": [
+      {
+        "selector": ".row.user .bubble",
+        "mode": "text",
+        "expected": "CR400BF-5033 今天的交路",
+        "native_tag": "main-user-prompt",
+        "native_property": "text",
+        "required_ancestor": "main-user-prompt-frame"
+      },
+      {
+        "selector": ".routing-card .schedule-code",
+        "mode": "text",
+        "expected": "CR400BF-5033",
+        "native_tag": "routing-title",
+        "native_property": "text",
+        "required_ancestor": "routing-title-row"
+      },
+      {
+        "selector": ".routing-card .routing-date",
+        "mode": "text",
+        "expected": "09月25日 · 交路记录",
+        "native_tag": "routing-date-record",
+        "native_property": "text",
+        "required_ancestor": "routing-result"
+      },
+      {
+        "selector": ".routing-card .schedule-note",
+        "mode": "text",
+        "expected": "以下为记录时间，不是列车到发时间。",
+        "native_tag": "routing-time-semantics-text",
+        "native_property": "text",
+        "required_ancestor": "routing-time-semantics"
+      },
+      {
+        "selector": ".routing-card thead th:nth-child(1)",
+        "mode": "text",
+        "expected": "车次",
+        "native_tag": "routing-header-train",
+        "native_property": "text",
+        "required_ancestor": "routing-records"
+      },
+      {
+        "selector": ".routing-card thead th:nth-child(2)",
+        "mode": "text",
+        "expected": "记录时间",
+        "native_tag": "routing-header-time",
+        "native_property": "text",
+        "required_ancestor": "routing-records"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(1) .routing-jump",
+        "mode": "text",
+        "expected": "C2203",
+        "native_tag": "routing-train-C2203",
+        "native_property": "text",
+        "required_ancestor": "routing-record-C2203"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(1) .routing-record-time",
+        "mode": "text",
+        "expected": "07:42",
+        "native_tag": "routing-time-C2203",
+        "native_property": "text",
+        "required_ancestor": "routing-record-C2203"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(2) .routing-jump",
+        "mode": "text",
+        "expected": "G8927",
+        "native_tag": "routing-train-G8927",
+        "native_property": "text",
+        "required_ancestor": "routing-record-G8927"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(2) .routing-record-time",
+        "mode": "text",
+        "expected": "11:06",
+        "native_tag": "routing-time-G8927",
+        "native_property": "text",
+        "required_ancestor": "routing-record-G8927"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(3) .routing-jump",
+        "mode": "text",
+        "expected": "G8928",
+        "native_tag": "routing-train-G8928",
+        "native_property": "text",
+        "required_ancestor": "routing-record-G8928"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(3) .routing-record-time",
+        "mode": "text",
+        "expected": "13:26",
+        "native_tag": "routing-time-G8928",
+        "native_property": "text",
+        "required_ancestor": "routing-record-G8928"
+      },
+      {
+        "selector": ".routing-card tbody tr:nth-child(1) .routing-record-link",
+        "mode": "text",
+        "expected": "查看该车次时刻",
+        "native_tag": "routing-record-link-C2203",
+        "native_property": "text",
+        "required_ancestor": "routing-record-C2203"
+      },
+      {
+        "selector": ".routing-card .schedule-source a",
+        "mode": "text",
+        "expected": "rail.re · 交路记录",
+        "native_tag": "details-source-label",
+        "native_property": "text",
+        "required_ancestor": "details-source"
+      },
+      {
+        "selector": ".routing-card + .request-details + .routing-batch",
+        "mode": "text",
+        "expected": "查询这三趟车的时刻表",
+        "native_tag": "routing-batch-label",
+        "native_property": "text",
+        "required_ancestor": "routing-batch"
+      },
+      {
+        "selector": ".routing-integrity-note",
+        "mode": "text",
+        "expected": "记录可能不完整，以实际运行情况为准。",
+        "native_tag": "routing-integrity-note-text",
+        "native_property": "text",
+        "required_ancestor": "routing-integrity-note"
+      },
+      {
+        "selector": "#input",
+        "mode": "placeholder",
+        "expected": "继续追问…",
+        "native_tag": "main-input-placeholder",
+        "native_property": "text",
+        "required_ancestor": "main-input-field"
+      }
+    ],
+    "query_loading": [
+      {
+        "selector": ".query-loading strong",
+        "mode": "text",
+        "expected": "正在查询列车数据…",
+        "native_tag": "query-loading-title",
+        "native_property": "text",
+        "required_ancestor": "query-loading-title-and-stage"
+      },
+      {
+        "selector": ".query-loading-stage",
+        "mode": "text",
+        "expected": "已识别 G8932 · 正在连接 12306",
+        "native_tag": "query-loading-stage",
+        "native_property": "text",
+        "required_ancestor": "query-loading-title-and-stage"
+      },
+      {
+        "selector": "#input",
+        "mode": "value",
+        "expected": "再看看明天的",
+        "native_tag": "main-input-field",
+        "native_property": "editable_text",
+        "required_ancestor": "main-fixed-input"
+      },
+      {
+        "selector": "#send",
+        "mode": "aria-label",
+        "expected": "停止生成",
+        "native_tag": "main-submit-control",
+        "native_property": "content_description",
+        "required_ancestor": "main-fixed-input"
+      },
+      {
+        "selector": ".query-loading-foot",
+        "mode": "text",
+        "expected": "可停止生成，已返回内容会保留",
+        "native_tag": "query-preserve-note",
+        "native_property": "text"
+      }
+    ],
+    "batch_partial": [
+      {
+        "selector": ".batch-card .schedule-head strong",
+        "mode": "text",
+        "expected": "时刻查询",
+        "native_tag": "batch-heading",
+        "native_property": "text",
+        "required_ancestor": "batch-card"
+      },
+      {
+        "selector": ".batch-card .batch-count",
+        "mode": "text",
+        "expected": "2 / 3 已返回",
+        "native_tag": "batch-count",
+        "native_property": "text",
+        "required_ancestor": "batch-card"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(2) > span:first-child",
+        "mode": "text",
+        "expected": "C2203",
+        "native_tag": "batch-train-C2203",
+        "native_property": "text",
+        "required_ancestor": "batch-row-C2203"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(2) .batch-ok",
+        "mode": "text",
+        "expected": "已查到",
+        "native_tag": "batch-status-label-C2203",
+        "native_property": "text",
+        "required_ancestor": "batch-status-C2203"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(3) > span:first-child",
+        "mode": "text",
+        "expected": "G8927",
+        "native_tag": "batch-train-G8927",
+        "native_property": "text",
+        "required_ancestor": "batch-row-G8927"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(3) .batch-ok",
+        "mode": "text",
+        "expected": "已查到",
+        "native_tag": "batch-status-label-G8927",
+        "native_property": "text",
+        "required_ancestor": "batch-status-G8927"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(4) > span:first-child",
+        "mode": "text",
+        "expected": "G8928",
+        "native_tag": "batch-train-G8928",
+        "native_property": "text",
+        "required_ancestor": "batch-row-G8928"
+      },
+      {
+        "selector": ".batch-item:nth-of-type(4) .batch-failed",
+        "mode": "text",
+        "expected": "暂未返回",
+        "native_tag": "batch-status-label-G8928",
+        "native_property": "text",
+        "required_ancestor": "batch-status-G8928"
+      },
+      {
+        "selector": ".batch-card + .routing-batch",
+        "mode": "text",
+        "expected": "仅重试 G8928",
+        "native_tag": "batch-retry-failed-label",
+        "native_property": "text",
+        "required_ancestor": "batch-retry-failed"
+      },
+      {
+        "selector": ".batch-retain",
+        "mode": "text",
+        "expected": "保留已查到的结果",
+        "native_tag": "batch-retain-success-text",
+        "native_property": "text",
+        "required_ancestor": "batch-retain-success"
+      }
+    ],
+    "routing_empty": [
+      {
+        "selector": ".empty-routing-title",
+        "mode": "text",
+        "expected": "未找到当天交路记录",
+        "native_tag": "empty-title",
+        "native_property": "text",
+        "required_ancestor": "routing-empty"
+      },
+      {
+        "selector": ".empty-routing-copy",
+        "mode": "text",
+        "expected": "暂无记录，不能据此判断停运。",
+        "native_tag": "empty-message",
+        "native_property": "text",
+        "required_ancestor": "routing-empty"
+      },
+      {
+        "selector": ".empty-routing-date",
+        "mode": "text",
+        "expected": "09月25日",
+        "native_tag": "empty-date",
+        "native_property": "text",
+        "required_ancestor": "empty-date-pill"
+      },
+      {
+        "selector": ".empty-routing-actions .routing-batch",
+        "mode": "text",
+        "expected": "更换日期",
+        "native_tag": "empty-change-date-label",
+        "native_property": "text",
+        "required_ancestor": "empty-change-date"
+      },
+      {
+        "selector": ".empty-routing-actions .routing-recent",
+        "mode": "text",
+        "expected": "查看最近记录",
+        "native_tag": "empty-recent-label",
+        "native_property": "text",
+        "required_ancestor": "empty-recent"
+      },
+      {
+        "selector": ".empty-routing-foot",
+        "mode": "text",
+        "expected": "历史记录将单独标注日期",
+        "native_tag": "empty-history-note",
+        "native_property": "text",
+        "required_ancestor": "routing-empty"
+      }
+    ],
+    "connection_error": [
+      {
+        "selector": ".connection-error-title",
+        "mode": "text",
+        "expected": "暂时无法连接模型服务",
+        "native_tag": "error-title",
+        "native_property": "text",
+        "required_ancestor": "connection-error"
+      },
+      {
+        "selector": ".connection-error-copy",
+        "mode": "text",
+        "expected": "你的提问已保留，可稍后重试。",
+        "native_tag": "error-explanation",
+        "native_property": "text",
+        "required_ancestor": "connection-error"
+      },
+      {
+        "selector": ".connection-retry",
+        "mode": "text",
+        "expected": "重试",
+        "native_tag": "connection-retry-label",
+        "native_property": "text",
+        "required_ancestor": "connection-retry"
+      },
+      {
+        "selector": ".connection-settings",
+        "mode": "text",
+        "expected": "检查模型设置",
+        "native_tag": "connection-settings-label",
+        "native_property": "text",
+        "required_ancestor": "connection-settings"
+      },
+      {
+        "selector": ".connection-error details > summary",
+        "mode": "text",
+        "expected": "错误详情",
+        "native_tag": "error-details-label",
+        "native_property": "text",
+        "required_ancestor": "error-details-toggle"
+      },
+      {
+        "selector": ".connection-key-label",
+        "mode": "text",
+        "expected": "API Key",
+        "native_tag": "api-key-label",
+        "native_property": "text",
+        "required_ancestor": "connection-error"
+      },
+      {
+        "selector": ".connection-key-error",
+        "mode": "text",
+        "expected": "密钥无效，请检查后重试",
+        "native_tag": "api-key-error",
+        "native_property": "text",
+        "required_ancestor": "connection-error"
+      }
+    ],
+    "reading_followup": [
+      {
+        "selector": ".row.assistant.has-table-answer .md",
+        "mode": "firstText",
+        "expected": "以下是 G8932 次列车的时刻信息：",
+        "native_tag": "main-answer-1",
+        "native_property": "text",
+        "required_ancestor": "main-message-list"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(1)",
+        "mode": "text",
+        "expected": "站次",
+        "native_tag": null,
+        "native_property": "text",
+        "unmeasured_reason": "补充稿展示形态或说明文字分类尚未确认；不得用另一组件替代。",
+        "applicability": "excluded_by_user_resolution",
+        "exclusion_reason": "用户2026-10-01确认沿用完整时刻卡片，不实现补充稿五列表格。"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(2)",
+        "mode": "text",
+        "expected": "车站",
+        "native_tag": "schedule-header-station",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(3)",
+        "mode": "text",
+        "expected": "到达",
+        "native_tag": "schedule-header-arrival",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(4)",
+        "mode": "text",
+        "expected": "出发",
+        "native_tag": "schedule-header-departure",
+        "native_property": "text",
+        "required_ancestor": "schedule-stations"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer thead th:nth-child(5)",
+        "mode": "text",
+        "expected": "停留",
+        "native_tag": null,
+        "native_property": "text",
+        "unmeasured_reason": "补充稿展示形态或说明文字分类尚未确认；不得用另一组件替代。",
+        "applicability": "excluded_by_user_resolution",
+        "exclusion_reason": "用户2026-10-01确认沿用完整时刻卡片，不实现补充稿五列表格。"
+      },
+      {
+        "selector": "#new-content-cue",
+        "mode": "text",
+        "expected": "有新内容 · 回到底部",
+        "native_tag": "return-to-bottom-label",
+        "native_property": "text",
+        "required_ancestor": "return-to-bottom-visual"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer .followups > button:nth-child(1)",
+        "mode": "text",
+        "expected": "查余票",
+        "native_tag": "result-followup-1-label",
+        "native_property": "text",
+        "required_ancestor": "result-followup-1"
+      },
+      {
+        "selector": ".row.assistant.has-table-answer .followups > button:nth-child(2)",
+        "mode": "text",
+        "expected": "换个日期",
+        "native_tag": "result-followup-2-label",
+        "native_property": "text",
+        "required_ancestor": "result-followup-2"
+      },
+      {
+        "selector": "#input",
+        "mode": "placeholder",
+        "expected": "继续追问…",
+        "native_tag": "main-input-placeholder",
+        "native_property": "text",
+        "required_ancestor": "main-input-field"
+      },
+      {
+        "selector": ".reading-guidance",
+        "mode": "text",
+        "expected": "上滑阅读时暂停自动滚动；点选追问先填入输入框",
+        "native_tag": null,
+        "native_property": "text",
+        "applicability": "excluded_by_user_resolution",
+        "exclusion_reason": "依用户设备示意与设计标注排除规则，此句为阅读行为说明，不作为固定应用文案；自动滚动暂停和追问只填草稿仍须实操验收。"
+      }
+    ],
+    "query_details": [
+      {
+        "selector": ".request-details > summary",
+        "mode": "text",
+        "expected": "查询详情",
+        "native_tag": "query-details-title",
+        "native_property": "text",
+        "required_ancestor": "query-details-toggle"
+      },
+      {
+        "selector": ".request-source-row strong",
+        "mode": "text",
+        "expected": "12306 · 列车时刻",
+        "native_tag": "details-source-label",
+        "native_property": "text",
+        "required_ancestor": "details-source"
+      },
+      {
+        "selector": ".request-sample-badge",
+        "mode": "text",
+        "expected": "示例数据",
+        "native_tag": "details-sample-badge",
+        "native_property": "text",
+        "required_ancestor": "details-heading-and-source"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(2) span",
+        "mode": "text",
+        "expected": "数据日期",
+        "native_tag": "details-date-label",
+        "native_property": "text",
+        "required_ancestor": "details-date"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(2) strong",
+        "mode": "text",
+        "expected": "09月25日",
+        "native_tag": "details-date-value",
+        "native_property": "text",
+        "required_ancestor": "details-date"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(3) span",
+        "mode": "text",
+        "expected": "时间口径",
+        "native_tag": "details-time-basis-label",
+        "native_property": "text",
+        "required_ancestor": "details-time-basis"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(3) strong",
+        "mode": "text",
+        "expected": "图定时刻",
+        "native_tag": "details-time-basis-value",
+        "native_property": "text",
+        "required_ancestor": "details-time-basis"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(4) span",
+        "mode": "text",
+        "expected": "查询耗时",
+        "native_tag": "details-latency-label",
+        "native_property": "text",
+        "required_ancestor": "details-latency"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(4) strong",
+        "mode": "text",
+        "expected": "5.8 秒",
+        "native_tag": "details-latency-value",
+        "native_property": "text",
+        "required_ancestor": "details-latency"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(5) span",
+        "mode": "text",
+        "expected": "用量",
+        "native_tag": "details-usage-label",
+        "native_property": "text",
+        "required_ancestor": "details-usage"
+      },
+      {
+        "selector": ".request-detail-row:nth-child(5) strong",
+        "mode": "text",
+        "expected": "1,555 Token",
+        "native_tag": "details-usage-value",
+        "native_property": "text",
+        "required_ancestor": "details-usage"
+      },
+      {
+        "selector": ".request-tech > summary",
+        "mode": "text",
+        "expected": "查看技术日志",
+        "native_tag": "technical-log-label",
+        "native_property": "text",
+        "required_ancestor": "query-details-host",
+        "required_ancestor_tags": [
+          "technical-log-toggle"
+        ]
+      }
+    ],
+    "history": [
+      {
+        "selector": ".history-header strong",
+        "mode": "text",
+        "expected": "对话历史",
+        "native_tag": "history-title",
+        "native_property": "text",
+        "required_ancestor": "history-header"
+      },
+      {
+        "selector": ".history-search",
+        "mode": "placeholder",
+        "expected": "搜索对话…",
+        "native_tag": "history-search-placeholder",
+        "native_property": "text",
+        "required_ancestor": "history-search"
+      },
+      {
+        "selector": ".history-create",
+        "mode": "text",
+        "expected": "新建对话",
+        "native_tag": "history-create-label",
+        "native_property": "text",
+        "required_ancestor": "history-create"
+      },
+      {
+        "selector": ".history-group-title:nth-of-type(1)",
+        "mode": "text",
+        "expected": "今天",
+        "native_tag": "history-group-今天",
+        "native_property": "text",
+        "required_ancestor": "history-today-group"
+      },
+      {
+        "selector": ".history-item:nth-of-type(1) .history-select strong",
+        "mode": "text",
+        "expected": "北京南到上海虹桥票价",
+        "native_tag": "history-title-selected",
+        "native_property": "text",
+        "required_ancestor": "history-select-selected"
+      },
+      {
+        "selector": ".history-item:nth-of-type(1) .history-select span",
+        "mode": "text",
+        "expected": "G1 · 明天出发",
+        "native_tag": "history-subtitle-selected",
+        "native_property": "text",
+        "required_ancestor": "history-select-selected"
+      },
+      {
+        "selector": ".history-item:nth-of-type(2) .history-select strong",
+        "mode": "text",
+        "expected": "CR400BF-5033 今日交路",
+        "native_tag": "history-title-tomorrow",
+        "native_property": "text",
+        "required_ancestor": "history-select-tomorrow"
+      },
+      {
+        "selector": ".history-item:nth-of-type(2) .history-select span",
+        "mode": "text",
+        "expected": "3 条交路记录",
+        "native_tag": "history-subtitle-tomorrow",
+        "native_property": "text",
+        "required_ancestor": "history-select-tomorrow"
+      },
+      {
+        "selector": ".history-item:nth-of-type(3) .history-select strong",
+        "mode": "text",
+        "expected": "G8932 列车时刻",
+        "native_tag": "history-title-schedule",
+        "native_property": "text",
+        "required_ancestor": "history-select-schedule"
+      },
+      {
+        "selector": ".history-item:nth-of-type(3) .history-select span",
+        "mode": "text",
+        "expected": "秦皇岛 → 北京南",
+        "native_tag": "history-subtitle-schedule",
+        "native_property": "text",
+        "required_ancestor": "history-select-schedule"
+      },
+      {
+        "selector": ".history-group-title:nth-of-type(2)",
+        "mode": "text",
+        "expected": "昨天",
+        "native_tag": "history-group-昨天",
+        "native_property": "text",
+        "required_ancestor": "history-yesterday-group"
+      },
+      {
+        "selector": ".history-item:nth-of-type(4) .history-select strong",
+        "mode": "text",
+        "expected": "京沪线沿线车站",
+        "native_tag": "history-title-yesterday",
+        "native_property": "text",
+        "required_ancestor": "history-select-yesterday"
+      },
+      {
+        "selector": ".history-action-title",
+        "mode": "text",
+        "expected": "对话操作",
+        "native_tag": "history-actions-title",
+        "native_property": "text",
+        "required_ancestor": "history-actions-panel"
+      },
+      {
+        "selector": ".history-rename",
+        "mode": "text",
+        "expected": "重命名",
+        "native_tag": "history-rename-menu-label",
+        "native_property": "text",
+        "required_ancestor": "history-rename-menu"
+      },
+      {
+        "selector": ".history-action-panel button.danger",
+        "mode": "text",
+        "expected": "删除对话",
+        "native_tag": "history-delete-menu-label",
+        "native_property": "text",
+        "required_ancestor": "history-delete-menu"
+      },
+      {
+        "selector": ".history-action-cancel",
+        "mode": "text",
+        "expected": "取消",
+        "native_tag": "history-actions-cancel-label",
+        "native_property": "text",
+        "required_ancestor": "history-actions-cancel"
+      },
+      {
+        "selector": ".history-footer button:nth-child(1)",
+        "mode": "text",
+        "expected": "模型与设置",
+        "native_tag": "history-settings-label",
+        "native_property": "text",
+        "required_ancestor": "history-settings-hit-target"
+      },
+      {
+        "selector": ".history-footer button:nth-child(2)",
+        "mode": "text",
+        "expected": "使用帮助",
+        "native_tag": "history-help-label",
+        "native_property": "text",
+        "required_ancestor": "history-help-hit-target"
+      }
+    ]
+  }
+}

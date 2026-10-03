@@ -28,17 +28,24 @@
 """
 from __future__ import annotations
 
+import asyncio
 import contextvars
+import functools
+import hashlib
+import inspect
+import os
+from dataclasses import asdict, dataclass, field
 import json
 import logging
 import re
 import time
 from typing import Any, AsyncIterator
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, DefaultAsyncHttpxClient
 
 from app.config import get_settings
 from app.llm.providers import ApiDialect, Provider, resolve_provider
+from app.llm.pool import shutdown_clients
 
 _log = logging.getLogger("railfan.llm")
 
@@ -274,12 +281,9 @@ def _err_diagnostic(e: Exception, *, provider: Provider | None = None, dialect: 
     而上游异常原文可能带 Key 片段、组织 ID、内网地址或请求头。
     因此这里只保留"状态码级别"的提示，完整原文只写服务端日志。
     """
-    # exc_info=True + 因果链：SDK 常把底层错误包一层（如 APIConnectionError 包住
-    # httpx 的 SSLError），只打最外层名字根本定位不到原因（Android 上排障时踩过）。
-    _log.warning(
-        "LLM 调用失败（详情仅记日志）: %s: %s%s",
-        type(e).__name__, e, _cause_chain(e), exc_info=True,
-    )
+    # Upstream exception strings/tracebacks may contain echoed credentials.
+    _log.warning("LLM 调用失败: type=%s status=%s provider=%s dialect=%s",
+                 type(e).__name__, _status_of(e), provider.id if provider else "unknown", dialect)
     status = _status_of(e)
     where = ""
     if provider is not None:
@@ -287,6 +291,8 @@ def _err_diagnostic(e: Exception, *, provider: Provider | None = None, dialect: 
         if dialect:
             where += f" 方言 {dialect}"
         where += "；"
+        if provider.api_key:
+            where = where.replace(provider.api_key, "[redacted]")
 
     if status == 401:
         return f"LLM 鉴权失败(HTTP 401)：{where}API Key 无效或被拒绝 —— 请核对该供应商平台的 Key（详细原因见服务端日志）。"
@@ -324,7 +330,8 @@ def get_client(provider: Provider | None = None, *, require_model: bool = True) 
     try:
         from app.llm.providers import guard_request_base_url
 
-        guard_request_base_url(p, settings)
+        if not _VALIDATED_FACTORY.get():
+            guard_request_base_url(p, settings)
     except ValueError as e:
         raise LLMUnavailable(str(e)) from e
 
@@ -338,14 +345,222 @@ def get_client(provider: Provider | None = None, *, require_model: bool = True) 
             f"供应商「{p.label}」未指定模型名：请填写或选择 model"
             "（如 deepseek-flash / glm-5.3 / qwen-plus）。"
         )
+    # 超时按供应商取：本机推理天生慢一个量级且慢在 prefill 上 ——
+    # 实测设备端 6096 token 提示词 prefill 就要 156s，用云端的 60s 全局默认必然超时，
+    # 且现象是"降级到规则排版"，完全看不出是超时。详见 Provider.timeout_s。
     kwargs: dict[str, Any] = {
         "api_key": p.sdk_api_key,
         "base_url": p.base_url,
-        "timeout": settings.llm_timeout_s,
+        "timeout": p.timeout_s or settings.llm_timeout_s,
     }
     if p.extra_headers:
         kwargs["default_headers"] = p.extra_headers
+    if _VALIDATED_FACTORY.get():
+        # Use the SDK's defaults (timeouts/limits/follow_redirects/proxy/TLS).
+        # Hooks observe every physical SDK retry, rather than just our ladder.
+        kwargs["http_client"] = DefaultAsyncHttpxClient(
+            event_hooks={"request": [_on_http_request], "response": [_on_http_response]},
+        )
     return AsyncOpenAI(**kwargs)
+
+
+_ORIGINAL_GET_CLIENT = get_client
+_VALIDATED_FACTORY: contextvars.ContextVar[bool] = contextvars.ContextVar("llm_validated_factory", default=False)
+
+
+@dataclass
+class _Call:
+    started: float = field(default_factory=time.perf_counter)
+    provider: Provider | None = None
+    lease: Any = None
+    pool: Any = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    first_content: bool = False
+    first_text: bool = False
+    # SDK sends sequential retry attempts; references are local to this call.
+    pending_http: dict[int, float] = field(default_factory=dict)
+
+
+_CALL: contextvars.ContextVar[_Call | None] = contextvars.ContextVar("llm_call", default=None)
+
+
+async def _on_http_request(request) -> None:
+    call = _CALL.get()
+    if call is not None:
+        # A retry means the previous transport attempt failed without headers.
+        _finish_pending_http(call)
+        call.pending_http[id(request)] = time.perf_counter()
+
+
+async def _on_http_response(response) -> None:
+    call = _CALL.get()
+    if call is not None:
+        started = call.pending_http.pop(id(response.request), None)
+        if started is not None:
+            try:
+                from app.metrics import record_operation
+                record_operation("llm.http_attempt", (time.perf_counter() - started) * 1000,
+                                 response.status_code < 400)
+            except Exception:
+                _log.debug("记录 HTTP 指标失败")
+
+
+def _finish_pending_http(call: _Call) -> None:
+    try:
+        from app.metrics import record_operation
+        for started in call.pending_http.values():
+            record_operation("llm.http_attempt", (time.perf_counter() - started) * 1000, False)
+    except Exception:
+        _log.debug("记录 HTTP 指标失败")
+    finally:
+        call.pending_http.clear()
+
+
+async def _get_async_client(provider: Provider, *, require_model: bool = True):
+    call = _CALL.get()
+    if call is not None:
+        call.provider = provider
+    # Compatibility with callers/tests replacing get_client and with LM.
+    if get_client is not _ORIGINAL_GET_CLIENT or os.environ.get("APP_VARIANT", "main").lower() == "lm":
+        return get_client(provider) if require_model else get_client(provider, require_model=False)
+    from app.llm.providers import guard_request_base_url
+    settings = get_settings()
+    try:
+        # Keep validation per request (DNS is not cached), off the event loop.
+        await asyncio.to_thread(guard_request_base_url, provider, settings)
+    except ValueError as e:
+        raise LLMUnavailable(str(e)) from e
+    if call is None:
+        raise RuntimeError("LLM client acquisition needs a call scope")
+    from app.llm.pool import current_pool
+    # Hash the COMPLETE provider and request configuration; don't store secret
+    # keys in cache identifiers, metrics or diagnostics.
+    identity = {"provider": asdict(provider), "timeout": settings.llm_timeout_s,
+                "request": _ACTIVE_PROVIDER.get() or {},
+                "max_tokens": settings.llm_max_tokens,
+                "context_tokens": settings.llm_context_tokens}
+    key = hashlib.sha256(json.dumps(identity, sort_keys=True, default=str).encode()).hexdigest()
+    def factory():
+        token = _VALIDATED_FACTORY.set(True)
+        try:
+            return get_client(provider) if require_model else get_client(provider, require_model=False)
+        finally:
+            _VALIDATED_FACTORY.reset(token)
+    # Check model readiness even if a models-only client was already cached.
+    if require_model and not provider.model:
+        factory()  # validation raises before creating a client
+    call.pool = current_pool()
+    call.lease = await call.pool.acquire(key, factory)
+    return call.lease.client
+
+
+def _first_content(kind: str, text: str) -> None:
+    call = _CALL.get()
+    if call is None or not text:
+        return
+    try:
+        from app.metrics import record_stage
+        elapsed = (time.perf_counter() - call.started) * 1000
+        if not call.first_content:
+            call.first_content = True
+            record_stage("llm.first_content", elapsed)
+        if kind == "text" and not call.first_text:
+            call.first_text = True
+            record_stage("llm.first_text", elapsed)
+    except Exception:
+        _log.debug("记录首内容指标失败")
+
+
+async def _finish_call(call: _Call, failed: bool, cancelled: bool) -> None:
+    elapsed = (time.perf_counter() - call.started) * 1000
+    _metrics_ref()["latency_ms"] += elapsed
+    try:
+        from app.metrics import record_llm
+        _finish_pending_http(call)
+        record_llm(call.provider.id if call.provider else "unknown", elapsed,
+                   call.prompt_tokens, call.completion_tokens, failed=failed, cancelled=cancelled)
+    except Exception:
+        _log.debug("记录 LLM 指标失败")
+    finally:
+        if call.lease is not None:
+            release = asyncio.create_task(call.pool.release(call.lease))
+            try:
+                await asyncio.shield(release)
+            except asyncio.CancelledError:
+                await release
+                raise
+
+
+def _managed(function):
+    """One outcome/latency per logical call, including retries and cancellation."""
+    if inspect.isasyncgenfunction(function):
+        @functools.wraps(function)
+        async def streaming(*args, **kwargs):
+            if get_settings().llm_mock or os.environ.get("APP_VARIANT", "main").lower() == "lm":
+                inner = function(*args, **kwargs)
+                try:
+                    async for item in inner:
+                        yield item
+                finally:
+                    await inner.aclose()
+                return
+            call = _Call()
+            failed = cancelled = False
+            inner = function(*args, **kwargs)
+            try:
+                while True:
+                    # Never leave our ContextVar installed across a yield;
+                    # consumers can resume/close from a different asyncio task.
+                    token = _CALL.set(call)
+                    try:
+                        kind, text = await inner.__anext__()
+                        _first_content(kind, text)
+                    except StopAsyncIteration:
+                        break
+                    finally:
+                        _CALL.reset(token)
+                    yield kind, text
+            except (asyncio.CancelledError, GeneratorExit):
+                cancelled = True
+                raise
+            except Exception:
+                failed = True
+                raise
+            finally:
+                token = _CALL.set(call)
+                try:
+                    try:
+                        await inner.aclose()
+                    finally:
+                        await _finish_call(call, failed, cancelled)
+                finally:
+                    _CALL.reset(token)
+        return streaming
+    @functools.wraps(function)
+    async def ordinary(*args, **kwargs):
+        if get_settings().llm_mock or os.environ.get("APP_VARIANT", "main").lower() == "lm":
+            return await function(*args, **kwargs)
+        call = _Call()
+        token = _CALL.set(call)
+        failed = cancelled = False
+        try:
+            result = await function(*args, **kwargs)
+            # Settings probes report their errors as values, preserving contract.
+            failed = isinstance(result, dict) and result.get("ok") is False
+            return result
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+        except Exception:
+            failed = True
+            raise
+        finally:
+            try:
+                await _finish_call(call, failed, cancelled)
+            finally:
+                _CALL.reset(token)
+    return ordinary
 
 
 # ---------------------------------------------------------------- 消息与响应
@@ -374,8 +589,13 @@ def _reasoning_of(message) -> str:
         v = getattr(message, attr, None)
         if v:
             return v or ""
-    extra = (message.model_extra or {}).get("reasoning_content") or (message.model_extra or {}).get("reasoning")
-    return extra or ""
+    # 只有**前两个字段都为空**时才会走到这里 —— 也就是"这次没思考"的正常情况。
+    # 所以必须对任何 SDK 版本都安全：`message.model_extra` 不是所有 openai SDK 版本都有
+    # （本仓库锁的版本就没有），直接访问会在**关掉思考时 100% 抛 AttributeError**。
+    # 这个 bug 之所以潜伏至今：云端默认开思考，`reasoning_content` 非空就提前 return 了，
+    # 这段兜底从来没被执行到。直到本地推理把"关思考"变成必经之路才暴露出来。
+    extra = getattr(message, "model_extra", None) or {}
+    return extra.get("reasoning_content") or extra.get("reasoning") or ""
 
 
 def build_messages(
@@ -448,7 +668,29 @@ def _record_usage(resp, latency_ms: float, dialect: str) -> None:
     r["prompt_tokens"] += p
     r["completion_tokens"] += c
     r["total_tokens"] += t
+    call = _CALL.get()
+    if call is not None:
+        call.prompt_tokens += p
+        call.completion_tokens += c
+        return
     r["latency_ms"] += latency_ms
+    try:
+        from app.metrics import record_llm
+
+        record_llm(current_provider().id, latency_ms, p, c)
+    except Exception:  # metrics must never affect model requests
+        _log.debug("记录 LLM 指标失败", exc_info=True)
+
+
+def _record_llm_failure(provider: Provider, started: float) -> None:
+    if _CALL.get() is not None:
+        return
+    try:
+        from app.metrics import record_llm_failure
+
+        record_llm_failure(provider.id, (time.perf_counter() - started) * 1000.0)
+    except Exception:  # metrics must never affect model requests
+        _log.debug("记录 LLM 失败指标失败", exc_info=True)
 
 
 def _reasoning_of_response(resp) -> str:
@@ -519,7 +761,9 @@ def effective_max_tokens(messages: list[dict], requested: int | None = None) -> 
             "回答可能立即被截断，请调大 LLM_CONTEXT_TOKENS 或减少历史/事实注入",
             used, window,
         )
-        return max(256, min(want, 256))
+        # Exhausted context must never enlarge the caller's output budget.
+        # Keep the existing zero sentinel (omit the output-limit parameter).
+        return min(want, 256)
     if room < want:
         _log.info("按上下文窗口收窄输出上限：%d → %d（估算输入 %d / 窗口 %d）",
                   want, room, used, window)
@@ -528,6 +772,19 @@ def effective_max_tokens(messages: list[dict], requested: int | None = None) -> 
 
 
 # ---------------------------------------------------------------- 请求参数
+def _stream_usage_enabled() -> bool:
+    """流式请求要不要带 `stream_options.include_usage`。
+
+    读配置失败（例如在极简的测试环境里 settings 尚不可用）时**返回 True**：
+    少了它界面上的 token 计数就永远是 0，而这正是本函数存在的理由 ——
+    宁可多发一个上游可能不认的参数（有降级阶梯兜底），也不要静默地不报用量。
+    """
+    try:
+        return bool(get_settings().llm_stream_usage)
+    except Exception:  # noqa: BLE001
+        return True
+
+
 def _kwargs_for(
     dialect: str,
     provider: Provider,
@@ -541,12 +798,16 @@ def _kwargs_for(
     dropped: set[str],
     json_schema: dict | None = None,
     json_schema_name: str = "result",
+    stream: bool = False,
 ) -> dict[str, Any]:
     """按方言组装请求参数；`dropped` 里的键不出现（参数降级阶梯的结果）。"""
     extra_body = dict(provider.extra_body)
     # 关思考的字段**按供应商**下发：各家字段名不同，而且不认时是**静默忽略**
     # （表现为"关不掉、思考 token 吃满预算、正文为空"）。见 Provider.no_think_body。
     no_think_field = "enable_thinking"
+    # 供应商级的强制关思考优先于调用方：见 Provider.always_no_think
+    # （运行期装上的设备端模型拿不到全局配置，只能靠这条）
+    no_think = bool(no_think or provider.always_no_think)
     if no_think and "enable_thinking" not in dropped:
         no_think_body = provider.no_think_body or {"enable_thinking": False}
         no_think_field = next(iter(no_think_body), "enable_thinking")
@@ -575,6 +836,13 @@ def _kwargs_for(
                 }
             else:
                 kw["response_format"] = {"type": "json_object"}
+        # 流式请求要**显式索取 usage**：OpenAI 兼容规范下流式响应的 usage 默认不下发
+        # （末块只有一个空的 choices），不传这个参数就永远是 0 —— 实测界面上
+        # 「本次 token used: 0（输入 0 / 输出 0）」正是这个原因，**不是"模型没算"**。
+        # 上游不认时由 `_DROPPABLE_PARAMS` 的降级阶梯丢掉重试；阶梯认不出来时
+        # 可用 LLM_STREAM_USAGE=false 关掉（见 config.llm_stream_usage）。
+        if stream and "stream_options" not in dropped and _stream_usage_enabled():
+            kw["stream_options"] = {"include_usage": True}
     else:
         system, rest = _split_system(messages)
         if system:
@@ -599,10 +867,16 @@ def _kwargs_for(
     return kw
 
 
+def _dialect_key(provider: Provider) -> str:
+    if os.environ.get("APP_VARIANT", "main").lower() == "lm":
+        return provider.cache_key()
+    return hashlib.sha256(json.dumps(asdict(provider), sort_keys=True, default=str).encode()).hexdigest()
+
+
 def _initial_dialect(provider: Provider) -> str:
     if provider.api != "auto":
         return provider.api
-    return _DIALECT_CACHE.get(provider.cache_key(), "chat_completions")
+    return _DIALECT_CACHE.get(_dialect_key(provider), "chat_completions")
 
 
 def _alternate(dialect: str) -> str:
@@ -634,7 +908,10 @@ class _Ladder:
         ):
             self.dropped.add("dialect")
             self.dialect = _alternate(self.dialect)
-            _DIALECT_CACHE[self.provider.cache_key()] = self.dialect
+            _DIALECT_CACHE[_dialect_key(self.provider)] = self.dialect
+            if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+                while len(_DIALECT_CACHE) > 128:
+                    _DIALECT_CACHE.pop(next(iter(_DIALECT_CACHE)))
             _log.info(
                 "供应商 %s 的 chat_completions 端点不存在，改用 %s 方言并缓存",
                 self.provider.id, self.dialect,
@@ -698,7 +975,7 @@ def _map_responses_event(ev) -> tuple[list[tuple[str, str]], str | None]:
     if etype in ("response.failed", "response.error"):
         err = getattr(ev, "error", None) or getattr(getattr(ev, "response", None), "error", None)
         msg = getattr(err, "message", None) or str(err or "上游返回失败事件")
-        raise LLMUnavailable(f"LLM 上游返回失败事件：{msg[:200]}")
+        raise LLMUnavailable("LLM 上游返回失败事件；请检查供应商服务状态。")
     return [], None
 
 
@@ -725,12 +1002,35 @@ async def _aclose_stream(stream: Any) -> None:
     close = getattr(stream, "close", None)
     if close is not None:
         try:
-            close()
+            result = close()
+            if inspect.isawaitable(result):
+                await result
         except Exception:  # noqa: BLE001
-            _log.debug("关闭上游流失败", exc_info=True)
+            _log.debug("关闭上游流失败")
 
 
 # ---------------------------------------------------------------- 对外 API
+def _gen_no_think(no_think: bool | None) -> bool:
+    """生成阶段要不要关思考：显式传参优先，否则读配置（默认 False = 云端行为不变）。
+
+    **本地小模型必须打开**（`LLM_GENERATION_NO_THINK=true`）。实测（llama-server +
+    Qwen3.5-0.8B、max_tokens=64、问"G1 始发站"）：
+
+        什么关闭参数都不传      → 正文 0 字、思考 202 字、finish_reason=length
+        reasoning_effort=none  → 正文 15 字、思考 0 字、finish_reason=stop   ← 唯一有效
+        enable_thinking=false  → 正文 0 字、思考 216 字、finish_reason=length（**被静默忽略**）
+
+    也就是说：本地生成若不关思考，**思考会把输出预算吃光、正文一个字都没有** ——
+    不是"慢一点"，是整条生成链路不可用。而生成路径原先硬编码 `no_think=False`
+    （早期只考虑了云端，云端多烧几百思考 token 只是贵一点），所以本地推理一接上就全废。
+    关思考的字段名按供应商走，见 `_kwargs_for` 与 `Provider.no_think_body`。
+    """
+    if no_think is not None:
+        return no_think
+    return bool(getattr(get_settings(), "llm_generation_no_think", False))
+
+
+@_managed
 async def chat_with_reasoning(
     prompt: str,
     *,
@@ -739,6 +1039,7 @@ async def chat_with_reasoning(
     temperature: float = 0.7,
     max_tokens: int | None = None,
     history: list[dict] | None = None,
+    no_think: bool | None = None,
 ) -> tuple[str, str]:
     """普通文本生成，返回 (回答, 思考内容 think)。
 
@@ -753,7 +1054,7 @@ async def chat_with_reasoning(
         return (await _mock.mock_chat(prompt, history=history), "(Mock 思考：解析 prompt 结构（问题/槽位/事实）后按固定模板排版。)")
 
     provider = current_provider()
-    client = get_client(provider)
+    client = await _get_async_client(provider)
     messages = build_messages(prompt, system, history)
     max_tokens = effective_max_tokens(messages, max_tokens)
     ladder = _Ladder(provider)
@@ -763,7 +1064,7 @@ async def chat_with_reasoning(
         kw = _kwargs_for(
             ladder.dialect, provider, messages=messages, model=model or provider.model,
             temperature=temperature, max_tokens=max_tokens, json_mode=False,
-            no_think=False, dropped=ladder.dropped,
+            no_think=_gen_no_think(no_think), dropped=ladder.dropped,
         )
         _t0 = time.perf_counter()
         try:
@@ -772,6 +1073,7 @@ async def chat_with_reasoning(
             decision = ladder.advance(e)
             if decision is not None:
                 continue
+            _record_llm_failure(provider, _t0)
             raise LLMUnavailable(_err_diagnostic(e, provider=provider, dialect=ladder.dialect)) from e
 
         _record_usage(resp, (time.perf_counter() - _t0) * 1000.0, ladder.dialect)
@@ -785,6 +1087,7 @@ async def chat_with_reasoning(
         return (_text_of_response(resp), _reasoning_of_response(resp))
 
 
+@_managed
 async def stream_completion(
     prompt: str,
     *,
@@ -793,6 +1096,7 @@ async def stream_completion(
     temperature: float = 0.7,
     max_tokens: int | None = None,
     history: list[dict] | None = None,
+    no_think: bool | None = None,
 ) -> AsyncIterator[tuple[str, str]]:
     """流式生成，逐块产出 (kind, text)。
 
@@ -811,7 +1115,7 @@ async def stream_completion(
         return
 
     provider = current_provider()
-    client = get_client(provider)
+    client = await _get_async_client(provider)
     messages = build_messages(prompt, system, history)
     max_tokens = effective_max_tokens(messages, max_tokens)
     ladder = _Ladder(provider)
@@ -820,12 +1124,14 @@ async def stream_completion(
     # 因此打开流之后要先"预取一个事件"才能判断方言/参数是否需要降级。
     stream = None
     first = None
+    request_started = time.perf_counter()
     while True:
         ladder.attempts += 1
         kw = _kwargs_for(
             ladder.dialect, provider, messages=messages, model=model or provider.model,
             temperature=temperature, max_tokens=max_tokens, json_mode=False,
-            no_think=False, dropped=ladder.dropped,
+            no_think=_gen_no_think(no_think), dropped=ladder.dropped,
+            stream=True,          # 流式：显式索取 usage，否则界面上永远是 0
         )
         t0 = time.perf_counter()
         try:
@@ -836,6 +1142,10 @@ async def stream_completion(
             except StopAsyncIteration:
                 first = None
             break
+        except (asyncio.CancelledError, GeneratorExit):
+            if stream is not None:
+                await _aclose_stream(stream)
+            raise
         except Exception as e:  # noqa: BLE001
             if stream is not None:
                 await _aclose_stream(stream)
@@ -843,6 +1153,7 @@ async def stream_completion(
             decision = ladder.advance(e)
             if decision is not None:
                 continue
+            _record_llm_failure(provider, t0)
             raise LLMUnavailable(_err_diagnostic(e, provider=provider, dialect=ladder.dialect)) from e
 
     # 流式 usage 是"到当前为止的累计值"：逐 chunk 直接累加会重复膨胀，
@@ -870,7 +1181,7 @@ async def stream_completion(
                     metrics["completion_tokens"] += max(c - prev["completion"], 0)
                     metrics["total_tokens"] += max(t - prev["total"], 0)
                     prev.update(prompt=p, completion=c, total=t)
-                    if not _latency_recorded:
+                    if not _latency_recorded and _CALL.get() is None:
                         metrics["latency_ms"] += (time.perf_counter() - t0) * 1000.0
                         _latency_recorded = True
 
@@ -885,12 +1196,28 @@ async def stream_completion(
                     mark_truncated()
                 for item in _map_responses_event(chunk)[0]:
                     yield item
+    except Exception as e:
+        if _CALL.get() is None:
+            raise
+        raise LLMUnavailable(_err_diagnostic(e, provider=provider, dialect=ladder.dialect)) from e
     finally:
         # **必须**显式关闭上游流：用户中途"停止"或下游异常时，
         # 生成器被 aclose/GeneratorExit 中断，若不关闭则 httpx 连接与 socket 会一直挂着
         # （openai/httpx 客户端均无 __del__ 兜底，只能等 GC 且时机不确定）。
         if stream is not None:
             await _aclose_stream(stream)
+        try:
+            from app.metrics import record_llm
+
+            call = _CALL.get()
+            if call is not None:
+                call.prompt_tokens += prev["prompt"]
+                call.completion_tokens += prev["completion"]
+            else:
+                record_llm(provider.id, (time.perf_counter() - request_started) * 1000.0,
+                           prev["prompt"], prev["completion"])
+        except Exception:  # metrics must never affect model requests
+            _log.debug("记录流式 LLM 指标失败", exc_info=True)
 
 
 async def chat(
@@ -910,6 +1237,7 @@ async def chat(
     return content
 
 
+@_managed
 async def chat_structured(
     prompt: str,
     schema: dict,
@@ -963,7 +1291,7 @@ async def chat_structured(
         no_think = bool(getattr(settings, "llm_structured_no_think", True))
 
     provider = current_provider()
-    client = get_client(provider)
+    client = await _get_async_client(provider)
     _model = model or provider.effective_structured_model
     schema_json = json.dumps(schema, ensure_ascii=False)
     # 是否把**完整 schema** 下发给上游做约束解码（而不只是声明"要一个 JSON 对象"）。
@@ -997,6 +1325,7 @@ async def chat_structured(
             decision = ladder.advance(e)
             if decision is not None:
                 continue
+            _record_llm_failure(provider, _t0)
             raise LLMUnavailable(_err_diagnostic(e, provider=provider, dialect=ladder.dialect)) from e
 
         _record_usage(resp, (time.perf_counter() - _t0) * 1000.0, ladder.dialect)
@@ -1015,6 +1344,7 @@ async def chat_structured(
     return obj
 
 
+@_managed
 async def list_models(provider: Provider | None = None) -> dict:
     """只拉取供应商的**可用模型清单**（不发起对话请求，因此不消耗 token）。
 
@@ -1028,7 +1358,7 @@ async def list_models(provider: Provider | None = None) -> dict:
     p = provider or current_provider()
     try:
         # 关键：此时可能还没有模型名（就是要靠这次调用列出来），故 require_model=False
-        client = get_client(p, require_model=False)
+        client = await _get_async_client(p, require_model=False)
     except LLMUnavailable as e:
         return {"ok": False, "models": [], "error": str(e)}
 
@@ -1145,6 +1475,7 @@ def _parse_json_object(content: str) -> dict:
 
 
 # ---------------------------------------------------------------- 连通性探测
+@_managed
 async def probe_provider(provider: Provider | None = None, *, with_models: bool = True) -> dict:
     """用一个**极小**的真实请求探测供应商是否可用（供「测试连接」按钮使用）。
 
@@ -1166,7 +1497,7 @@ async def probe_provider(provider: Provider | None = None, *, with_models: bool 
         "key_required": p.needs_key,
     }
     try:
-        client = get_client(p)
+        client = await _get_async_client(p)
     except LLMUnavailable as e:
         out["error"] = str(e)
         return out
@@ -1181,7 +1512,9 @@ async def probe_provider(provider: Provider | None = None, *, with_models: bool 
         )
         t0 = time.perf_counter()
         try:
-            await _create_once(client, ladder, kw)
+            resp = await _create_once(client, ladder, kw)
+            if _CALL.get() is not None:
+                _record_usage(resp, (time.perf_counter() - t0) * 1000, ladder.dialect)
         except Exception as e:  # noqa: BLE001 —— 探测失败是预期路径，转成结构化结果
             decision = ladder.advance(e)
             if decision is not None:

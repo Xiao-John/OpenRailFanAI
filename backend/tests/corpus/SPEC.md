@@ -81,6 +81,33 @@
 > ⚠️ 难点（正是要考的）：**「京沪线沿线有哪些车站」是 `rail_line` 不是 `station`**；
 > 「G1 经停哪些站」是 `schedule` 不是 `station`；「G1 由哪组担当」是 `emu_routing` 不是 `schedule`。
 
+#### 3.1.1 intent 与 question_type 的关系（2026-09-20 补，消除 9 条自相矛盾）
+
+**`intent` 表示「该调哪组数据源」，不是「这句话提到了什么」。** 判据是：
+该 intent 对应的工具组（见 `retrieve.py` 顶部映射）**能不能提供回答所需的信息**。
+
+| intent | 工具组 | 有网络搜索兜底？ |
+|---|---|---|
+| `photo_spot` | station.lookup + cnrail.map + emu.routing + **web.search** | ✅ |
+| `news` / `general` | **web.search** | ✅ |
+| `emu_routing` | emu.routing（交路/担当）+ train.schedule | ❌ |
+| `ticket` | ticket.query（余票）+ station.lookup | ❌ |
+| `station` | station.lookup（站档）+ cnrail.map（+大屏） | ❌ |
+| `schedule` | train.schedule + emu.routing + ticket.query | ❌ |
+| `rail_line` | rail.line（径路/里程） | ❌ |
+
+由此得到一条**可机械执行**的口径：
+
+> 问题是「**车型参数/技术规格**（功率、最高速度、编组）」「**概念对比**（有什么区别）」
+> 「**名称由来 / 发展历史**」「**站外交通**」这类工具组给不了、要靠常识或网络搜索的，
+> **即使提到了车次/车型/车站，intent 也取 `general`**。
+
+这与 §3.2 的红线是同一条逻辑的两面：§3.2 说「**车型参数属于 `knowledge`**（可用模型知识）」——
+既然靠模型知识就能答，那它就不该驱动一个查实时数据的工具组。
+
+**反例（不要误判为 general）**：问**机位**（`photo_spot` 有 web 兜底）、
+问**何时开通/是否停运**（`news` 同理）、问**为什么比京沪线短**（`rail.line` 给的里程就能答）。
+
 ### 3.2 question_type（3 选 1）
 
 - `realtime` — 答案依赖数据源、随时间或具体对象变化：**时刻、余票、今日担当、开行状态、径路里程、当前配属**。

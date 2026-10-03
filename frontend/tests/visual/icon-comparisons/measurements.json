@@ -1,0 +1,1896 @@
+{
+  "method": "Original design icon crop normalized to 390 CSS px; colored ink mask on original and Edge screenshot; boundary and centroid tolerance 1px. Blue=design, red=Edge, purple=overlap.",
+  "items": [
+    {
+      "id": "train_schedule-01-back",
+      "source": "desi1.png",
+      "sourceRect": [
+        68,
+        182,
+        25,
+        30
+      ],
+      "asset": "back.svg",
+      "pageImageBox": {
+        "asset": "back.svg",
+        "parent": "icon-btn menu-btn",
+        "x": 16,
+        "y": 55.5,
+        "width": 24,
+        "height": 24,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          22.73,
+          59.95,
+          31.73,
+          77.95
+        ],
+        "center": [
+          26.75,
+          67.59
+        ],
+        "pixels": 44
+      },
+      "actualInk": {
+        "edges": [
+          22.0,
+          59.0,
+          32.0,
+          77.0
+        ],
+        "center": [
+          26.81,
+          67.5
+        ],
+        "pixels": 52
+      },
+      "edgeDeltaPx": [
+        -0.73,
+        -0.95,
+        0.27,
+        -0.95
+      ],
+      "centerDeltaPx": [
+        0.06,
+        -0.09
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-01-back.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-02-history",
+      "source": "desi1.png",
+      "sourceRect": [
+        109,
+        183,
+        31,
+        30
+      ],
+      "asset": "history.svg",
+      "pageImageBox": {
+        "asset": "history.svg",
+        "parent": "icon-btn history-btn",
+        "x": 56,
+        "y": 56.5,
+        "width": 24,
+        "height": 24,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          58.07,
+          58.84,
+          77.07,
+          78.84
+        ],
+        "center": [
+          67.27,
+          67.86
+        ],
+        "pixels": 99
+      },
+      "actualInk": {
+        "edges": [
+          58.0,
+          58.0,
+          78.0,
+          78.0
+        ],
+        "center": [
+          67.11,
+          67.07
+        ],
+        "pixels": 147
+      },
+      "edgeDeltaPx": [
+        -0.07,
+        -0.84,
+        0.93,
+        -0.84
+      ],
+      "centerDeltaPx": [
+        -0.16,
+        -0.79
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-02-history.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-03-train-logo",
+      "source": "desi1.png",
+      "sourceRect": [
+        202,
+        173,
+        38,
+        43
+      ],
+      "asset": "train-logo.svg",
+      "pageImageBox": {
+        "asset": "train-logo.svg",
+        "parent": "title",
+        "x": 138.72,
+        "y": 43.97,
+        "width": 27,
+        "height": 40.26,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          139.5,
+          48.98,
+          165.5,
+          81.98
+        ],
+        "center": [
+          152.18,
+          65.89
+        ],
+        "pixels": 643
+      },
+      "actualInk": {
+        "edges": [
+          140.0,
+          49.0,
+          165.0,
+          81.0
+        ],
+        "center": [
+          151.99,
+          65.43
+        ],
+        "pixels": 500
+      },
+      "edgeDeltaPx": [
+        0.5,
+        0.02,
+        -0.5,
+        -0.98
+      ],
+      "centerDeltaPx": [
+        -0.19,
+        -0.46
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-03-train-logo.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-04-add",
+      "source": "desi1.png",
+      "sourceRect": [
+        437,
+        183,
+        28,
+        31
+      ],
+      "asset": "add.svg",
+      "pageImageBox": {
+        "asset": "add.svg",
+        "parent": "icon-btn new-chat-top",
+        "x": 345,
+        "y": 56.5,
+        "width": 22,
+        "height": 22,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          348.8,
+          59.84,
+          364.8,
+          75.84
+        ],
+        "center": [
+          356.14,
+          67.34
+        ],
+        "pixels": 46
+      },
+      "actualInk": {
+        "edges": [
+          348.0,
+          60.0,
+          364.0,
+          76.0
+        ],
+        "center": [
+          355.5,
+          67.5
+        ],
+        "pixels": 60
+      },
+      "edgeDeltaPx": [
+        -0.8,
+        0.16,
+        -0.8,
+        0.16
+      ],
+      "centerDeltaPx": [
+        -0.64,
+        0.16
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-04-add.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-05-calendar",
+      "source": "desi1.png",
+      "sourceRect": [
+        143,
+        394,
+        25,
+        27
+      ],
+      "asset": "calendar.svg",
+      "pageImageBox": {
+        "asset": "calendar.svg",
+        "parent": "",
+        "x": 87.3,
+        "y": 244.11,
+        "width": 18,
+        "height": 20.16,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          88.2,
+          245.86,
+          104.2,
+          262.86
+        ],
+        "center": [
+          96.08,
+          254.45
+        ],
+        "pixels": 167
+      },
+      "actualInk": {
+        "edges": [
+          88.0,
+          246.0,
+          104.0,
+          263.0
+        ],
+        "center": [
+          95.33,
+          253.63
+        ],
+        "pixels": 156
+      },
+      "edgeDeltaPx": [
+        -0.2,
+        0.14,
+        -0.2,
+        0.14
+      ],
+      "centerDeltaPx": [
+        -0.75,
+        -0.82
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-05-calendar.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-06-clock",
+      "source": "desi1.png",
+      "sourceRect": [
+        292,
+        394,
+        28,
+        27
+      ],
+      "asset": "clock.svg",
+      "pageImageBox": {
+        "asset": "clock.svg",
+        "parent": "",
+        "x": 219.8,
+        "y": 245.19,
+        "width": 18,
+        "height": 18,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          220.27,
+          245.86,
+          237.27,
+          262.86
+        ],
+        "center": [
+          228.57,
+          253.83
+        ],
+        "pixels": 136
+      },
+      "actualInk": {
+        "edges": [
+          220.0,
+          246.0,
+          237.0,
+          263.0
+        ],
+        "center": [
+          228.47,
+          253.79
+        ],
+        "pixels": 118
+      },
+      "edgeDeltaPx": [
+        -0.27,
+        0.14,
+        -0.27,
+        0.14
+      ],
+      "centerDeltaPx": [
+        -0.1,
+        -0.04
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-06-clock.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-07-info",
+      "source": "desi1.png",
+      "sourceRect": [
+        141,
+        735,
+        27,
+        27
+      ],
+      "asset": "info.svg",
+      "pageImageBox": {
+        "asset": "info.svg",
+        "parent": "schedule-note",
+        "x": 85,
+        "y": 544.86,
+        "width": 18,
+        "height": 18,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          85.43,
+          545.11,
+          102.43,
+          562.11
+        ],
+        "center": [
+          93.59,
+          553.44
+        ],
+        "pixels": 131
+      },
+      "actualInk": {
+        "edges": [
+          86.0,
+          546.0,
+          102.0,
+          562.0
+        ],
+        "center": [
+          93.46,
+          553.24
+        ],
+        "pixels": 110
+      },
+      "edgeDeltaPx": [
+        0.57,
+        0.89,
+        -0.43,
+        -0.11
+      ],
+      "centerDeltaPx": [
+        -0.13,
+        -0.2
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-07-info.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-08-link",
+      "source": "desi1.png",
+      "sourceRect": [
+        138,
+        785,
+        25,
+        27
+      ],
+      "asset": "link.svg",
+      "pageImageBox": {
+        "asset": "link.svg",
+        "parent": "",
+        "x": 82.9,
+        "y": 587.66,
+        "width": 14.4,
+        "height": 23.4,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          82.77,
+          591.43,
+          96.77,
+          606.43
+        ],
+        "center": [
+          89.85,
+          598.17
+        ],
+        "pixels": 61
+      },
+      "actualInk": {
+        "edges": [
+          83.0,
+          592.0,
+          97.0,
+          606.0
+        ],
+        "center": [
+          89.49,
+          598.54
+        ],
+        "pixels": 76
+      },
+      "edgeDeltaPx": [
+        0.23,
+        0.57,
+        0.23,
+        -0.43
+      ],
+      "centerDeltaPx": [
+        -0.36,
+        0.37
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-08-link.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-09-copy",
+      "source": "desi1.png",
+      "sourceRect": [
+        118,
+        839,
+        26,
+        26
+      ],
+      "asset": "copy.svg",
+      "pageImageBox": {
+        "asset": "copy.svg",
+        "parent": "",
+        "x": 66,
+        "y": 641.06,
+        "width": 16,
+        "height": 16,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          66.05,
+          641.3,
+          80.05,
+          656.3
+        ],
+        "center": [
+          72.64,
+          648.07
+        ],
+        "pixels": 97
+      },
+      "actualInk": {
+        "edges": [
+          67.0,
+          642.0,
+          80.0,
+          656.0
+        ],
+        "center": [
+          72.5,
+          648.46
+        ],
+        "pixels": 82
+      },
+      "edgeDeltaPx": [
+        0.95,
+        0.7,
+        -0.05,
+        -0.3
+      ],
+      "centerDeltaPx": [
+        -0.14,
+        0.39
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-09-copy.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-10-refresh",
+      "source": "desi1.png",
+      "sourceRect": [
+        218,
+        839,
+        27,
+        27
+      ],
+      "asset": "refresh.svg",
+      "pageImageBox": {
+        "asset": "refresh.svg",
+        "parent": "",
+        "x": 153.2,
+        "y": 641.36,
+        "width": 16,
+        "height": 16,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          154.68,
+          642.3,
+          167.68,
+          656.3
+        ],
+        "center": [
+          160.73,
+          648.31
+        ],
+        "pixels": 57
+      },
+      "actualInk": {
+        "edges": [
+          155.0,
+          643.0,
+          167.0,
+          656.0
+        ],
+        "center": [
+          160.47,
+          648.91
+        ],
+        "pixels": 58
+      },
+      "edgeDeltaPx": [
+        0.32,
+        0.7,
+        -0.68,
+        -0.3
+      ],
+      "centerDeltaPx": [
+        -0.26,
+        0.6
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-10-refresh.png",
+      "result": "pass"
+    },
+    {
+      "id": "train_schedule-11-send",
+      "source": "desi1.png",
+      "sourceRect": [
+        430,
+        958,
+        33,
+        34
+      ],
+      "asset": "send.svg",
+      "pageImageBox": {
+        "asset": "send.svg",
+        "parent": "",
+        "x": 340,
+        "y": 744.5,
+        "width": 19,
+        "height": 20,
+        "visible": true
+      },
+      "scale": 0.88636364,
+      "sourceInk": {
+        "edges": [
+          342.59,
+          746.77,
+          357.59,
+          761.77
+        ],
+        "center": [
+          348.58,
+          754.12
+        ],
+        "pixels": 108
+      },
+      "actualInk": {
+        "edges": [
+          343.0,
+          747.0,
+          358.0,
+          762.0
+        ],
+        "center": [
+          348.45,
+          754.0
+        ],
+        "pixels": 87
+      },
+      "edgeDeltaPx": [
+        0.41,
+        0.23,
+        0.41,
+        0.23
+      ],
+      "centerDeltaPx": [
+        -0.13,
+        -0.12
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/train_schedule-11-send.png",
+      "result": "pass"
+    },
+    {
+      "id": "emu_routing-12-chevron-right",
+      "source": "desi1.png",
+      "sourceRect": [
+        898,
+        520,
+        28,
+        30
+      ],
+      "asset": "chevron-right.svg",
+      "pageImageBox": {
+        "asset": "chevron-right.svg",
+        "parent": "routing-record-link",
+        "x": 338,
+        "y": 361.11,
+        "width": 18,
+        "height": 18,
+        "visible": true
+      },
+      "scale": 0.88838269,
+      "sourceInk": {
+        "edges": [
+          343.7,
+          363.35,
+          350.7,
+          375.35
+        ],
+        "center": [
+          346.83,
+          369.09
+        ],
+        "pixels": 23
+      },
+      "actualInk": {
+        "edges": [
+          344.0,
+          364.0,
+          350.0,
+          376.0
+        ],
+        "center": [
+          346.5,
+          369.5
+        ],
+        "pixels": 32
+      },
+      "edgeDeltaPx": [
+        0.3,
+        0.65,
+        -0.7,
+        0.65
+      ],
+      "centerDeltaPx": [
+        -0.33,
+        0.41
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/emu_routing-12-chevron-right.png",
+      "result": "pass"
+    },
+    {
+      "id": "history-13-back",
+      "source": "desi1.png",
+      "sourceRect": [
+        1008,
+        184,
+        28,
+        31
+      ],
+      "asset": "back.svg",
+      "pageImageBox": {
+        "asset": "back.svg",
+        "parent": "history-back",
+        "x": 18,
+        "y": 55.96,
+        "width": 22,
+        "height": 25.08,
+        "visible": true
+      },
+      "scale": 0.88435374,
+      "sourceInk": {
+        "edges": [
+          23.57,
+          59.6,
+          32.57,
+          77.6
+        ],
+        "center": [
+          27.94,
+          67.5
+        ],
+        "pixels": 41
+      },
+      "actualInk": {
+        "edges": [
+          24.0,
+          59.0,
+          33.0,
+          78.0
+        ],
+        "center": [
+          27.93,
+          67.81
+        ],
+        "pixels": 43
+      },
+      "edgeDeltaPx": [
+        0.43,
+        -0.6,
+        0.43,
+        0.4
+      ],
+      "centerDeltaPx": [
+        -0.01,
+        0.31
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/history-13-back.png",
+      "result": "pass"
+    },
+    {
+      "id": "history-14-close",
+      "source": "desi1.png",
+      "sourceRect": [
+        1382,
+        185,
+        28,
+        30
+      ],
+      "asset": "close.svg",
+      "pageImageBox": {
+        "asset": "close.svg",
+        "parent": "history-close",
+        "x": 350.7,
+        "y": 57.23,
+        "width": 22,
+        "height": 23.54,
+        "visible": true
+      },
+      "scale": 0.88435374,
+      "sourceInk": {
+        "edges": [
+          354.32,
+          61.48,
+          369.32,
+          76.48
+        ],
+        "center": [
+          361.06,
+          68.72
+        ],
+        "pixels": 76
+      },
+      "actualInk": {
+        "edges": [
+          355.0,
+          61.0,
+          369.0,
+          77.0
+        ],
+        "center": [
+          360.88,
+          68.61
+        ],
+        "pixels": 69
+      },
+      "edgeDeltaPx": [
+        0.68,
+        -0.48,
+        -0.32,
+        0.52
+      ],
+      "centerDeltaPx": [
+        -0.18,
+        -0.11
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/history-14-close.png",
+      "result": "pass"
+    },
+    {
+      "id": "history-15-add",
+      "source": "desi1.png",
+      "sourceRect": [
+        1152,
+        296,
+        27,
+        28
+      ],
+      "asset": "add.svg",
+      "pageImageBox": {
+        "asset": "add.svg",
+        "parent": "history-create",
+        "x": 146,
+        "y": 156,
+        "width": 22,
+        "height": 22,
+        "visible": true
+      },
+      "scale": 0.88435374,
+      "sourceInk": {
+        "edges": [
+          148.92,
+          159.65,
+          164.92,
+          174.65
+        ],
+        "center": [
+          156.42,
+          166.65
+        ],
+        "pixels": 68
+      },
+      "actualInk": {
+        "edges": [
+          149.0,
+          159.0,
+          165.0,
+          175.0
+        ],
+        "center": [
+          156.5,
+          166.5
+        ],
+        "pixels": 60
+      },
+      "edgeDeltaPx": [
+        0.08,
+        -0.65,
+        0.08,
+        0.35
+      ],
+      "centerDeltaPx": [
+        0.08,
+        -0.15
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/history-15-add.png",
+      "result": "pass"
+    },
+    {
+      "id": "history-16-more",
+      "source": "desi1.png",
+      "sourceRect": [
+        1366,
+        409,
+        29,
+        21
+      ],
+      "asset": "more.svg",
+      "pageImageBox": {
+        "asset": "more.svg",
+        "parent": "history-more",
+        "x": 334,
+        "y": 254.25,
+        "width": 25,
+        "height": 25,
+        "visible": true
+      },
+      "scale": 0.88435374,
+      "sourceInk": {
+        "edges": [
+          336.17,
+          264.58,
+          355.17,
+          268.58
+        ],
+        "center": [
+          345.54,
+          266.29
+        ],
+        "pixels": 38
+      },
+      "actualInk": {
+        "edges": [
+          337.0,
+          265.0,
+          356.0,
+          268.0
+        ],
+        "center": [
+          346.0,
+          266.0
+        ],
+        "pixels": 29
+      },
+      "edgeDeltaPx": [
+        0.83,
+        0.42,
+        0.83,
+        -0.58
+      ],
+      "centerDeltaPx": [
+        0.46,
+        -0.29
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/history-16-more.png",
+      "result": "pass"
+    },
+    {
+      "id": "history-17-edit",
+      "source": "desi1.png",
+      "sourceRect": [
+        1033,
+        790,
+        29,
+        30
+      ],
+      "asset": "edit.svg",
+      "pageImageBox": {
+        "asset": "edit.svg",
+        "parent": "history-rename",
+        "x": 39.7,
+        "y": 591,
+        "width": 25,
+        "height": 25,
+        "visible": true
+      },
+      "scale": 0.88435374,
+      "sourceInk": {
+        "edges": [
+          43.68,
+          593.52,
+          61.68,
+          612.52
+        ],
+        "center": [
+          52.13,
+          603.59
+        ],
+        "pixels": 93
+      },
+      "actualInk": {
+        "edges": [
+          43.0,
+          594.0,
+          62.0,
+          613.0
+        ],
+        "center": [
+          52.45,
+          604.48
+        ],
+        "pixels": 130
+      },
+      "edgeDeltaPx": [
+        -0.68,
+        0.48,
+        0.32,
+        0.48
+      ],
+      "centerDeltaPx": [
+        0.32,
+        0.89
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/history-17-edit.png",
+      "result": "pass"
+    },
+    {
+      "id": "history-18-trash",
+      "source": "desi1.png",
+      "sourceRect": [
+        1032,
+        845,
+        29,
+        31
+      ],
+      "asset": "trash.svg",
+      "pageImageBox": {
+        "asset": "trash.svg",
+        "parent": "danger",
+        "x": 40,
+        "y": 639,
+        "width": 25,
+        "height": 25,
+        "visible": true
+      },
+      "scale": 0.88435374,
+      "sourceInk": {
+        "edges": [
+          42.8,
+          642.16,
+          61.8,
+          661.16
+        ],
+        "center": [
+          51.91,
+          651.03
+        ],
+        "pixels": 154
+      },
+      "actualInk": {
+        "edges": [
+          43.0,
+          642.0,
+          62.0,
+          662.0
+        ],
+        "center": [
+          52.01,
+          651.2
+        ],
+        "pixels": 193
+      },
+      "edgeDeltaPx": [
+        0.2,
+        -0.16,
+        0.2,
+        0.84
+      ],
+      "centerDeltaPx": [
+        0.1,
+        0.17
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/history-18-trash.png",
+      "result": "pass"
+    },
+    {
+      "id": "history-19-settings",
+      "source": "desi1.png",
+      "sourceRect": [
+        1032,
+        972,
+        30,
+        31
+      ],
+      "asset": "settings.svg",
+      "pageImageBox": {
+        "asset": "settings.svg",
+        "parent": "",
+        "x": 44.4,
+        "y": 753,
+        "width": 23,
+        "height": 23,
+        "visible": true
+      },
+      "scale": 0.88435374,
+      "sourceInk": {
+        "edges": [
+          45.8,
+          754.47,
+          64.8,
+          774.47
+        ],
+        "center": [
+          54.87,
+          764.13
+        ],
+        "pixels": 147
+      },
+      "actualInk": {
+        "edges": [
+          46.0,
+          755.0,
+          65.0,
+          774.0
+        ],
+        "center": [
+          55.22,
+          763.76
+        ],
+        "pixels": 157
+      },
+      "edgeDeltaPx": [
+        0.2,
+        0.53,
+        0.2,
+        -0.47
+      ],
+      "centerDeltaPx": [
+        0.35,
+        -0.37
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/history-19-settings.png",
+      "result": "pass"
+    },
+    {
+      "id": "history-20-help",
+      "source": "desi1.png",
+      "sourceRect": [
+        1274,
+        972,
+        32,
+        31
+      ],
+      "asset": "help.svg",
+      "pageImageBox": {
+        "asset": "help.svg",
+        "parent": "",
+        "x": 255,
+        "y": 753,
+        "width": 23,
+        "height": 23,
+        "visible": true
+      },
+      "scale": 0.88435374,
+      "sourceInk": {
+        "edges": [
+          257.81,
+          754.47,
+          276.81,
+          774.47
+        ],
+        "center": [
+          266.81,
+          763.36
+        ],
+        "pixels": 114
+      },
+      "actualInk": {
+        "edges": [
+          257.0,
+          755.0,
+          276.0,
+          774.0
+        ],
+        "center": [
+          266.07,
+          763.28
+        ],
+        "pixels": 139
+      },
+      "edgeDeltaPx": [
+        -0.81,
+        0.53,
+        -0.81,
+        -0.47
+      ],
+      "centerDeltaPx": [
+        -0.74,
+        -0.08
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/history-20-help.png",
+      "result": "pass"
+    },
+    {
+      "id": "history-21-search-muted",
+      "source": "desi1.png",
+      "sourceRect": [
+        1022,
+        235,
+        29,
+        31
+      ],
+      "asset": "search-muted.svg",
+      "pageImageBox": {
+        "x": 30,
+        "y": 104.5,
+        "width": 23,
+        "height": 21,
+        "asset": "search-muted.svg"
+      },
+      "scale": 0.88435374,
+      "sourceInk": {
+        "edges": [
+          33.95,
+          107.7,
+          50.95,
+          123.7
+        ],
+        "center": [
+          41.61,
+          115.59
+        ],
+        "pixels": 74
+      },
+      "actualInk": {
+        "edges": [
+          34.0,
+          107.0,
+          51.0,
+          124.0
+        ],
+        "center": [
+          41.48,
+          114.83
+        ],
+        "pixels": 80
+      },
+      "edgeDeltaPx": [
+        0.05,
+        -0.7,
+        0.05,
+        0.3
+      ],
+      "centerDeltaPx": [
+        -0.13,
+        -0.76
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/history-21-search-muted.png",
+      "result": "pass"
+    },
+    {
+      "id": "query_loading-22-stop",
+      "source": "desi2.png",
+      "sourceRect": [
+        438,
+        385,
+        27,
+        28
+      ],
+      "asset": "stop.svg",
+      "pageImageBox": {
+        "asset": "stop.svg",
+        "parent": "stop",
+        "x": 321,
+        "y": 744,
+        "width": 22,
+        "height": 22,
+        "visible": true
+      },
+      "scale": 0.85152838,
+      "sourceInk": {
+        "edges": [
+          324.5,
+          747.0,
+          339.5,
+          762.0
+        ],
+        "center": [
+          331.47,
+          753.97
+        ],
+        "pixels": 220
+      },
+      "actualInk": {
+        "edges": [
+          325.0,
+          748.0,
+          339.0,
+          762.0
+        ],
+        "center": [
+          331.5,
+          754.5
+        ],
+        "pixels": 184
+      },
+      "edgeDeltaPx": [
+        0.5,
+        1.0,
+        -0.5,
+        0.0
+      ],
+      "centerDeltaPx": [
+        0.03,
+        0.53
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/query_loading-22-stop.png",
+      "result": "pass"
+    },
+    {
+      "id": "batch_partial-23-check",
+      "source": "desi2.png",
+      "sourceRect": [
+        819,
+        215,
+        32,
+        31
+      ],
+      "asset": "check.svg",
+      "pageImageBox": {
+        "asset": "check.svg",
+        "parent": "batch-ok",
+        "x": 240,
+        "y": 211.19,
+        "width": 25,
+        "height": 25,
+        "visible": true
+      },
+      "scale": 0.85903084,
+      "sourceInk": {
+        "edges": [
+          240.49,
+          212.31,
+          263.49,
+          235.31
+        ],
+        "center": [
+          251.49,
+          223.67
+        ],
+        "pixels": 393
+      },
+      "actualInk": {
+        "edges": [
+          241.0,
+          212.0,
+          264.0,
+          236.0
+        ],
+        "center": [
+          251.95,
+          223.5
+        ],
+        "pixels": 390
+      },
+      "edgeDeltaPx": [
+        0.51,
+        -0.31,
+        0.51,
+        0.69
+      ],
+      "centerDeltaPx": [
+        0.46,
+        -0.17
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/batch_partial-23-check.png",
+      "result": "pass"
+    },
+    {
+      "id": "batch_partial-24-warning",
+      "source": "desi2.png",
+      "sourceRect": [
+        819,
+        311,
+        32,
+        31
+      ],
+      "asset": "warning.svg",
+      "pageImageBox": {
+        "asset": "warning.svg",
+        "parent": "batch-failed",
+        "x": 240,
+        "y": 293.69,
+        "width": 23,
+        "height": 24,
+        "visible": true
+      },
+      "scale": 0.85903084,
+      "sourceInk": {
+        "edges": [
+          241.49,
+          294.78,
+          262.49,
+          316.78
+        ],
+        "center": [
+          251.51,
+          305.3
+        ],
+        "pixels": 365
+      },
+      "actualInk": {
+        "edges": [
+          241.0,
+          295.0,
+          262.0,
+          316.0
+        ],
+        "center": [
+          250.94,
+          305.06
+        ],
+        "pixels": 334
+      },
+      "edgeDeltaPx": [
+        -0.49,
+        0.22,
+        -0.49,
+        -0.78
+      ],
+      "centerDeltaPx": [
+        -0.57,
+        -0.24
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/batch_partial-24-warning.png",
+      "result": "pass"
+    },
+    {
+      "id": "routing_empty-25-train-empty",
+      "source": "desi2.png",
+      "sourceRect": [
+        1226,
+        160,
+        65,
+        79
+      ],
+      "asset": "train-empty.svg",
+      "pageImageBox": {
+        "asset": "train-empty.svg",
+        "parent": "empty-routing-mark",
+        "x": 164.5,
+        "y": 178.19,
+        "width": 48,
+        "height": 64,
+        "visible": true
+      },
+      "scale": 0.84415584,
+      "sourceInk": {
+        "edges": [
+          166.81,
+          181.5,
+          214.81,
+          241.5
+        ],
+        "center": [
+          192.96,
+          217.74
+        ],
+        "pixels": 159
+      },
+      "actualInk": {
+        "edges": [
+          166.0,
+          180.0,
+          212.0,
+          242.0
+        ],
+        "center": [
+          188.51,
+          211.25
+        ],
+        "pixels": 1083
+      },
+      "edgeDeltaPx": [
+        -0.81,
+        -1.5,
+        -2.81,
+        0.5
+      ],
+      "centerDeltaPx": [
+        -4.45,
+        -6.49
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/routing_empty-25-train-empty.png",
+      "result": "fail"
+    },
+    {
+      "id": "routing_empty-26-search-empty",
+      "source": "desi2.png",
+      "sourceRect": [
+        1290,
+        188,
+        45,
+        51
+      ],
+      "asset": "search-empty.svg",
+      "pageImageBox": {
+        "asset": "search-empty.svg",
+        "parent": "empty-routing-mark",
+        "x": 217.71,
+        "y": 205.39,
+        "width": 32.98,
+        "height": 34,
+        "visible": true
+      },
+      "scale": 0.84415584,
+      "sourceInk": {
+        "edges": [
+          219.84,
+          207.14,
+          250.84,
+          238.14
+        ],
+        "center": [
+          233.93,
+          221.95
+        ],
+        "pixels": 242
+      },
+      "actualInk": {
+        "edges": [
+          220.0,
+          207.0,
+          251.0,
+          239.0
+        ],
+        "center": [
+          233.51,
+          221.17
+        ],
+        "pixels": 212
+      },
+      "edgeDeltaPx": [
+        0.16,
+        -0.14,
+        0.16,
+        0.86
+      ],
+      "centerDeltaPx": [
+        -0.42,
+        -0.78
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/routing_empty-26-search-empty.png",
+      "result": "pass"
+    },
+    {
+      "id": "connection_error-27-cloud-error",
+      "source": "desi2.png",
+      "sourceRect": [
+        77,
+        573,
+        80,
+        68
+      ],
+      "asset": "cloud-error.svg",
+      "pageImageBox": {
+        "asset": "cloud-error.svg",
+        "parent": "connection-title-row",
+        "x": 30,
+        "y": 204.19,
+        "width": 54,
+        "height": 54,
+        "visible": true
+      },
+      "scale": 0.85152838,
+      "sourceInk": {
+        "edges": [
+          30.45,
+          203.64,
+          92.45,
+          254.64
+        ],
+        "center": [
+          66.35,
+          232.75
+        ],
+        "pixels": 1074
+      },
+      "actualInk": {
+        "edges": [
+          32.0,
+          208.0,
+          80.0,
+          254.0
+        ],
+        "center": [
+          61.8,
+          233.92
+        ],
+        "pixels": 683
+      },
+      "edgeDeltaPx": [
+        1.55,
+        4.36,
+        -12.45,
+        -0.64
+      ],
+      "centerDeltaPx": [
+        -4.55,
+        1.17
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/connection_error-27-cloud-error.png",
+      "result": "fail"
+    },
+    {
+      "id": "reading_followup-28-search",
+      "source": "desi2.png",
+      "sourceRect": [
+        572,
+        800,
+        31,
+        33
+      ],
+      "asset": "search.svg",
+      "pageImageBox": {
+        "asset": "search.svg",
+        "parent": "followup",
+        "x": 27.25,
+        "y": 523.75,
+        "width": 16,
+        "height": 16,
+        "visible": true
+      },
+      "scale": 0.85903084,
+      "sourceInk": {
+        "edges": [
+          27.59,
+          525.33,
+          41.59,
+          538.33
+        ],
+        "center": [
+          34.46,
+          531.29
+        ],
+        "pixels": 78
+      },
+      "actualInk": {
+        "edges": [
+          28.0,
+          525.0,
+          42.0,
+          539.0
+        ],
+        "center": [
+          34.36,
+          531.36
+        ],
+        "pixels": 70
+      },
+      "edgeDeltaPx": [
+        0.41,
+        -0.33,
+        0.41,
+        0.67
+      ],
+      "centerDeltaPx": [
+        -0.1,
+        0.07
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/reading_followup-28-search.png",
+      "result": "pass"
+    },
+    {
+      "id": "reading_followup-29-calendar",
+      "source": "desi2.png",
+      "sourceRect": [
+        687,
+        800,
+        31,
+        33
+      ],
+      "asset": "calendar.svg",
+      "pageImageBox": {
+        "asset": "calendar.svg",
+        "parent": "followup",
+        "x": 127.75,
+        "y": 523.75,
+        "width": 16,
+        "height": 16,
+        "visible": true
+      },
+      "scale": 0.85903084,
+      "sourceInk": {
+        "edges": [
+          128.38,
+          524.33,
+          143.38,
+          539.33
+        ],
+        "center": [
+          135.54,
+          531.32
+        ],
+        "pixels": 147
+      },
+      "actualInk": {
+        "edges": [
+          129.0,
+          525.0,
+          143.0,
+          539.0
+        ],
+        "center": [
+          135.5,
+          531.53
+        ],
+        "pixels": 114
+      },
+      "edgeDeltaPx": [
+        0.62,
+        0.67,
+        -0.38,
+        -0.33
+      ],
+      "centerDeltaPx": [
+        -0.04,
+        0.21
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/reading_followup-29-calendar.png",
+      "result": "pass"
+    },
+    {
+      "id": "reading_followup-30-down",
+      "source": "desi2.png",
+      "sourceRect": [
+        671,
+        743,
+        30,
+        30
+      ],
+      "asset": "down.svg",
+      "pageImageBox": {
+        "asset": "down.svg",
+        "parent": "",
+        "x": 113.1,
+        "y": 652.5,
+        "width": 22,
+        "height": 18,
+        "visible": true
+      },
+      "scale": 0.85903084,
+      "sourceInk": {
+        "edges": [
+          117.06,
+          654.01,
+          131.06,
+          668.01
+        ],
+        "center": [
+          123.69,
+          661.64
+        ],
+        "pixels": 64
+      },
+      "actualInk": {
+        "edges": [
+          118.0,
+          654.0,
+          131.0,
+          668.0
+        ],
+        "center": [
+          124.03,
+          661.58
+        ],
+        "pixels": 65
+      },
+      "edgeDeltaPx": [
+        0.94,
+        -0.01,
+        -0.06,
+        -0.01
+      ],
+      "centerDeltaPx": [
+        0.34,
+        -0.06
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/reading_followup-30-down.png",
+      "result": "pass"
+    },
+    {
+      "id": "reading_followup-31-up",
+      "source": "desi2.png",
+      "sourceRect": [
+        935,
+        852,
+        38,
+        38
+      ],
+      "asset": "up.svg",
+      "pageImageBox": {
+        "asset": "up.svg",
+        "parent": "",
+        "x": 324,
+        "y": 748,
+        "width": 22,
+        "height": 22,
+        "visible": true
+      },
+      "scale": 0.85903084,
+      "sourceInk": {
+        "edges": [
+          322.5,
+          750.5,
+          337.5,
+          767.5
+        ],
+        "center": [
+          329.38,
+          756.97
+        ],
+        "pixels": 72
+      },
+      "actualInk": {
+        "edges": [
+          324.0,
+          748.0,
+          342.0,
+          770.0
+        ],
+        "center": [
+          329.23,
+          757.94
+        ],
+        "pixels": 197
+      },
+      "edgeDeltaPx": [
+        1.5,
+        -2.5,
+        4.5,
+        2.5
+      ],
+      "centerDeltaPx": [
+        -0.15,
+        0.97
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/reading_followup-31-up.png",
+      "result": "fail"
+    },
+    {
+      "id": "query_details-32-link",
+      "source": "desi2.png",
+      "sourceRect": [
+        1067,
+        607,
+        35,
+        39
+      ],
+      "asset": "link.svg",
+      "pageImageBox": {
+        "asset": "link.svg",
+        "parent": "request-source-icon",
+        "x": 35.3,
+        "y": 380.06,
+        "width": 20,
+        "height": 34,
+        "visible": true
+      },
+      "scale": 0.84415584,
+      "sourceInk": {
+        "edges": [
+          34.82,
+          386.64,
+          55.82,
+          407.64
+        ],
+        "center": [
+          45.07,
+          396.92
+        ],
+        "pixels": 195
+      },
+      "actualInk": {
+        "edges": [
+          35.0,
+          387.0,
+          55.0,
+          407.0
+        ],
+        "center": [
+          44.7,
+          396.6
+        ],
+        "pixels": 136
+      },
+      "edgeDeltaPx": [
+        0.18,
+        0.36,
+        -0.82,
+        -0.64
+      ],
+      "centerDeltaPx": [
+        -0.37,
+        -0.32
+      ],
+      "overlay": "/Users/xylo/Documents/OpenRailFanAI/frontend/tests/visual/icon-comparisons/query_details-32-link.png",
+      "result": "pass"
+    }
+  ],
+  "summary": {
+    "pass": 29,
+    "fail": 3,
+    "unresolved": 0
+  }
+}

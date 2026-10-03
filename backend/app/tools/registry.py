@@ -6,6 +6,12 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+import json
+import os
+from copy import deepcopy
+
+from app.query_cache import QueryCache, query_scope
+from app.dates import normalize_date
 
 from app.tools.cnrail import CnRailTool
 from app.tools.emu_routing import EmuRoutingTool
@@ -22,6 +28,7 @@ from app.tools.station_lookup import StationLookupTool
 from app.tools.station_screen import StationScreenTool
 from app.tools.t12306 import T12306Tool
 from app.tools.ticket_query import TicketQueryTool
+from app.tools.ticket_price import TicketPriceTool
 from app.tools.train_schedule import TrainScheduleTool
 from app.tools.web import WebFetchTool
 from app.tools.web_search import WebSearchTool2
@@ -30,6 +37,7 @@ if TYPE_CHECKING:
     from app.tools.base import Tool
 
 _REGISTRY: dict[str, "Tool"] = {}
+_QUERIES: dict[str, QueryCache] = {}
 
 
 def register(tool: "Tool") -> None:
@@ -50,7 +58,34 @@ async def invoke_by_name(name: str, params: dict):
         from app.tools.base import ToolResult
 
         return ToolResult(ok=False, error=f"工具未启用或不存在: {name}")
-    return await tool.invoke(params)
+    if os.environ.get("APP_VARIANT", "main").lower() == "lm":
+        return await tool.invoke(params)
+    # Snapshot before the first await: the key and eventual factory must refer
+    # to the same inputs even if the caller mutates nested data meanwhile.
+    params = deepcopy(params)
+    # Hash the complete settings and request overrides: neither identities nor secrets
+    # appear in metrics, and different dates/actions/BYOK settings cannot share results.
+    key = (query_scope(), normalize_date(params.get("date") or params.get("time")),
+           json.dumps(params, sort_keys=True, ensure_ascii=False, default=str))
+    cache = _QUERIES.setdefault(name, QueryCache("query." + name))
+    ttl = {"ticket.query": 15, "train.schedule": 30}.get(name, 0)
+    async def fetch():
+        result = await tool.invoke(deepcopy(params))
+        if ttl and result.ok:
+            from datetime import datetime, timezone
+            result.fetched_at = result.fetched_at or datetime.now(timezone.utc).isoformat()
+            result.note = (result.note + f"；查询快照最多复用 {ttl} 秒，采样时间 {result.fetched_at}").lstrip("；")
+        return result
+
+    return await cache.get(key, fetch, ttl=ttl,
+                           reusable=lambda result: bool(result.ok))
+
+
+async def close_queries() -> None:
+    # QueryCache.close releases only this loop. Keep the per-tool objects so
+    # another live loop retains its in-flight work and bounded snapshots.
+    for cache in list(_QUERIES.values()):
+        await cache.close()
 
 
 def _register_all() -> None:
@@ -68,6 +103,7 @@ def _register_all() -> None:
     register(RailMileageTool())
     register(TrainScheduleTool())
     register(TicketQueryTool())
+    register(TicketPriceTool())
     register(T12306Tool())
     # 额外数据源（M3.1 新增）
     register(JpRailFanTool())

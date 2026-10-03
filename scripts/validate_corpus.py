@@ -42,7 +42,9 @@ INTENT_BATCHES = [
     "intent_schedule_routing", "intent_ticket", "intent_station",
     "intent_railline", "intent_photo_news", "intent_general_defer",
     "intent_multiturn",
-]
+] + sorted(p.stem for p in CANDIDATES.glob("gen_*.jsonl"))
+# `gen_*` 自动纳管：模板生成器（scripts/gen_corpus_templates.py）会按模板落成
+# 独立批次，写死批次名的话每加一个模板都要回来改这里 —— 迟早会漏。
 PHRASING_BATCHES = ["phrasings_time_window", "phrasings_seat_type"]
 
 P = G = A = 0
@@ -402,7 +404,9 @@ def main() -> int:
             print(f"⚠ 缺文件：{p}")
             continue
         before = (P, G, A)
-        if b.startswith("intent_"):
+        # 按**批次归属**分发，不按名字前缀：`gen_*` 是模板生成器加的意图批次，
+        # 用 startswith("intent_") 判断会把它错当成短语批次 → KeyError: 'raw'。
+        if b in INTENT_BATCHES:
             asyncio.run(check_intent(b, p))
         else:
             check_phrasings(b, p)

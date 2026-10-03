@@ -1,0 +1,210 @@
+run_id: 20261003T103246-78d2c7c3
+started_at: '2026-10-03T10:32:46+08:00'
+script_version: 2.8.0
+capture_run_token: 20261003T103246-78d2c7c3
+status: passed
+steps:
+- id: instrumentation
+  command:
+  - bash
+  - scripts/android/build.sh
+  - connectedDebugAndroidTest
+  - -Pandroid.testInstrumentationRunnerArguments.acceptanceRunToken=20261003T103246-78d2c7c3
+  exit_code: 0
+  log: acceptance/runs/20261003T103246-78d2c7c3/instrumentation.log
+- id: extract
+  command:
+  - /Users/xylo/Documents/OpenRailFanAI/backend/.venv/bin/python
+  - scripts/android/extract-native-captures.py
+  - --log
+  - /Users/xylo/Documents/OpenRailFanAI/acceptance/runs/20261003T103246-78d2c7c3/test-results/railfan-arm64(AVD)
+    - 15/logcat-org.openrailfanai.app.NativeAcceptanceCaptureTest-captureNineFixedMainStatesAt390By844Px.txt
+  - --expected-run-token
+  - 20261003T103246-78d2c7c3
+  exit_code: 0
+  log: acceptance/runs/20261003T103246-78d2c7c3/extract.log
+- id: compare
+  command:
+  - /Users/xylo/Documents/OpenRailFanAI/backend/.venv/bin/python
+  - scripts/android/build-native-acceptance.py
+  - --expected-run-token
+  - 20261003T103246-78d2c7c3
+  exit_code: 0
+  log: acceptance/runs/20261003T103246-78d2c7c3/compare.log
+tests:
+  total: 19
+  passed: 18
+  failed: 0
+  skipped: 1
+  cases:
+  - class: org.openrailfanai.app.ComposeDisplayFixtureTest
+    name: fixedScheduleFixtureShowsRouteAndStops
+    status: passed
+  - class: org.openrailfanai.app.ComposeDisplayFixtureTest
+    name: storedFailureRetriesItsOwnQueryAfterOpeningHistory
+    status: passed
+  - class: org.openrailfanai.app.ComposeDisplayFixtureTest
+    name: emptyErrorAndDetailsFixturesExposeTheirIntendedControls
+    status: passed
+  - class: org.openrailfanai.app.ComposeDisplayFixtureTest
+    name: stoppedAnswerIsRenderedOnceAfterPersistence
+    status: passed
+  - class: org.openrailfanai.app.ComposeDisplayFixtureTest
+    name: errorThenDoneKeepsRetrievedScheduleFacts
+    status: passed
+  - class: org.openrailfanai.app.ComposeDisplayFixtureTest
+    name: batchRetryPayloadContainsOnlyFailedTrain
+    status: passed
+  - class: org.openrailfanai.app.ComposeHistoryScreenTest
+    name: searchRenameDeleteCancelAndSelectUseExistingSessions
+    status: passed
+  - class: org.openrailfanai.app.ComposeScheduleQueryTest
+    name: trainScheduleQueryRendersStructuredBackendResult
+    status: skipped
+  - class: org.openrailfanai.app.ComposeSettingsRouteTest
+    name: settingsRouteLoadsFromNativeChatScreen
+    status: passed
+  - class: org.openrailfanai.app.ConversationStoreTest
+    name: titleSearchGroupingAndDeleteFlowAreDeterministic
+    status: passed
+  - class: org.openrailfanai.app.ConversationStoreTest
+    name: oldSessionFormatSurvivesAndManagementKeepsUnknownFields
+    status: passed
+  - class: org.openrailfanai.app.MainLauncherRouteTest
+    name: mainLauncherOpensNativeAndComposerTracksRealKeyboard
+    status: passed
+  - class: org.openrailfanai.app.MainSettingsRepositoryTest
+    name: migratesLegacyProviderAndEncryptsItsSavedKey
+    status: passed
+  - class: org.openrailfanai.app.MainSettingsRepositoryTest
+    name: savePreservesOldStateAndUsesExistingKeystoreContract
+    status: passed
+  - class: org.openrailfanai.app.NativeAcceptanceCaptureTest
+    name: copyActionReceivesRealTap
+    status: passed
+  - class: org.openrailfanai.app.NativeAcceptanceCaptureTest
+    name: diagnosesTrainCaptureScrollPosition
+    status: passed
+  - class: org.openrailfanai.app.NativeAcceptanceCaptureTest
+    name: composerTracksChangingSafeBottomWithoutExtraGap
+    status: passed
+  - class: org.openrailfanai.app.NativeAcceptanceCaptureTest
+    name: captureNineFixedMainStatesAt390By844Px
+    status: passed
+  - class: org.openrailfanai.app.NativeAcceptanceCaptureTest
+    name: diagnosesReadingCaptureScrollPosition
+    status: passed
+completed_at: '2026-10-03T10:35:26+08:00'
+artifacts:
+- file: acceptance/ACC-CT8-01__train-schedule__20261003.png
+  sha256: c574dc99b1753d8aec88dfb783d616a14a27b84c0c309dbb4b1c67e03352bd6b
+- file: acceptance/ACC-CT8-02__emu-routing__20261003.png
+  sha256: 505e12838af3058d911eb97aefd7a8922b4981c564ca13592b0c597ee4612d28
+- file: acceptance/ACC-CT8-03__query-loading__20261003.png
+  sha256: e22cc236206c23ce6d37df720127ae8497be9c10c32065e237f751ab2d25a62d
+- file: acceptance/ACC-CT8-04__batch-partial__20261003.png
+  sha256: 582140588bf0fd088bde6546dd1b2cbdc4fecf84b48dff5decd0dc3131d98973
+- file: acceptance/ACC-CT8-05__routing-empty__20261003.png
+  sha256: 6b1e59f3a826858eb7bc3796e7583819370ac509e8ec53fd0b89872cd1021905
+- file: acceptance/ACC-CT8-06__connection-error__20261003.png
+  sha256: 1ab26b4b07fe6db2b3dfec1d5b5e79871f5e0d1c6dd868cddc6c9c906c8f12bf
+- file: acceptance/ACC-CT8-07__reading-followup__20261003.png
+  sha256: 2118cfa9179ede615c945b36d42f88744f5aa3537292ef36f37e0b9d74903b23
+- file: acceptance/ACC-CT8-08__query-details__20261003.png
+  sha256: cf931b759fc2d6935327b5600d3af128063020f1f493f57cfd831bef0aed4c00
+- file: acceptance/ACC-CT8-09__history__20261003.png
+  sha256: c251410f3ab3ae615bf049b5dfcbed8c4b34dfdc186c0f87fc0c9712e0eb5ca6
+- file: acceptance/_failed/index.yaml
+  sha256: 1d3dbc90ddd3292d374ced2210fbe5496f291f856bc58b367bae86e4ffcc21df
+- file: acceptance/index.yaml
+  sha256: fe041be3498b6a85080cf3a1704e0481a54734759ffb146bb749b428bcc2253b
+- file: captures/batch_partial.png
+  sha256: 0468ef6ed9ee73e5f46e0c44ae0326d45c56ab1bf1d7a4d458ed9122134505b1
+- file: captures/connection_error.png
+  sha256: ecfda77ba99bac5f5b80faa76f7569021b52f44d8563058cb6f8fbb44a384fa0
+- file: captures/emu_routing.png
+  sha256: 7478ee0cf07fdca31a1fccee0cdef21c35fb3caf1136bd179ff470e092493733
+- file: captures/history.png
+  sha256: c037c5a2144bf9b702e1f4340cff6d3f24d2bddd3fae3559ed143ae338b0850c
+- file: captures/query_details.png
+  sha256: 836bf7b51944427d959a73b4310db20d402d0f860f4d6367bec817c7bd21ceee
+- file: captures/query_loading.png
+  sha256: 378064753caee168aef39259c67071d9d80950097fe5b3fd874497fb6951af63
+- file: captures/reading_followup.png
+  sha256: f2e6539d63134add0ad6e67eb560b2e0d43b069a05eb8edb49eff5cc65778d7c
+- file: captures/routing_empty.png
+  sha256: 95e7ea1f21e7969782444174941d5ab58cb584f4c3ffeef7bc35e1e08dd0f19a
+- file: captures/train_schedule.png
+  sha256: 8ff6b5c4106b30254320f52c179a52ab9d731e70beb3bfb1f50be779f8a82142
+- file: captures/verification.json
+  sha256: d109bf5cfdfd34404524e3177f8648633d62d7c03544bfcf35d4d15ad5cafe21
+- file: compare.log
+  sha256: 7fe34be8d632c6208ac54665c85dcc60e5aaf0ff708522bd7980cd13275835c4
+- file: extract.log
+  sha256: 8293c41d015579dcc3657db00cd869bf24777c8a2c17483930cdb6ca283ef722
+- file: instrumentation.log
+  sha256: c273ab2c325a870c298a63c857b737670d700f2bdf3f4a72294a26363f95a8e3
+- file: test-results/TEST-railfan-arm64(AVD) - 15-_app-.xml
+  sha256: b171d3b6fb3ce0e41c4592c71b2694b383e56c53c71bd398f3caf14ffe5e7231
+- file: test-results/railfan-arm64(AVD) - 15/aapt.1.ok.txt
+  sha256: 58d359def98fa848c17cf50595fe07000aa092697c4eb10d499e48e34fe4fa69
+- file: test-results/railfan-arm64(AVD) - 15/aapt.2.ok.txt
+  sha256: 19945894e435531deb2ae1dcb3b49e60456c41d99281ee69ed7313842e2f4abb
+- file: test-results/railfan-arm64(AVD) - 15/cpuinfo
+  sha256: 5ec364502b3c7641d1619f40037ecc441a1d27c042f5951f675c18889f874434
+- file: test-results/railfan-arm64(AVD) - 15/device-info.pb
+  sha256: 342fc9e11e918870e424b04403ff9f7bdfcaa6c52db21ed7475fe235da752908
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ComposeDisplayFixtureTest-batchRetryPayloadContainsOnlyFailedTrain.txt
+  sha256: 9a2abce08007b4625ce84b719d2e92434a4b3c3236a3fe6835bf5849a438f252
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ComposeDisplayFixtureTest-emptyErrorAndDetailsFixturesExposeTheirIntendedControls.txt
+  sha256: 271f42231c2136809f608be90d29c0e2bab10671757f7e642cc308a3b0d1de5d
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ComposeDisplayFixtureTest-errorThenDoneKeepsRetrievedScheduleFacts.txt
+  sha256: b2b5a20f7a48880a983bab230eda1b439041a3854a8889212bd4445b2a596337
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ComposeDisplayFixtureTest-fixedScheduleFixtureShowsRouteAndStops.txt
+  sha256: fc080e9201d3a136fff22f92034d43f2f9fdd8f8819f5b612e74c1a67c7255ed
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ComposeDisplayFixtureTest-stoppedAnswerIsRenderedOnceAfterPersistence.txt
+  sha256: 910ed9bd52913248091c86955ffd30482c4eefa57b3c0193f3a252d46d9f4363
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ComposeDisplayFixtureTest-storedFailureRetriesItsOwnQueryAfterOpeningHistory.txt
+  sha256: 29b3597396f3e9f5390c10262baa59e5bd0290e5139a4469068fbd47f0b1e7a0
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ComposeHistoryScreenTest-searchRenameDeleteCancelAndSelectUseExistingSessions.txt
+  sha256: 5b2651790dc84cf9cb2c86e4955e19bb42f8ad2704a681e77c2dd4102a5e8627
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ComposeScheduleQueryTest-trainScheduleQueryRendersStructuredBackendResult.txt
+  sha256: 6e015bb89b0665d906ce95c3724751bfac137da31603d9a764aa4b3859f4013d
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ComposeSettingsRouteTest-settingsRouteLoadsFromNativeChatScreen.txt
+  sha256: 98b35c8be83d331f428f6eb96d6c7124d13db055dfad54824571d15677ca3f0f
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ConversationStoreTest-oldSessionFormatSurvivesAndManagementKeepsUnknownFields.txt
+  sha256: 1cfb2d3093fb9499bd7e8cf26e57ed6205222c47be7b7f513d490675e7e1a502
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.ConversationStoreTest-titleSearchGroupingAndDeleteFlowAreDeterministic.txt
+  sha256: f62569225df21271405dc7a364bdd55e61922fe20c80a21399be1f7e4be5ac95
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.MainLauncherRouteTest-mainLauncherOpensNativeAndComposerTracksRealKeyboard.txt
+  sha256: e0b7963930610ca2add7a44428d506f3b2ddff6fe5e3b5e9913bc7efbe75f28a
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.MainSettingsRepositoryTest-migratesLegacyProviderAndEncryptsItsSavedKey.txt
+  sha256: 98ee2f0dc3ddc112ce884a5e4331901dbc9fa0d22e623624120d6147286c211a
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.MainSettingsRepositoryTest-savePreservesOldStateAndUsesExistingKeystoreContract.txt
+  sha256: fc5d367ef91c52e9f5749844947d23d9671b3dc4b4a4d3e581b2cbcedc5a58b1
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.NativeAcceptanceCaptureTest-captureNineFixedMainStatesAt390By844Px.txt
+  sha256: 4b3e787b7f4275ba8dee900686f0f269e445cc2ee2b34802bde7ab9770b7a3fc
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.NativeAcceptanceCaptureTest-composerTracksChangingSafeBottomWithoutExtraGap.txt
+  sha256: 46e86f139dae0d248df175fca7a9d0396568c1672ec7d5de52a449c69bbec245
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.NativeAcceptanceCaptureTest-copyActionReceivesRealTap.txt
+  sha256: 5abcfef7e6fd770e38df62202cb146747d65a87f3d99d9b0bd85e982a95dfc6e
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.NativeAcceptanceCaptureTest-diagnosesReadingCaptureScrollPosition.txt
+  sha256: 6dac64736938416fe9fa13a72c9914529c95a9faa3c69df91060a4eca9cbd87a
+- file: test-results/railfan-arm64(AVD) - 15/logcat-org.openrailfanai.app.NativeAcceptanceCaptureTest-diagnosesTrainCaptureScrollPosition.txt
+  sha256: 0e9dca3a4f7b59b08825bcebd9db20393e59ba5d6c0b4322ae1fa95548c7f950
+- file: test-results/railfan-arm64(AVD) - 15/meminfo
+  sha256: 3f1012826699690a868b4b4874e568caaaddc93d847aceb821fde020a5c2a837
+- file: test-results/railfan-arm64(AVD) - 15/profiling/emulator-5554_profile.pb
+  sha256: aa7303d803ca8e4b7e891b6605226b59144a2e206b90f7a6ea294b03c1fb144c
+- file: test-results/railfan-arm64(AVD) - 15/test-result.pb
+  sha256: 17bdaaebc05bb36e9b7e792b45b9293f7a927a462cbfd91b6107232692eb12c8
+- file: test-results/railfan-arm64(AVD) - 15/test-result.textproto
+  sha256: 0d63909c75d6858f3e9239e1330a57add12f9b63adc77649aa4d7eafd82c75d8
+- file: test-results/railfan-arm64(AVD) - 15/testlog/test-results.log
+  sha256: 8d54f9e9eafdc163332ecc94524402fcbcb6ecb681f127dd69def16452e151e1
+- file: test-results/railfan-arm64(AVD) - 15/utp.0.log
+  sha256: a410226a48e01ad6478857686a2a8bc2aa893be8e65102571d6ccc43def9a684
+- file: test-results/railfan-arm64(AVD) - 15/utp.0.log.lck
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- file: test-results/test-result.pb
+  sha256: c9b86e15f5241689193665148588dc20cb15513e5ac37884c0f9b2ecf96212ff

@@ -1,8 +1,22 @@
 # Android 一体化版本
 
+## Main Android Compose 迁移状态
+
+Main Android 已采用 Kotlin 与 Jetpack Compose。`MainActivity` 保留已安装应用的
+launcher 组件身份，依据构建资源`main_native_ui`将 Main 转入未导出的
+`MainComposeActivity`；原生界面承载聊天、历史及设置。九种状态已按用户确认的
+整体协调优先标准验收，见`ui-acceptance-policy.md`与`acceptance/index.yaml`。
+LM 的默认入口和独立页面不随此次迁移切换。Python/Chaquopy、FastAPI、铁路工具和
+现有请求/SSE/display_results 协议保持复用。
+
+Compose 版本固定为 Kotlin/Compose Compiler Gradle Plugin 2.2.21、Compose BOM 2025.08.00、
+Activity Compose 1.10.1；当前 AGP 8.7.3、Gradle 8.11.1、compileSdk 35、minSdk 24、
+Java 17、arm64-v8a 与 Chaquopy 17.0.0 保持不变。Compose 页面遵守
+[`ui-design-boundaries.md`](ui-design-boundaries.md) 中的应用区域、系统栏排除与原生验收规则。
+
 把 OpenRailFanAI 做成**一个自包含的 Android 应用**：Python 后端随包分发、在设备内运行，
-UI 用**系统自带**的 `android.webkit.WebView` 承载既有前端 —— 不引入 Capacitor / Cordova /
-React Native 之类的 Web 组件框架，也不依赖任何远程服务端。
+Main UI 使用原生 Compose；LM 及保留的网页回退使用系统自带的`android.webkit.WebView`。
+应用仍通过设备内服务调用用户配置的云端模型接口，不需要另行部署应用后端。
 
 ## 形态与启动流程
 
@@ -13,18 +27,18 @@ APK
 ├── assets/chaquopy/…      CPython 3.12 标准库 + 依赖（纯 Python）
 └── lib/arm64-v8a/…        libpython3.12.so、OpenSSL、SQLite 等
 
-启动：
-  MainActivity
-   1) 把 assets/webapp 与 assets/dict 解包到应用私有目录（带版本标记，升级后强制重解）
-   2) 后台线程启动 Python：server.serve(activity, webapp_dir, data_dir)
-   3) Python 侧在 127.0.0.1 的**空闲端口**上以 uvicorn 启动后端 app.main:app
-   4) Python 侧**自检**：回环 GET `/` 与 `/src/main.js`，确认前端真的被托管
-   5) 回调 onServerReady(port, 自检结论) → WebView 加载 http://127.0.0.1:port/
+启动（MainActivity 按构建资源分流，Main 使用原生客户端连接）：
+  MainActivity 或 MainComposeActivity
+   1) 启动并绑定进程级 BackendService；Activity 不持有 Python 服务生命周期
+   2) Service 解包 assets/webapp 与 assets/dict 到应用私有目录（带版本标记）
+   3) Service 后台线程启动 Python：server.serve(host, webapp_dir, data_dir)
+   4) Python 在 127.0.0.1 的动态端口以 uvicorn 启动 app.main:app，并运行服务自检
+   5) Service 保存就绪端口与状态；旧 Activity 加载 WebView，Compose 通过回环 `/health` 探测
 ```
 
 **为什么走本地 HTTP 而不是 `file://` 或 `WebViewAssetLoader`**：前端要用 `fetch` + SSE 调
 `/api/*`，需要真实 origin；同源加载还让前端的相对路径（`window.__API_BASE__` 为空串）
-无需任何改动即可工作 —— 与桌面/服务器部署完全同一份前端代码。
+用于保留的网页入口；Main 原生客户端也使用同一套 HTTP 与 SSE 协议。
 
 明文流量只对 `127.0.0.1` / `localhost` 放行（`res/xml/network_security_config.xml`），
 没有使用 `android:usesCleartextTraffic="true"`（那会对全网放行）。
@@ -123,6 +137,76 @@ bash scripts/android/build.sh -PincludeDict=true assembleDebug assembleRelease
    GitHub 的资源下载走 CDN，同名替换后旧对象仍会被取到（实测：替换后下载到的还是旧 sha256，
    加个 cache-buster 才是新的）。新版本 = 新 URL，才不会有这个坑。
 2. **只在工作区干净时构建待发布的包**，否则构建标记会带 `-dirty`。
+
+### LM 轨（本地模型版封测，与正式版本线解耦）
+
+本地模型版是**内部封测通道**，改动比正式线频繁得多。它**不能占用 `VERSION`**：
+改了会让正式构建跟着跳号；沿用同一个号又会在 `dist/` 里留下"同名不同内容"的包
+（正是上面那条规则要消灭的东西）。所以它自带前缀 + 自增数字：
+
+```bash
+bash scripts/android/build.sh --lm -PincludeDict=true assembleDebug
+# → dist/android/OpenRailFanAI-lm1-arm64-debug.apk
+#   Android versionName=lm1、versionCode=100001，「关于」里也显示 lm1
+#   构建成功后 VERSION.lm 自动 +1，下次就是 lm2
+```
+
+| 项 | LM 轨 | 正式线 |
+|---|---|---|
+| 版本来源 | 仓库根 `VERSION.lm`（只有一个数字） | 仓库根 `VERSION` |
+| 产物命名 | `OpenRailFanAI-lm<N>-arm64-<类型>.apk` | `OpenRailFanAI-<VERSION>-arm64-<类型>.apk` |
+| `versionName` | `lm<N>` | `<VERSION>` |
+| `versionCode` | **`100000 + N`** | `主*10000 + 次*100 + 修` |
+
+Main 构建只打包云端版前端与后端；LM 构建会用 `android/lm-webapp/` 覆盖专用页面与脚本，
+并打包设备端推理模块。本地模型 API 仅在 `APP_VARIANT=lm` 时注册。
+直接运行桌面后端时默认是 Main；需要联调 LM 后端可显式设置该环境变量。
+
+`versionCode` 取 `100000+N` 而不是 `N` 是**必须的**：测试者手机上已经装了正式线的
+debug 包（0.1.6 → 106），用 1/2/3 计数会让 Android 直接拒绝安装"更低版本"的包。
+
+计数只在**真的产出了 lm 包**时才 +1（构建失败或全部 UP-TO-DATE 都不跳号），
+否则数字会飘 —— 而"靠数字彼此区分"正是这条轨的全部意义。
+
+`VERSION.lm` 与 `VERSION` 一样是版本真相，**要提交进仓库**。
+
+### 内部调试轨（`--internal`，lm1000 起）
+
+```bash
+bash scripts/android/build.sh --internal -PincludeDict=true assembleRelease
+```
+
+比封测轨"更自由、更透明"的一档，专门给调试用：
+
+| 项 | 内部调试轨 | 封测轨（`--lm`） |
+|---|---|---|
+| 版本来源 | `VERSION.lminternal`（**从 1000 起**） | `VERSION.lm`（1 起） |
+| 产物命名 | `OpenRailFanAI-lm1000-arm64-release.apk` | `OpenRailFanAI-lm37-…` |
+| `versionCode` | `100000 + N` ⇒ **101000 起** | `100000 + N` ⇒ 100037 |
+| 包名 | **`org.openrailfanai.app.internal`**（独立） | `org.openrailfanai.app` |
+| `debuggable` | **true**（`adb shell run-as` 可进私有目录） | false |
+| 附加权限 | `MANAGE_EXTERNAL_STORAGE` | 无 |
+| 设置页 | 多一个**原始 llama-server 参数**框 | 无 |
+
+**为什么独立包名而不沿用同一个（否则 versionCode 更高就能直接覆盖升级）**：
+同包名一旦装了 lm1000，**再装 lm37 会被系统拒绝**（版本号更低），要回封测轨必须先卸载 ——
+而卸载会丢掉全部对话。独立包名让两条轨各自独立递增、并存、随时切换，代价只是多一个图标。
+
+**为什么要 `MANAGE_EXTERNAL_STORAGE`**：两个包名是两个应用，Android 11+ 禁止应用读
+**其它包**的 `Android/data` 目录 —— 于是调试版看不到封测版已经下好的 2B/4B（1.2–2.6 GB）。
+拿到这个权限后，`local_inference` 会把兄弟包的模型目录加进**只读**候选（`readable_dirs()`），
+**原地使用：不拷贝、不重下**。它会主动去系统设置里申请一次；不授权也照常可用，只是退回重下。
+
+⚠️ 这个权限**只由构建时注入**（`build.gradle.kts` 末尾），源 `AndroidManifest.xml` 里**没有**它 ——
+正式轨与封测轨的 merged manifest 因此**从构造上**就碰不到。别改成在源文件里声明：
+更"正统"的三种写法都实测排除过（`manifest.srcFile()` 是替换不是追加、占位符不作用于
+`tools:` 属性、product flavor 会让 `assembleRelease` 这个任务名消失），细节写在 gradle 文件末尾的注释里。
+
+**原始参数框**的意义：llama.cpp 有几十个开关（`-fa` / `-ctk` / `-ctv` / `--device` …），
+每加一个下拉都要改后端+前端+出包 —— 而调试要的是**立刻能试**。后端把它 `shlex.split`
+后作为**参数列表**交给 subprocess（**不经过 shell**，所以 `;`/`&&` 没有执行语义），
+并**追加在命令行末尾**（llama.cpp 后者覆盖前者，用户写的确实说了算）。
+
 
 ## 体积
 
@@ -308,6 +392,160 @@ curl -s -XPOST http://127.0.0.1:<端口>/api/chat -H 'Content-Type: application/
 社区版不内置任何 API Key。前端启动后按 `/api/providers` 的 `llm_ready` / `mock` 决定是否显示引导条：
 未配置 → 「尚未配置模型 API…去配置」直接跳设置页；Mock 模式 → 明确说明回答来自本地确定性规则而非真实模型。
 
+## 设备端本地推理（LM 轨）
+
+**API 花费恒为 0** 的那条路：模型在手机上跑，不上云。前提是把 llama.cpp 的
+`llama-server` 交叉编译进包 —— 只出配置是没用的，设备上真正算 token 的是这个二进制。
+
+```bash
+bash scripts/android/build-llama.sh                              # 交叉编译（约 3–6 分钟）
+bash scripts/android/build.sh --lm -PincludeDict=true assembleDebug
+```
+
+### 为什么二进制必须叫 `libllamaserver.so`
+
+不是笔误，是 Android 的硬要求，且**与一个 Gradle 开关成对**：
+
+| | 位置 | 作用 |
+|---|---|---|
+| 命名成 `lib*.so` 放 jniLibs | `scripts/android/build-llama.sh` | 只有被当作**原生库**打包的文件才会落到只读的 `nativeLibraryDir` |
+| `useLegacyPackaging = true` | `build.gradle.kts`（**仅 LM 轨**） | 否则原生库只在 APK 内 mmap、**不落地成真实文件**，照样 exec 不了 |
+
+Android 10+ 的 W^X 禁止从可写目录 exec 二进制，**只有 `nativeLibraryDir` 允许**。
+这两处改一个必须改另一个，否则表现为"二进制明明打进包了，就是起不来"。
+
+正常版本线不受影响：`useLegacyPackaging` 仍然是 `false`，`src/lm/jniLibs` 也不参与它的构建。
+
+### 模型怎么装上去：两条路
+
+**A. 应用内一键下载（给封测用户，推荐）**
+
+设置页 →「本地模型（免 API Key）」→ 选档 →「一键下载并启用」。
+下载带进度、支持**断点续传**（GB 级下载在移动网络上必然遇到停顿，实测第一版
+下到 342/507 MB 超时后整包作废），完成后自动拉起 `llama-server`，再点
+「设为当前使用」即接入对话。
+
+| 档位 | 体积 | 说明 |
+|---|---|---|
+| Qwen3.5-0.8B | 508 MB | 最快；判断力弱，适合先跑通链路 |
+| Qwen3.5-2B | 1.2 GB | 8G 内存推荐档 |
+| Qwen3.5-4B | 2.6 GB | 16G 旗舰推荐档（意图准确率追平云端，但更慢） |
+
+**B. adb 推（给开发机）**
+
+```bash
+bash scripts/android/push-model.sh /path/to/Qwen3.5-2B-Q4_K_M.gguf
+bash scripts/android/push-model.sh --list
+```
+
+**为什么别手敲 `adb push` 到外部应用目录**：实测在 Android 15 上，
+`adb push` 到 `/sdcard/Android/data/<pkg>/files/models/` 会**成功**，但目录属主是 `shell`，
+App 侧一律 `Permission denied`（emulated storage 的合成权限，不是 SELinux）。
+同一个坑在一个会话里咬了两次：先是"文件在那儿却说没找到模型"，后是"下载跑到写文件才失败"。
+现在 `writable_dir()` **逐候选做写测试**，写不进去就自动回落到内部 `filesDir/models`。
+
+### 模型怎么放上去
+
+模型 1.2–2.5 GB，**不进 APK**。用脚本推（别手敲 adb push，原因见下）：
+
+```bash
+bash scripts/android/push-model.sh /path/to/Qwen3.5-2B-Q4_K_M.gguf
+bash scripts/android/push-model.sh --list          # 看设备上已有哪些模型
+```
+
+**为什么不直接 `adb push` 到外部应用目录**：实测在 Android 15 上，
+`adb push` 到 `/sdcard/Android/data/<pkg>/files/models/` 会**成功**，但目录属主是 `shell`，
+App 侧 `ls` 直接 `Permission denied`（emulated storage 的合成权限，不是 SELinux）。
+现象是"文件明明在那儿，App 却说没找到模型"——极难排查。
+脚本因此统一走 `run-as <pkg> cp` 写内部 `filesDir`（**只对 debug 包有效**，LM 轨正好是 debug）。
+`local_model.py` 两个位置都会找，外部目录优先，内部兜底。
+
+启动时 `local_model.py` 自动发现模型并拉起 `llama-server`
+（`--host 127.0.0.1 --port 8081`），再把 `LLM_PROVIDERS` 指过去 —— pipeline 零改动。
+
+### 关思考是**必需项**，不是优化
+
+实测（llama-server + Qwen3.5-0.8B，`max_tokens=64`，问"G1 始发站"）：
+
+| 关闭姿势 | 正文 | 思考 | finish |
+|---|---|---|---|
+| 什么都不传 | **0 字** | 202 字 | `length` |
+| **`reasoning_effort: "none"`** | 15 字 | 0 字 | ✅ `stop` |
+| `enable_thinking: false` | **0 字** | 216 字 | `length`（**被静默忽略**） |
+
+**不关思考 = 思考吃光输出预算、正文一个字都没有**，整条生成链路不可用。
+所以 `local_model.py` 会强制置上 `LLM_GENERATION_NO_THINK=true` 与
+`LLM_STRUCTURED_NO_THINK=true`（两者管的是不同路径）。
+
+### 时间与超时：必须按供应商放宽
+
+实测（Android 15 arm64 模拟器、Qwen3.5-0.8B、6096 token 提示词）：
+
+| | 数值 |
+|---|---|
+| prefill | 6096 tok @ 39 tok/s = **156 s** |
+| decode | 173 tok @ 10.6 tok/s = 16 s |
+| 合计 | **172 s** |
+
+**设备端慢在 prefill 上，而不是 decode。** 而全局默认 `LLM_TIMEOUT_S=60` 是给云端定的 ——
+于是本地生成必然超时，且失败方式是"语言模型当前不可用 → 降级到规则排版"，
+**用户完全看不出是超时**。
+
+所以设备端供应商带 `timeout_s = 600`（`Provider.timeout_s`，可按供应商配）。
+注意模拟器跑在软件渲染 + HVF 上，比真机慢得多；真机数字必须自己测。
+
+### 生成必须关思考（供应商级）
+
+全局开关 `LLM_GENERATION_NO_THINK` 在进程启动时就冻结了（`get_settings()` 带 lru_cache），
+而设备端模型是**运行期**才装上的 —— 用户点"一键下载"之后服务才起来，此时改环境变量已经无效![。]()
+
+所以设备端供应商带 `always_no_think = True`（`Provider.always_no_think`），
+**压过调用方的 `no_think=False`**。不这么做的话，"下载完自动启用"这条路会带着思考跑，
+而实测不关思考的后果是**正文一个字都没有**。
+
+### 实测（Android 15 arm64 模拟器，Qwen3.5-0.8B）
+
+| 环节 | 结果 |
+|---|---|
+| 二进制落地 | `lib/arm64-v8a/libllamaserver.so` 13,376,232 B、`-rwxr-xr-x`（真文件，可 exec） |
+| 拉起 | App 从 `nativeLibraryDir` 起子进程成功，进程在 App 自己的 UID 下 |
+| 模型加载 + 健康检查 | **1.1s** 就绪 |
+| 解码速度 | **84.4 tok/s**（注意：模拟器跑在 M5 CPU 上，这个数是**主机**的，不代表手机） |
+| 端到端问答 | 快路径 23ms 命中 → `rail.mileage` 检索 → 本地生成，答"京沪高速线全长 1318.0 公里"并附来源，`thinking` 为空（思考确实关掉了） |
+| API 花费 | **0** |
+
+仍未验证：**实体机**上的解码速度与常驻内存（模拟器数字不能外推）；Adreno GPU 卸载
+（本版是 CPU-only，见 `build-llama.sh` 顶部说明）。
+
+## 生成质量：小模型会退化成复读（2026-09-21 实测）
+
+同一条**真实生成提示词**（2073 字）下的四方对照：
+
+| 模型 | 输出 | 重复率 | 同一片段最多重复 | 内容 |
+|---|---|---|---|---|
+| **0.8B** | 1200（撞上限，不会自己停） | **97%** | **68 次** | **编造站名** |
+| 2B | 205 | 0% | 1 次 | 正确 |
+| 4B | 234 | 0% | 1 次 | 正确 |
+| 云端 | 119 | 0% | 1 次 | 正确 |
+
+0.8B 把杭州/宁波/绍兴/湖州/嘉兴当成京沪线上的站编了出来（检索事实里只有 6 站），
+然后陷进自己编的序列里出不来。**这不是"判断力弱一点"，是会编造数据且不会自己停。**
+
+三条对策，都已落地：
+
+1. **撤掉 0.8B 档位**（`MODEL_CHOICES`）。**设备端的可用性下限是 2B。**
+   对已经下载过 0.8B 的人，`status()` 会给出 `model_warning`，不能只是"列表里消失"。
+2. **精简生成提示词**（`LLM_GENERATION_COMPACT_PROMPT`，默认关）。
+   长提示词不是"信息更多"，对这个小尺度是**过载**：它会去逐条应付读不完的规则，
+   最后抓住一条反复复读。换成精简版后**同一个 0.8B** 输出 61 token、重复率 0%。
+   1950 → 590 字（降 70%），顺带把设备端 prefill 砍到 ~1/2.5。
+3. **重复循环兜底**（`app/pipeline/repetition.py`）。边生成边查（每 128 字一次，单次 0.006 ms），
+   检测到就**停流**并把已吐出去的内容用一次 `replace` 事件收回、截断、如实告知。
+   兜底不依赖模型自律 —— 2B 现在不循环，不等于以后不会。
+
+截断提示按**原因**分文案：`length`（调大输出上限可解决）与 `repetition`
+（调大只会让它重复更久）对用户的意义完全相反，混成一句话会把用户引向错误操作。
+
 ## 已知限制
 
 - **已在 Android 15 arm64 模拟器上实测通过**：启动各阶段、前端渲染（DOM 探针核对到完整界面文本）、
@@ -348,3 +586,15 @@ curl -s -XPOST http://127.0.0.1:<端口>/api/chat -H 'Content-Type: application/
 | 对话/供应商配置不见了 | 先看启动日志里自检的 `bridge` 字段：显示 `缺失` 说明桥没接上、前端退回了 localStorage —— 那是跑到了没接桥的旧包。正常应为 `android`（数据在 `filesDir/state.json`） |
 | 实时查询全部失败 | 设备网络不通，或 12306 触发风控（与桌面版相同） |
 | `includeDict=true` 报错 | `backend/data/dict.db` 不存在，先跑 `scripts/mirror_dict.py` |
+
+### Main 原生启动与回退（2026-10-03）
+
+普通桌面入口`MainActivity`在 Main 构建中转入`MainComposeActivity`；反复点击桌面图标复用原生页面。LM 构建的资源开关为 false，保持原 WebView 路径。Main 的原生页只有设备内服务健康检查成功后才允许发送请求。
+
+保留 WebView 用于排障，可使用显式启动意图附加布尔值`railfan_web_fallback=true`。不新增用户界面的切换按钮。正式包的 Compose Activity 仍未导出；调试包的显式自动化入口保持调试专用。
+
+实时铁路查询不包含在可重复的九状态视觉夹具中，需显式传入测试参数`liveRailwayQuery=true`执行`ComposeScheduleQueryTest`。其失败不能被夹具通过替代。
+
+Compose 1.9 自带的静态检查要求 Lint 8.8.2。项目在`gradle.properties`单独固定此检查器版本，AGP仍为8.7.3；没有关闭发布包检查，也没有因此升级应用运行依赖。参见[官方 Compose Runtime 1.9 发布说明](https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.9.0)及[Lifecycle 静态检查兼容说明](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.0-rc01)。
+
+Main 启用`desugar_jdk_libs:2.0.3`，为`minSdk 24`提供原生日历及历史分组使用的`java.time`兼容实现；LM 构建不启用此运行依赖。参见[官方 Java API 兼容支持说明](https://developer.android.com/studio/write/java8-support)。当前运行验证设备为 API35，未把编译兼容声明为 API24 真机测试通过。

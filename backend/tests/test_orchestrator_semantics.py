@@ -68,7 +68,7 @@ def _patch_generation_fail(monkeypatched: dict):
     async def _fill(message, intent=None, history=None):
         return _StubSlots(target="G1")
 
-    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None):
+    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None, display_action=None):
         return {"data": [], "sources": ["https://example.com/x"], "tool_trace": ["emu.routing: ok"], "note": "n"}
 
     async def _gen(*_a, **_kw):
@@ -150,7 +150,7 @@ def test_success_marks_done_true():
     async def _fill(message, intent=None, history=None):
         return _StubSlots(target="G1")
 
-    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None):
+    async def _retrieve(intent, slots, question_type=None, message=None, prefetch=None, display_action=None):
         return {"data": [], "sources": ["https://example.com/ok"], "tool_trace": ["emu.routing: ok"], "note": "n"}
 
     async def _stream(*_a, **_kw) -> AsyncIterator[tuple[str, str]]:

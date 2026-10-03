@@ -12,9 +12,19 @@ from __future__ import annotations
 
 import json
 import re
+import os
+import inspect
+import time
+from copy import deepcopy
+from contextvars import ContextVar
+from functools import wraps
+
+from app.metrics import record_cache, record_operation
+from app.query_cache import QueryCache, query_scope
 
 from mcp_12306.services.ticket_service import (
     get_train_route_stations_validated,
+    query_ticket_price_validated,
     query_tickets_validated,
     search_stations_validated,
 )
@@ -22,6 +32,146 @@ from mcp_12306.services.ticket_service import (
 from app.dates import normalize_date
 
 _loaded = False
+
+
+def _main() -> bool:
+    return os.environ.get("APP_VARIANT", "main").lower() != "lm"
+
+
+def _scoped_key(*parts):
+    # Scope is a digest; no credentials or query values reach metrics/logs.
+    return (query_scope(), *parts) if _main() else tuple(parts)
+
+
+def _cache_get(cache: dict, key, ttl: float, name: str):
+    hit = cache.get(key)
+    if hit and time.time() - hit[0] < ttl:
+        if _main():
+            record_cache(name, "hit")
+            return deepcopy(hit[1])
+        return hit[1]
+    if _main():
+        if hit is not None:
+            cache.pop(key, None)
+            record_cache(name, "expired")
+        record_cache(name, "miss")
+    return None
+
+
+def _cache_put(cache: dict, key, value, ttl: float, capacity: int, name: str):
+    now = time.time()
+    if not _main():
+        if len(cache) >= capacity:
+            cache.clear()
+        cache[key] = (now, value)
+        return
+    for old_key, (fetched, _) in list(cache.items()):
+        if now - fetched >= ttl:
+            cache.pop(old_key, None)
+            record_cache(name, "expired")
+    # Evict only the oldest snapshot, rather than every valid entry at capacity.
+    while key not in cache and len(cache) >= capacity:
+        oldest = min(cache, key=lambda candidate: cache[candidate][0])
+        cache.pop(oldest)
+        record_cache(name, "evicted")
+    cache[key] = (now, deepcopy(value))
+
+
+_QUERY_FLIGHTS: list[QueryCache] = []
+_MCP_OPERATION: ContextVar[str | None] = ContextVar("rt_mcp_operation", default=None)
+
+
+def _install_mcp_observer() -> None:
+    """Observe the dependency's existing init/retry lifecycle without replacing it.
+
+    The installed mcp-server-12306 calls its factory for every retry. A once-installed
+    factory wrapper returns the original client outside this task-local context.
+    The proxy delegates TLS/proxy/cookies/close and never stores URLs or arguments.
+    """
+    from mcp_12306.services import ticket_service as ts
+
+    factory = ts.create_12306_client
+    if getattr(factory, "_rt_observed", False):
+        return
+
+    class ObservedClient:
+        def __init__(self, manager, operation):
+            self.manager = manager
+            self.client = manager
+            self.operation = operation
+
+        async def __aenter__(self):
+            self.client = await self.manager.__aenter__()
+            return self
+
+        async def __aexit__(self, *args):
+            return await self.manager.__aexit__(*args)
+
+        def __getattr__(self, name):
+            return getattr(self.client, name)
+
+        async def get(self, url, *args, **kwargs):
+            phase = "init" if str(url) == str(ts.HTTP_URLS["init"]) else "query"
+            return await _operation(self.operation + "." + phase,
+                self.client.get(url, *args, **kwargs),
+                success=lambda response: response.status_code < 400)
+
+    @wraps(factory)
+    def observed_factory(*args, **kwargs):
+        client = factory(*args, **kwargs)
+        operation = _MCP_OPERATION.get()
+        return ObservedClient(client, operation) if operation else client
+
+    observed_factory._rt_observed = True
+    ts.create_12306_client = observed_factory
+
+
+def _shared_query(name: str):
+    cache = QueryCache("rt." + name + ".flight", capacity=128)
+    _QUERY_FLIGHTS.append(cache)
+
+    def decorate(fn):
+        signature = inspect.signature(fn)
+        @wraps(fn)
+        async def call(*args, **kwargs):
+            if not _main():
+                return await fn(*args, **kwargs)
+            bound = signature.bind(*args, **kwargs)
+            bound.apply_defaults()
+            canonical = dict(bound.arguments)
+            if "train_date" in canonical:
+                canonical["train_date"] = normalize_date(canonical["train_date"])
+            for field in ("train_code", "from_code", "to_code", "station_code"):
+                if field in canonical:
+                    canonical[field] = str(canonical[field] or "").strip().upper()
+            key = (query_scope(), tuple(sorted(canonical.items())))
+            return await cache.get(key, lambda: fn(*args, **kwargs), ttl=0)
+        return call
+    return decorate
+
+
+async def close_query_flights() -> None:
+    """Release only this module's shared queries at application shutdown."""
+    for cache in _QUERY_FLIGHTS:
+        await cache.close()
+
+
+async def _operation(name: str, awaitable, *, success=lambda value: True):
+    token = None
+    if _main() and name.endswith(".mcp"):
+        _install_mcp_observer()
+        token = _MCP_OPERATION.set(name[:-4])
+    started = time.perf_counter()
+    ok = False
+    try:
+        value = await awaitable
+        ok = bool(success(value))
+        return value
+    finally:
+        if token is not None:
+            _MCP_OPERATION.reset(token)
+        if _main():
+            record_operation("rt." + name, (time.perf_counter() - started) * 1000, ok)
 
 # 行政/方位后缀，站名通常不含这些词（用于"吉林市船营区"→"吉林市船营"→"吉林市"→"吉林"的多级降级）
 _ADMIN_SUFFIX_RE = re.compile(r"(市|省|自治区|特别行政区|地区|自治州|县|区|新区|城区|主城区|市区|街道|镇|乡)$")
@@ -181,6 +331,7 @@ async def resolve_station_code(name: str) -> tuple[str, str] | None:
     return None
 
 
+@_shared_query("tickets")
 async def query_tickets(from_code: str, to_code: str, train_date: str) -> list[dict]:
     """实时余票/时刻查询，返回归一化车次列表。
 
@@ -188,13 +339,13 @@ async def query_tickets(from_code: str, to_code: str, train_date: str) -> list[d
     """
     await ensure_loaded()
     date_str = normalize_date(train_date)
-    data = parse_mcp_result(
-        await query_tickets_validated({
+    async def fetch():
+        return parse_mcp_result(await query_tickets_validated({
             "from_station": from_code,
             "to_station": to_code,
             "train_date": date_str,
-        })
-    )
+        }))
+    data = await _operation("tickets.mcp", fetch(), success=lambda result: result.get("success"))
     if not data.get("success"):
         raise Realtime12306Error(
             data.get("error") or str(data.get("errors") or "12306 查询失败")
@@ -202,11 +353,32 @@ async def query_tickets(from_code: str, to_code: str, train_date: str) -> list[d
     return data.get("trains", []) or []
 
 
+@_shared_query("prices")
+async def query_ticket_prices(
+    from_station: str, to_station: str, train_date: str, train_code: str = ""
+) -> dict:
+    """查询 12306 票价；返回标准化 MCP 数据，不包含余票状态。"""
+    await ensure_loaded()
+    date_str = normalize_date(train_date)
+    async def fetch():
+        return parse_mcp_result(await query_ticket_price_validated({
+            "from_station": from_station,
+            "to_station": to_station,
+            "train_date": date_str,
+            "train_code": train_code,
+            "purpose_codes": "ADULT",
+        }))
+    data = await _operation("prices.mcp", fetch(), success=lambda result: result.get("success"))
+    if not data.get("success"):
+        raise Realtime12306Error(data.get("error") or str(data.get("errors") or "12306 票价查询失败"))
+    return data
+
+
 # 余票列表**原始行**缓存：(from, to, date) → (取数时刻, 行表)
 # 只有原始行才带 12306 的**内部编号**（`train_no`，形如 39000G236801）；
 # MCP 的归一化层只留下车次号，把内部编号丢了 —— 而"同一次车在交路不同分段用不同车次号"
 # （G2365/G2368、D2238/D2235、Z184/Z181…）唯一可靠的判据就是这个内部编号。
-_RAW_ROWS_CACHE: dict[tuple[str, str, str], tuple[float, list[dict]]] = {}
+_RAW_ROWS_CACHE: dict[tuple[str, ...], tuple[float, list[dict]]] = {}
 _RAW_ROWS_TTL_S = 300
 _RAW_ROWS_CACHE_MAX = 200
 
@@ -216,6 +388,7 @@ _LEFT_TICKET_QUERY = "https://kyfw.12306.cn/otn/leftTicket/queryI"
 _TRAIN_CODE_FIELD_RE = re.compile(r"^0?[A-Z]?\d{1,4}[A-Z]?$", re.I)
 
 
+@_shared_query("raw_rows")
 async def query_ticket_rows(
     from_code: str, to_code: str, train_date: str
 ) -> list[dict]:
@@ -230,19 +403,16 @@ async def query_ticket_rows(
 
     失败一律返回 `[]`（调用方按"拿不到别名信息"降级），**不抛异常**。
     """
-    import time as _time
-
     code_a = str(from_code or "").strip().upper()
     code_b = str(to_code or "").strip().upper()
     date_str = normalize_date(train_date)
     if not code_a or not code_b or not date_str:
         return []
 
-    key = (code_a, code_b, date_str)
-    now = _time.time()
-    hit = _RAW_ROWS_CACHE.get(key)
-    if hit and now - hit[0] < _RAW_ROWS_TTL_S:
-        return hit[1]
+    key = _scoped_key(code_a, code_b, date_str)
+    hit = _cache_get(_RAW_ROWS_CACHE, key, _RAW_ROWS_TTL_S, "rt.raw_rows")
+    if hit is not None:
+        return hit
 
     from app.tools._http import BROWSER_HEADERS, get_client
 
@@ -252,20 +422,27 @@ async def query_ticket_rows(
     try:
         client = await get_client()
         # 余票接口需要 init 种下的会话（Cookie），缺了会 302/空结果
-        await client.get(_LEFT_TICKET_INIT, headers=headers, timeout=15)
-        resp = await client.get(
-            _LEFT_TICKET_QUERY,
-            headers=headers,
-            params={
-                "leftTicketDTO.train_date": date_str,
-                "leftTicketDTO.from_station": code_a,
-                "leftTicketDTO.to_station": code_b,
-                "purpose_codes": "ADULT",
-            },
-            timeout=15,
-        )
-        resp.raise_for_status()
-        result = (resp.json().get("data") or {}).get("result") or []
+        await _operation("raw.init", client.get(_LEFT_TICKET_INIT, headers=headers, timeout=15),
+                         success=lambda response: response.status_code < 400)
+        async def fetch_rows():
+            resp = await client.get(
+                _LEFT_TICKET_QUERY,
+                headers=headers,
+                params={
+                    "leftTicketDTO.train_date": date_str,
+                    "leftTicketDTO.from_station": code_a,
+                    "leftTicketDTO.to_station": code_b,
+                    "purpose_codes": "ADULT",
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            result = (payload.get("data") or {}).get("result")
+            if _main() and (payload.get("status") is False or not isinstance(result, list)):
+                raise Realtime12306Error("12306 原始余票行查询未返回有效数据")
+            return result or []
+        result = await _operation("raw.query", fetch_rows())
     except Exception:  # noqa: BLE001 —— 增强路径失败不得影响主流程
         return []
 
@@ -294,9 +471,7 @@ async def query_ticket_rows(
             "arrive_time": parts[9].strip(),
         })
 
-    if len(_RAW_ROWS_CACHE) >= _RAW_ROWS_CACHE_MAX:
-        _RAW_ROWS_CACHE.clear()
-    _RAW_ROWS_CACHE[key] = (now, rows)
+    _cache_put(_RAW_ROWS_CACHE, key, rows, _RAW_ROWS_TTL_S, _RAW_ROWS_CACHE_MAX, "rt.raw_rows")
     return rows
 
 
@@ -306,14 +481,14 @@ async def query_route_stations(
     """实时经停站查询（失败返回空列表，不抛异常）。"""
     await ensure_loaded()
     try:
-        data = parse_mcp_result(
-            await get_train_route_stations_validated({
+        async def fetch():
+            return parse_mcp_result(await get_train_route_stations_validated({
                 "train_no": train_no,
                 "from_station": from_code,
                 "to_station": to_code,
                 "train_date": normalize_date(train_date),
-            })
-        )
+            }))
+        data = await _operation("stops.mcp", fetch(), success=lambda result: result.get("success"))
         if data.get("success"):
             return data.get("stations", []) or []
     except Exception:
@@ -335,7 +510,7 @@ async def query_route_stations(
 
 _SEARCH_URL = "https://search.12306.cn/search/v1/train/search"
 # (车次, 日期) → (train_no, from_station, to_station)；train_no 在调图时可能变化，故带 TTL
-_TRAIN_ID_CACHE: dict[tuple[str, str], tuple[float, tuple[str, str, str]]] = {}
+_TRAIN_ID_CACHE: dict[tuple[str, ...], tuple[float, tuple[str, str, str]]] = {}
 _TRAIN_ID_TTL_S = 3600
 _TRAIN_ID_CACHE_MAX = 500
 
@@ -344,22 +519,20 @@ def _search_date(date_str: str) -> str:
     return str(date_str or "").replace("-", "")
 
 
+@_shared_query("identity")
 async def search_train_identity(train_code: str, train_date: str) -> tuple[str, str, str] | None:
     """车次号 → (train_no, 起始站名, 终到站名)；查不到返回 None。
 
     结果按 (车次, 日期) 缓存 1 小时：同一会话里连续问同一趟车不会重复打 12306。
     """
-    import time as _time
-
     code = (train_code or "").strip().upper()
     date_str = normalize_date(train_date)
     if not code or not date_str:
         return None
-    key = (code, date_str)
-    hit = _TRAIN_ID_CACHE.get(key)
-    now = _time.time()
-    if hit and now - hit[0] < _TRAIN_ID_TTL_S:
-        return hit[1]
+    key = _scoped_key(code, date_str)
+    hit = _cache_get(_TRAIN_ID_CACHE, key, _TRAIN_ID_TTL_S, "rt.identity")
+    if hit is not None:
+        return hit
 
     from app.tools._http import BROWSER_HEADERS, get_client
 
@@ -370,14 +543,17 @@ async def search_train_identity(train_code: str, train_date: str) -> tuple[str, 
     })
     try:
         client = await get_client()
-        resp = await client.get(
-            _SEARCH_URL,
-            headers=headers,
-            params={"keyword": code, "date": _search_date(date_str)},
-            timeout=10,
-        )
-        resp.raise_for_status()
-        payload = resp.json()
+        async def fetch_identity():
+            resp = await client.get(
+                _SEARCH_URL,
+                headers=headers,
+                params={"keyword": code, "date": _search_date(date_str)},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            return resp.json()
+        payload = await _operation("identity.query", fetch_identity(),
+                                   success=lambda result: isinstance(result.get("data"), list))
     except Exception:
         return None
 
@@ -389,9 +565,7 @@ async def search_train_identity(train_code: str, train_date: str) -> tuple[str, 
         if not train_no:
             continue
         value = (train_no, str(row.get("from_station") or ""), str(row.get("to_station") or ""))
-        if len(_TRAIN_ID_CACHE) >= _TRAIN_ID_CACHE_MAX:
-            _TRAIN_ID_CACHE.clear()
-        _TRAIN_ID_CACHE[key] = (now, value)
+        _cache_put(_TRAIN_ID_CACHE, key, value, _TRAIN_ID_TTL_S, _TRAIN_ID_CACHE_MAX, "rt.identity")
         return value
     return None
 
@@ -425,11 +599,12 @@ async def resolve_train_identity(
 
 # 经停表缓存：(train_no, date) → (取数时刻, 站序表)
 # 图定表一天内不会变；缓存可显著降低 12306 压力（余票接口对高频访问会限流）
-_STOPS_CACHE: dict[tuple[str, str], tuple[float, list[dict]]] = {}
+_STOPS_CACHE: dict[tuple[str, ...], tuple[float, list[dict]]] = {}
 _STOPS_TTL_S = 3600
 _STOPS_CACHE_MAX = 300
 
 
+@_shared_query("stops")
 async def query_stops_by_train_no(
     train_no: str, from_code: str, to_code: str, train_date: str
 ) -> list[dict]:
@@ -440,20 +615,16 @@ async def query_stops_by_train_no(
     且对过去/今天/未来日期返回同一份图定表）。因此"问经停"不该被余票接口的
     限流/反爬牵连。
     """
-    import time as _time
-
     if not train_no:
         return []
-    key = (str(train_no), normalize_date(train_date))
-    hit = _STOPS_CACHE.get(key)
-    now = _time.time()
-    if hit and now - hit[0] < _STOPS_TTL_S:
-        return hit[1]
+    parts = (str(train_no), normalize_date(train_date))
+    key = _scoped_key(*parts, from_code, to_code) if _main() else parts
+    hit = _cache_get(_STOPS_CACHE, key, _STOPS_TTL_S, "rt.stops")
+    if hit is not None:
+        return hit
     stops = await query_route_stations(train_no, from_code, to_code, train_date)
     if stops:
-        if len(_STOPS_CACHE) >= _STOPS_CACHE_MAX:
-            _STOPS_CACHE.clear()
-        _STOPS_CACHE[key] = (now, stops)
+        _cache_put(_STOPS_CACHE, key, stops, _STOPS_TTL_S, _STOPS_CACHE_MAX, "rt.stops")
     return stops
 
 
@@ -478,7 +649,7 @@ SCREEN_WINDOW_DAYS = 7
 # 该接口一次 0.5–2s、单站 200–700 条，同一会话里连续追问（"那下午呢""那到达呢"）
 # 若按分钟级 TTL 会反复打 12306；10 分钟内复用同一份快照对"今天有哪些车"这类
 # 问题完全够用（列车时刻不会在 10 分钟内变，站台/晚点变化由 note 里的快照时间兜底）。
-_SCREEN_CACHE: dict[tuple[str, str], tuple[float, list[dict]]] = {}
+_SCREEN_CACHE: dict[tuple[str, ...], tuple[float, list[dict]]] = {}
 _SCREEN_TTL_S = 600
 _SCREEN_CACHE_MAX = 40
 
@@ -627,6 +798,7 @@ async def _fetch_station_screen(station_code: str, date_str: str) -> list[dict]:
     return list(payload.get("data") or [])
 
 
+@_shared_query("screen")
 async def query_station_screen_rows(station_code: str, train_date: str) -> list[dict]:
     """车站大屏**原始行**（带 10 分钟缓存）。
 
@@ -634,23 +806,18 @@ async def query_station_screen_rows(station_code: str, train_date: str) -> list[
     也可能是"查询日期超出可查窗口"或"电报码不存在"，三者无法区分 ——
     调用方必须显式处理（见 `screen_window_hint()`）。
     """
-    import time as _time
-
     code = str(station_code or "").strip().upper()
     date_str = normalize_date(train_date)
     if not code or not date_str:
         return []
 
-    key = (code, date_str)
-    now = _time.time()
-    hit = _SCREEN_CACHE.get(key)
-    if hit and now - hit[0] < _SCREEN_TTL_S:
-        return hit[1]
+    key = _scoped_key(code, date_str)
+    hit = _cache_get(_SCREEN_CACHE, key, _SCREEN_TTL_S, "rt.screen")
+    if hit is not None:
+        return hit
 
-    rows = await _fetch_station_screen(code, date_str)
-    if len(_SCREEN_CACHE) >= _SCREEN_CACHE_MAX:
-        _SCREEN_CACHE.clear()
-    _SCREEN_CACHE[key] = (now, rows)
+    rows = await _operation("screen.query", _fetch_station_screen(code, date_str))
+    _cache_put(_SCREEN_CACHE, key, rows, _SCREEN_TTL_S, _SCREEN_CACHE_MAX, "rt.screen")
     return rows
 
 
@@ -690,27 +857,25 @@ def screen_window_hint(date_str: str) -> str:
 #      且有**间歇性**返回空 data（需要重试）。
 CAR_DETAIL_URL = ("https://mobile.12306.cn/wxxcx/openplatform-inner/miniprogram/wifiapps/"
                   "appFrontEnd/v2/lounge/open-smooth-common/trainStyleBatch/getCarDetail")
-_CAR_DETAIL_CACHE: dict[tuple[str, str], tuple[float, dict]] = {}
+_CAR_DETAIL_CACHE: dict[tuple[str, ...], tuple[float, dict]] = {}
 _CAR_DETAIL_TTL_S = 3600
 _CAR_DETAIL_CACHE_MAX = 200
 
 
+@_shared_query("car_detail")
 async def get_car_detail(train_code: str, train_date: str) -> dict | None:
     """车次 → 12306 官方车组号与车厢明细；取不到返回 None（调用方决定降级）。
 
     返回：{car_code, car_type, coaches: [{index, label}], total_coaches, source}
     """
-    import time as _time
-
     code = str(train_code or "").strip().upper()
     day = normalize_date(train_date or "")
     if not code or not day:
         return None
-    key = (code, day)
-    hit = _CAR_DETAIL_CACHE.get(key)
-    now = _time.time()
-    if hit and now - hit[0] < _CAR_DETAIL_TTL_S:
-        return hit[1] or None
+    key = _scoped_key(code, day)
+    hit = _cache_get(_CAR_DETAIL_CACHE, key, _CAR_DETAIL_TTL_S, "rt.car_detail")
+    if hit is not None:
+        return hit or None
 
     from app.tools._http import BROWSER_HEADERS, get_client
 
@@ -747,7 +912,7 @@ async def get_car_detail(train_code: str, train_date: str) -> dict | None:
     result = None
     for attempt in range(2):      # 实测有间歇性空返回 → 重试一次
         try:
-            result = await _once()
+            result = await _operation("car_detail.query", _once(), success=bool)
         except Exception:  # noqa: BLE001 —— 官方通道失败不影响 rail.re 主路径
             result = None
         if result:
@@ -757,9 +922,10 @@ async def get_car_detail(train_code: str, train_date: str) -> dict | None:
 
             await _asyncio.sleep(0.6)
 
-    if len(_CAR_DETAIL_CACHE) >= _CAR_DETAIL_CACHE_MAX:
-        _CAR_DETAIL_CACHE.clear()
-    _CAR_DETAIL_CACHE[key] = (now, result or {})
+    # Missing/failed responses must not pin a one-hour negative result in Main.
+    if result or not _main():
+        _cache_put(_CAR_DETAIL_CACHE, key, result or {}, _CAR_DETAIL_TTL_S,
+                   _CAR_DETAIL_CACHE_MAX, "rt.car_detail")
     return result
 
 

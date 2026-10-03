@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="org.openrailfanai.app.ComposeDisplayFixtureTest" tests="19" failures="0" errors="0" skipped="1" time="76.316" timestamp="2026-10-03T02:35:04" hostname="localhost">
+  <properties>
+    <property name="device" value="railfan-arm64(AVD) - 15" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="fixedScheduleFixtureShowsRouteAndStops" classname="org.openrailfanai.app.ComposeDisplayFixtureTest" time="2.416" />
+  <testcase name="storedFailureRetriesItsOwnQueryAfterOpeningHistory" classname="org.openrailfanai.app.ComposeDisplayFixtureTest" time="2.094" />
+  <testcase name="emptyErrorAndDetailsFixturesExposeTheirIntendedControls" classname="org.openrailfanai.app.ComposeDisplayFixtureTest" time="2.605" />
+  <testcase name="stoppedAnswerIsRenderedOnceAfterPersistence" classname="org.openrailfanai.app.ComposeDisplayFixtureTest" time="2.059" />
+  <testcase name="errorThenDoneKeepsRetrievedScheduleFacts" classname="org.openrailfanai.app.ComposeDisplayFixtureTest" time="1.336" />
+  <testcase name="batchRetryPayloadContainsOnlyFailedTrain" classname="org.openrailfanai.app.ComposeDisplayFixtureTest" time="1.575" />
+  <testcase name="searchRenameDeleteCancelAndSelectUseExistingSessions" classname="org.openrailfanai.app.ComposeHistoryScreenTest" time="4.715" />
+  <testcase name="trainScheduleQueryRendersStructuredBackendResult" classname="org.openrailfanai.app.ComposeScheduleQueryTest" time="1.892">
+    <skipped />
+  </testcase>
+  <testcase name="settingsRouteLoadsFromNativeChatScreen" classname="org.openrailfanai.app.ComposeSettingsRouteTest" time="5.285" />
+  <testcase name="titleSearchGroupingAndDeleteFlowAreDeterministic" classname="org.openrailfanai.app.ConversationStoreTest" time="0.179" />
+  <testcase name="oldSessionFormatSurvivesAndManagementKeepsUnknownFields" classname="org.openrailfanai.app.ConversationStoreTest" time="0.096" />
+  <testcase name="mainLauncherOpensNativeAndComposerTracksRealKeyboard" classname="org.openrailfanai.app.MainLauncherRouteTest" time="8.678" />
+  <testcase name="migratesLegacyProviderAndEncryptsItsSavedKey" classname="org.openrailfanai.app.MainSettingsRepositoryTest" time="0.141" />
+  <testcase name="savePreservesOldStateAndUsesExistingKeystoreContract" classname="org.openrailfanai.app.MainSettingsRepositoryTest" time="0.058" />
+  <testcase name="copyActionReceivesRealTap" classname="org.openrailfanai.app.NativeAcceptanceCaptureTest" time="2.707" />
+  <testcase name="diagnosesTrainCaptureScrollPosition" classname="org.openrailfanai.app.NativeAcceptanceCaptureTest" time="5.459" />
+  <testcase name="composerTracksChangingSafeBottomWithoutExtraGap" classname="org.openrailfanai.app.NativeAcceptanceCaptureTest" time="2.518" />
+  <testcase name="captureNineFixedMainStatesAt390By844Px" classname="org.openrailfanai.app.NativeAcceptanceCaptureTest" time="29.38" />
+  <testcase name="diagnosesReadingCaptureScrollPosition" classname="org.openrailfanai.app.NativeAcceptanceCaptureTest" time="1.348" />
+</testsuite>
