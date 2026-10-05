@@ -25,3 +25,15 @@
 - [票价卡片后端候选交接](backend-fare-card-handoff-20261005.md)
 
 票价结构化新协议仍为候选计划，本版不包含。构建沿用既有Main arm64 Release配置；大型铁路词典默认不打入包，不影响12306和rail.re在线查询。
+
+## 打包结果与远端状态
+
+- 安装包：`dist/android/OpenRailFanAI-0.1.18-arm64-release.apk`，34,659,283字节。
+- SHA-256：`933499bccac6e518e477e698f6122b730cd079fe98c2354c78afb8b6e1c80efa`。
+- 包名 `org.openrailfanai.app`，版本名称0.1.18、版本号118，最低Android 7.0（API 24）。
+- Release签名校验通过，沿用证书SHA-256 `e644691a89343cc83ee596340fd3a4648ca792b569e9744f3d9326b5e70244ec`。
+- 源码打包基准提交 `0aebc72`；APK内的批量分发、批量执行、多日期、编排、票价工具及展示投影Python字节码与当前源码逐项匹配。
+- 发布分支 `codex/main-0.1.18` 保留远端main的首页README更新；没有覆盖远端分支或改写历史。
+- 当前推送因GitHub令牌未授予权限范围而被403拒绝，Release创建亦被拒绝。APK已完成，远端尚未发布；等待具备公开仓库写入权限的认证后继续。
+
+本次远端操作采用Git命令与GitHub API，后续沿用此方式。认证仅放在临时进程内，不记录令牌、不修改远程地址、不写入仓库或持久化认证配置。
