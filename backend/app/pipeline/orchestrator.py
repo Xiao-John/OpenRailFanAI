@@ -23,7 +23,9 @@ from app.config import get_settings
 from app.models import PipelineResult, SlotValue
 from app.display_result import serialize_display_results
 from app.pipeline import generate
+from app.pipeline.ticket_answer import direct_answer
 from app.pipeline import repetition, planner, prefetch as prefetch_mod, retrieve
+from app.pipeline import service_dispatch
 
 _log = logging.getLogger("railfan.pipeline")
 
@@ -49,8 +51,21 @@ def _ms(t0: float) -> float:
     return round((time.perf_counter() - t0) * 1000.0, 1)
 
 
+async def _receipt_stream(answer: str):
+    yield "text", answer
+
+
 async def _decide_with_prefetch(message: str, history: list[dict] | None,
                                 display_action: dict | None = None):
+    explicit = service_dispatch.decide(message, display_action, history)
+    if explicit is not None:
+        # The old planner loaded the bundled station index before retrieval.
+        # Keep that prerequisite on the new explicit ticket entry as well.
+        frame = explicit[2].raw.get("service_query", {})
+        if explicit[0].value == "ticket" or any(op in {"ticket", "fare"} for op in frame.get("operations", [])):
+            from app.tools import _rt12306 as rt
+            await rt.ensure_loaded()
+        return explicit, None
     pf = None
 
     def begin() -> None:
@@ -195,6 +210,8 @@ async def run_stream(
             isinstance(item, dict) and item.get("tool") in {"train.schedule", "emu.routing"}
             for item in (retrieval.get("data") or [])
         ) or bool(structured_tool_errors)
+        if direct_answer(retrieval):
+            buffer_structured_answer = False
         logs.append(f"[数据检索] 工具：{trace_str} · {_ms(t0)}ms")
         perf_metrics.record_stage("retrieve", _ms(t0))
         yield {"type": "stage", "stage": "retrieve", "msg": trace_str, "ms": _ms(t0)}
@@ -213,8 +230,9 @@ async def run_stream(
         try:
             # 历史已在 prompt 的 [对话历史] 区块中；不再重复传入 messages（省钱且语义不变）
             checked = 0
-            stream = llm_client.stream_completion(
-                prompt, **generate.completion_options(retrieval, question_type))
+            receipt = direct_answer(retrieval)
+            stream = (_receipt_stream(receipt) if receipt else llm_client.stream_completion(
+                prompt, **generate.completion_options(retrieval, question_type)))
             async for kind, text in stream:
                 if text and kind not in first_upstream:
                     perf_metrics.record_stage("first_upstream_" + ("think" if kind == "think" else "answer"),
@@ -239,7 +257,7 @@ async def run_stream(
                     # 实测 0.8B 白吐了 1200 token（撞上限）才停，那一段全是重复。
                     # 检查本身 0.03ms，每 128 字查一次可以忽略。
                     total = sum(len(x) for x in gathered_answer)
-                    if total - checked >= 128:
+                    if not receipt and total - checked >= 128:
                         checked = total
                         if repetition.detect("".join(gathered_answer)) is not None:
                             loop_cut = True
@@ -264,7 +282,7 @@ async def run_stream(
                     yield {"type": "answer", "delta": fb}
                 logs.append("[回答生成] 已降级为确定性规则排版（未使用语言模型，首行已自报）")
         else:
-            logs.append(f"[回答生成] 流式输出完成 · {_ms(t0)}ms")
+            logs.append(f"[回答生成] {'查询回执直接交付（未调用生成模型）' if receipt else '流式输出完成'} · {_ms(t0)}ms")
         finally:
             # Breaking on repetition or closing the outer SSE generator must close
             # upstream now, rather than defer socket release to GC finalization.
@@ -415,6 +433,7 @@ async def run(
     message: str,
     history: list[dict] | None = None,
     llm: dict | None = None,
+    display_action: dict | None = None,
 ) -> PipelineResult:
     # 供应商与计费都是请求级 ContextVar，与 run_stream 保持一致的就位位置
     llm_client.set_active_provider(llm)
@@ -429,7 +448,7 @@ async def run(
     try:
         # 1+2 决策（快路径 / 合并调用 / 两次调用）
         t0 = time.perf_counter()
-        decision, pf = await _decide_with_prefetch(message, history)
+        decision, pf = await _decide_with_prefetch(message, history, display_action)
         intent_, question_type, slots, planner_used, defer_reason = decision
         intent_str, question_type = _ticket_display(intent_, question_type, message)
         logs.append(
@@ -444,7 +463,8 @@ async def run(
         t0 = time.perf_counter()
         try:
             retrieval = await retrieve.retrieve(
-                intent_.value, slots, question_type=question_type, message=message, prefetch=pf
+                intent_.value, slots, question_type=question_type, message=message, prefetch=pf,
+                display_action=display_action,
             )
         finally:
             if pf is not None:
@@ -454,6 +474,8 @@ async def run(
 
         # 4 回答生成
         t0 = time.perf_counter()
+        if direct_answer(retrieval):
+            logs.append("[回答生成] 余票回执直接排版（未调用生成模型）")
         degraded = False
         generation_failed = False
         loop_cut = False
@@ -463,7 +485,7 @@ async def run(
             )
             # 与流式路径**同一套**重复循环兜底。两处都要有：块式接口同样对外可用，
             # 只在流式里加会留下一条没被保护的路径（本仓库吃过"两处各写一份"的亏）。
-            _cut = repetition.detect(answer)
+            _cut = repetition.detect(answer) if not direct_answer(retrieval) else None
             if _cut is not None:
                 loop_cut = True
                 answer = answer[:_cut].rstrip() + "\n\n（后续内容出现连续重复，已在此截断。）"

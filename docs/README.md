@@ -4,6 +4,8 @@
 
 | 文档 | 内容 |
 |---|---|
+| [`main-frontend-changes-0.1.17.md`](main-frontend-changes-0.1.17.md) | **前端更改与交接**：回复区、Token、会话隔离及票价卡片；现有APK未包含10月5日后续修复 |
+| [`backend-fare-card-handoff-20261005.md`](backend-fare-card-handoff-20261005.md) | **票价卡片交接**：当前纯客户端展示及后续结构化票价候选契约，不干预正在进行的后端修改 |
 | [`EXPL.md`](EXPL.md) | **实现**：架构、三层流水线、工具清单、数据完整性契约、测试与运行状态 |
 | [`datasources.md`](datasources.md) | **实现**：各数据源的接入方式、接口形态、关键约束与踩坑记录 |
 | [`run.md`](run.md) | **部署与运行**：安装、启动、配置密钥、接口示例、测试与数据准备 |

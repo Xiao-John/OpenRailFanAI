@@ -298,10 +298,6 @@ class NativeAcceptanceCaptureTest {
             layoutRecord.clear()
             compose.runOnIdle { currentState = state }
             compose.waitForIdle()
-            if (state == "history") {
-                compose.onNodeWithTag("history-more-selected", useUnmergedTree = true).performClick()
-                interactionEvents += "history:actions-open"
-            }
             if (state == "query_details") {
                 compose.onNodeWithTag("query-details-toggle").performClick()
                 interactionEvents += "details-expanded"
@@ -311,7 +307,7 @@ class NativeAcceptanceCaptureTest {
             compose.waitUntil(5_000) {
                 insetRecord.first[1] >= 0 && insetRecord.first[3] >= 0 &&
                     insetRecord.second[1] > 0 && insetRecord.second[3] > 0 &&
-                    compose.onAllNodesWithTag(if (state == "history") "history-content" else "main-safe-content", useUnmergedTree = true)
+                    compose.onAllNodesWithTag(if (state == "history") "history-safe-content" else "main-safe-content", useUnmergedTree = true)
                         .fetchSemanticsNodes().size == 1
             }
             if (state == "history") {
@@ -326,7 +322,7 @@ class NativeAcceptanceCaptureTest {
                     .put("viewport_end_px", (bounds.bottom - rootForScroll.top).roundToInt())
             }
             compose.waitUntil(5_000) {
-                val contentNodes = compose.onAllNodesWithTag(if (state == "history") "history-content" else "main-safe-content", useUnmergedTree = true).fetchSemanticsNodes()
+                val contentNodes = compose.onAllNodesWithTag(if (state == "history") "history-safe-content" else "main-safe-content", useUnmergedTree = true).fetchSemanticsNodes()
                 val scrollReady = scrollRecord?.optInt("viewport_end_px", 0)?.let { it > (scrollRecord?.optInt("viewport_start_px", 0) ?: 0) } == true
                 contentNodes.size == 1 && contentNodes.single().boundsInRoot.width > 0 && scrollReady
             }
@@ -335,7 +331,7 @@ class NativeAcceptanceCaptureTest {
             var stableBasisFrames = 0
             compose.waitUntil(5_000) {
                 val rootNow = compose.onNodeWithTag("native-capture-root").fetchSemanticsNode().boundsInRoot
-                val contentNow = compose.onNodeWithTag(if (state == "history") "history-content" else "main-safe-content", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+                val contentNow = compose.onNodeWithTag(if (state == "history") "history-safe-content" else "main-safe-content", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
                 val current = listOf(contentNow.left-rootNow.left, contentNow.top-rootNow.top, contentNow.right-rootNow.left, contentNow.bottom-rootNow.top)
                 if (current == previousBasisGeometry) stableBasisFrames++ else stableBasisFrames = 0
                 previousBasisGeometry = current
@@ -376,7 +372,7 @@ class NativeAcceptanceCaptureTest {
             }
             val stateMeasurements = JSONObject()
             var historyDiagnostics: JSONObject? = null
-            val contentTag = if (state == "history") "history-content" else "main-safe-content"
+            val contentTag = if (state == "history") "history-safe-content" else "main-safe-content"
             val contentNodes = compose.onAllNodesWithTag(contentTag, useUnmergedTree = true).fetchSemanticsNodes()
             assertEquals("$state content container match count", 1, contentNodes.size)
             val contentBounds = contentNodes.single().boundsInRoot
@@ -531,8 +527,8 @@ class NativeAcceptanceCaptureTest {
                     assertEquals("history footer $tag overlaps action panel", 0f, panelOverlap, 0.01f)
                     assertEquals("history footer $tag overlaps cancel action", 0f, cancelOverlap, 0.01f)
                 }
-                assertEquals("history action panel must be present for visibility verification", 1, panelNodes.size)
-                assertEquals("history cancel action must be present for visibility verification", 1, cancelNodes.size)
+                assertEquals("closed drawer capture must not include an action panel", 0, panelNodes.size)
+                assertEquals("closed drawer capture must not include a cancel action", 0, cancelNodes.size)
                 listOf("history-settings-hit-target", "history-help-hit-target").forEach { tag ->
                     val bounds = measured(tag) ?: throw AssertionError("history footer hit target missing: $tag")
                     assertTrue("history footer hit target is narrower than 44px: $tag $bounds", bounds.width >= 44f)
@@ -543,7 +539,7 @@ class NativeAcceptanceCaptureTest {
                     footerLabels.minOf { it.left }, footerLabels.minOf { it.top },
                     footerLabels.maxOf { it.right }, footerLabels.maxOf { it.bottom },
                 ) else null
-                historyDiagnostics = JSONObject().put("scroll_kind", "continuous_vertical_scroll")
+                historyDiagnostics = JSONObject().put("menu_state", "closed").put("scroll_kind", "continuous_vertical_scroll")
                     .put("scroll_offset_px", scrollRange?.value?.invoke()?.roundToInt())
                     .put("scroll_max_px", scrollRange?.maxValue?.invoke()?.roundToInt())
                     .put("viewport_bounds_px", rect(viewport)).put("safe_content_bounds_px", rect(contentBounds))
@@ -665,12 +661,16 @@ class NativeAcceptanceCaptureTest {
                     compose.onNodeWithTag("history-group-昨天").assertExists()
                     compose.onNodeWithTag("history-row-yesterday").assertExists()
                     compose.onNodeWithTag("history-row-selected").assertExists()
-                    compose.onNodeWithTag("history-actions-cancel").performClick()
+                    compose.onNodeWithTag("native-capture-root").logUsabilityCapture("history-drawer-closed")
+                    compose.onNodeWithTag("history-more-selected", useUnmergedTree = true).performClick()
+                    interactionEvents += "history:actions-open"
+                    compose.onNodeWithTag("native-capture-root").logUsabilityCapture("history-actions-open")
+                    compose.onNodeWithTag("history-actions-dismiss").performTouchInput { click(androidx.compose.ui.geometry.Offset(4f, 4f)) }
                     compose.onNodeWithTag("history-create").performClick()
                     compose.onNodeWithText("北京南到上海虹桥票价").performClick()
                     compose.onNodeWithTag("history-more-selected", useUnmergedTree = true).performClick()
                     compose.onNodeWithTag("history-actions-panel").assertExists()
-                    compose.onNodeWithText("对话操作").assertExists()
+                    compose.onNodeWithTag("history-rename-menu").assertExists()
                     compose.onNodeWithTag("history-rename-menu").performClick()
                     compose.onNodeWithTag("history-rename").performTextClearance()
                     compose.onNodeWithTag("history-rename").performTextInput("票价查询")
@@ -839,7 +839,7 @@ class NativeAcceptanceCaptureTest {
         "batch_partial" -> listOf("batch-result", "batch-card", "batch-heading", "batch-count", "batch-row-C2203", "batch-row-G8927", "batch-row-G8928", "batch-status-icon-C2203", "batch-status-icon-G8928", "batch-retry-failed", "batch-retry-failed-visual", "batch-retain-success", "batch-retain-success-text")
         "routing_empty" -> listOf("routing-empty", "empty-icon-group", "empty-title", "empty-message", "empty-date-pill", "empty-date-icon", "empty-change-date", "empty-change-date-visual", "empty-recent", "empty-recent-visual", "empty-history-note")
         "connection_error" -> listOf("connection-error", "error-icon", "error-title", "error-explanation", "connection-retry", "connection-retry-visual", "connection-settings", "connection-settings-visual", "error-details-toggle", "error-details-toggle-visual", "api-key-label", "api-key-field", "api-key-field-visual", "api-key-error")
-        "history" -> listOf("history-header", "history-scroll-container", "history-search-box", "history-create", "history-today-group", "history-group-今天",
+        "history" -> listOf("history-safe-content","history-header", "history-scroll-container", "history-search-box", "history-create", "history-today-group", "history-group-今天",
             "history-row-selected", "history-row-schedule", "history-row-tomorrow", "history-yesterday-group", "history-group-昨天",
             "history-row-yesterday", "history-select-selected", "history-select-schedule", "history-select-tomorrow", "history-select-yesterday",
             "history-more-selected", "history-more-schedule", "history-more-tomorrow", "history-more-yesterday",
@@ -851,13 +851,13 @@ class NativeAcceptanceCaptureTest {
     private fun copyExpectations(state: String): List<String> = when (state) {
         "train_schedule" -> listOf("查一下 G8932 今天的时刻表", "G8932", "图定时刻 · 示例数据", "秦皇岛 → 北京南", "09月25日", "1小时52分", "车站", "到达", "出发", "图定时刻不代表实际正晚点。", "12306 · 列车时刻", "查询详情", "复制", "重新生成", "查票价", "查担当车组", "继续追问…")
         "emu_routing" -> listOf("CR400BF-5033 今天的交路", "CR400BF-5033", "09月25日 · 交路记录", "以下为记录时间，不是列车到发时间。", "C2203", "07:42", "G8927", "11:06", "G8928", "13:26", "查看该车次时刻", "rail.re · 交路记录", "查询这三趟车的时刻表", "记录可能不完整，以实际运行情况为准。")
-        "query_loading" -> listOf("正在查询列车数据…", "已识别 G8932 · 正在连接 12306", "再看看明天的", "可停止生成，已返回内容会保留")
+        "query_loading" -> listOf("正在检索相关资料…", "已识别 G8932 · 正在连接 12306", "再看看明天的", "可停止生成，已返回内容会保留")
         "batch_partial" -> listOf("时刻查询", "2 / 3 已返回", "C2203", "G8927", "G8928", "已查到", "暂未返回", "仅重试 G8928", "保留已查到的结果")
         "routing_empty" -> listOf("未找到当天交路记录", "暂无记录，不能据此判断停运。", "09月25日", "更换日期", "查看最近记录", "历史记录将单独标注日期")
         "connection_error" -> listOf("暂时无法连接模型服务", "你的提问已保留，可稍后重试。", "重试", "检查模型设置", "错误详情", "API Key", "密钥无效，请检查后重试")
-        "reading_followup" -> listOf("以下是 G8932 次列车的时刻信息：", "有新内容 · 回到底部", "查余票", "换个日期", "继续追问…")
+        "reading_followup" -> listOf("以下是 G8932 次列车的时刻信息：", "回到底部", "查余票", "换个日期", "继续追问…")
         "query_details" -> listOf("查询详情", "12306 · 列车时刻", "示例数据", "数据日期", "09月25日", "时间口径", "图定时刻", "查询耗时", "5.8 秒", "用量", "1,555 Token", "查看技术日志")
-        "history" -> listOf("对话历史", "搜索对话…", "新建对话", "今天", "昨天", "北京南到上海虹桥票价", "CR400BF-5033 今日交路", "G8932 列车时刻", "京沪线沿线车站", "对话操作", "重命名", "删除对话", "取消", "模型与设置", "使用帮助")
+        "history" -> listOf("对话历史", "搜索对话…", "新建对话", "今天", "昨天", "北京南到上海虹桥票价", "CR400BF-5033 今日交路", "G8932 列车时刻", "京沪线沿线车站", "模型与设置", "帮助")
         else -> emptyList()
     }
 

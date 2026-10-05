@@ -11,8 +11,8 @@ object NativeColors {
     var systemDark by mutableStateOf(false)
     val dark: Boolean get() = preference == "dark" || (preference == "auto" && systemDark)
     val ink: Color get() = if (dark) Color(0xFFE6ECF8) else Color(0xFF0B1738)
-    val muted: Color get() = if (dark) Color(0xFFA8B7D1) else Color(0xFF687A9C)
-    val line: Color get() = if (dark) Color(0xFF35435A) else Color(0xFFDCE5F2)
+    val muted: Color get() = if (dark) Color(0xFFA8B7D1) else Color(0xFF526783)
+    val line: Color get() = if (dark) Color(0xFF35435A) else Color(0xFFC5D1E2)
     val blue: Color get() = Color(0xFF2563EB)
     val panel: Color get() = if (dark) Color(0xFF202B3C) else Color(0xFFF2F6FB)
     val surface: Color get() = if (dark) Color(0xFF172131) else Color.White

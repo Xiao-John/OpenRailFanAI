@@ -90,5 +90,23 @@ class HistoryVisibilityViewportTest(unittest.TestCase):
         self.assertIn("safe content disagrees with the capture basis", evidence["unmeasured"][0])
 
 
+class HistoryMenuStateTest(unittest.TestCase):
+    capture = HistoryVisibilityViewportTest.capture
+    def test_closed_drawer_needs_explicit_state_and_absent_overlay(self):
+        diagnostics, basis, measurements = self.capture()
+        diagnostics["menu_state"] = "closed"
+        measurements.pop("history-actions-panel")
+        measurements.pop("history-actions-cancel")
+        result = history_footer_visibility(diagnostics, basis, measurements)
+        self.assertEqual("passed", result["status"])
+
+    def test_closed_state_cannot_hide_present_overlay(self):
+        diagnostics, basis, measurements = self.capture()
+        diagnostics["menu_state"] = "closed"
+        result = history_footer_visibility(diagnostics, basis, measurements)
+        self.assertEqual("unmeasured", result["status"])
+        self.assertTrue(any("contains action-menu" in value for value in result["unmeasured"]))
+
+
 if __name__ == "__main__":
     unittest.main()

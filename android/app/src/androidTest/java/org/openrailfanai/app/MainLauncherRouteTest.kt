@@ -64,7 +64,7 @@ class MainLauncherRouteTest {
         try {
             compose.waitUntil(30_000) {
                 native = resumedNativeActivity()
-                native != null && compose.onAllNodes(hasTestTag("main-submit-control") and isEnabled())
+                native != null && compose.onAllNodes(hasTestTag("main-submit-control"))
                     .fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithContentDescription("对话历史").performClick()
@@ -109,6 +109,14 @@ class MainLauncherRouteTest {
                     ActivityLifecycleMonitorRegistry.getInstance().removeLifecycleCallback(callback)
                 }
             }
+            val currentId = ConversationStore(context).currentId()
+            compose.onNodeWithContentDescription("对话历史").performClick()
+            compose.onNodeWithTag("history-select-$currentId").performClick()
+            compose.onNodeWithTag("main-input-field").assertTextContains("键盘适配检查草稿")
+            compose.onNodeWithContentDescription("新建对话").performClick()
+            compose.onNodeWithContentDescription("对话历史").performClick()
+            compose.onNodeWithTag("history-select-$currentId").performClick()
+            compose.onNodeWithTag("main-input-field").assertTextContains("键盘适配检查草稿")
         } finally {
             instrumentation.runOnMainSync { native?.finish() }
             launcher.close()

@@ -13,7 +13,15 @@
 from __future__ import annotations
 
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+
+# 当前中国铁路业务日以UTC+8确定；不依赖Android未附带的IANA时区数据库。
+# 仅用于今天/未来日期，不用于历史夏令时转换。
+_RAILWAY_TZ = timezone(timedelta(hours=8), "China Standard Time")
+
+
+def railway_today() -> date:
+    return datetime.now(_RAILWAY_TZ).date()
 
 # 公历固定的节日俗称 → (月, 日)。**不含农历节日**（春节/清明/端午/中秋会逐年变动，
 # 需要农历换算表；不猜，交给 date_note 如实说明"没听懂，已按今天处理"）。
@@ -111,13 +119,13 @@ def _safe_date(year: int, month: int, day: int) -> date | None:
         return None
 
 
-def resolve_date(value: str | None, *, default_today: bool = True) -> tuple[str, bool]:
+def resolve_date(value: str | None, *, default_today: bool = True, reference_date: date | None = None) -> tuple[str, bool]:
     """解析时间表述 → (YYYY-MM-DD, 是否识别成功)。
 
     `default_today=True` 时无法识别返回今天；`False` 时返回空串。
     第二个返回值用于让调用方区分"用户就是要今天"与"我们没听懂，退化成今天"。
     """
-    today = date.today()
+    today = reference_date or railway_today()
     fallback = today.isoformat() if default_today else ""
     if not value:
         # 未提供时间表述：默认今天（这属于"用户没说"，不算识别失败）
@@ -223,6 +231,13 @@ def resolve_date(value: str | None, *, default_today: bool = True) -> tuple[str,
 def normalize_date(value: str | None, *, default_today: bool = True) -> str:
     """把时间表述归一化为 YYYY-MM-DD（兼容旧签名，内部走 `resolve_date`）。"""
     return resolve_date(value, default_today=default_today)[0]
+
+
+def future_railway_date(value: str | None) -> str:
+    """仅返回明确识别的未来日期；铁路业务日期以中国时区为准。"""
+    today = railway_today()
+    resolved, matched = resolve_date(value, default_today=False, reference_date=today)
+    return resolved if matched and resolved and resolved > today.isoformat() else ""
 
 
 def date_note(value: str | None, resolved: str) -> str:

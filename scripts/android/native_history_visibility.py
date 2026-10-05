@@ -75,8 +75,16 @@ def history_footer_visibility(diagnostics: object, basis: object,
                 or viewport[1] != scroll["viewport_start_px"]
                 or viewport[3] != scroll["viewport_end_px"]):
             raise ValueError("history diagnostics do not match the formal capture scroll basis")
-        overlays = {tag: _xywh(measurements[tag]) for tag in
-                    ("history-actions-panel", "history-actions-cancel")}
+        menu_state = diagnostics.get("menu_state", "open")
+        if menu_state == "closed":
+            if any(tag in measurements for tag in ("history-actions-panel", "history-actions-cancel")):
+                raise ValueError("closed drawer capture contains action-menu measurements")
+            overlays = {}
+        elif menu_state == "open":
+            overlays = {tag: _xywh(measurements[tag]) for tag in
+                        ("history-actions-panel", "history-actions-cancel")}
+        else:
+            raise ValueError("unknown history menu state")
     except (KeyError, TypeError, ValueError, IndexError) as error:
         errors.append(f"history footer capture context invalid: {error}")
         return result

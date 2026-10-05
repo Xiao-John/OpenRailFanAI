@@ -14,19 +14,19 @@ class SettingsClient(private val baseUrl: String) {
         val connection = URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection
         connection.connectTimeout = 8_000
         connection.readTimeout = 30_000
-        if (config != null) {
-            connection.requestMethod = "POST"
-            connection.doOutput = true
-            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            val body = JSONObject().put("base_url", config.baseUrl)
-                .put("model", config.model).put("api", config.api).put("api_key", config.key)
-            if (!config.custom) body.put("provider", config.id)
-            connection.outputStream.use { it.write(body.toString().toByteArray(StandardCharsets.UTF_8)) }
-        }
         try {
+            if (config != null) {
+                connection.requestMethod = "POST"
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                val body = JSONObject().put("base_url", config.baseUrl)
+                    .put("model", config.model).put("api", config.api).put("api_key", config.key)
+                if (!config.custom) body.put("provider", config.id)
+                connection.outputStream.use { it.write(body.toString().toByteArray(StandardCharsets.UTF_8)) }
+            }
             val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
-            if (connection.responseCode !in 200..299) throw IllegalStateException("HTTP ${connection.responseCode}: $text")
+            if (connection.responseCode !in 200..299) throw IllegalStateException("提供商请求失败（HTTP ${connection.responseCode}）")
             return JSONObject(text)
         } finally { connection.disconnect() }
     }

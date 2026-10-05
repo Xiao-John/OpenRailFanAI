@@ -1,5 +1,7 @@
 package org.openrailfanai.app
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +10,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +37,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -55,6 +61,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** The production Main chat page. Instrumentation fixtures call this same screen and its real children. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun MainChatScreen(
     status: String,
@@ -73,6 +80,7 @@ internal fun MainChatScreen(
     onSettings: (String?) -> Unit,
     onCopy: (String) -> Unit = {},
     onRegenerate: (String) -> Unit = {},
+    onShare: (String) -> Unit = {},
     onRetryQuery: (String) -> Unit = { onRetry() },
     onFollowup: (String) -> Unit = {},
     datePicker: ((LocalDate, (LocalDate) -> Unit) -> Unit)? = null,
@@ -83,8 +91,10 @@ internal fun MainChatScreen(
     onLayoutDiagnostics: ((String, IntArray, IntArray) -> Unit)? = null,
     autoScrollToLatest: Boolean = true,
     onBack: () -> Unit = {},
+    conversationTokens: Long? = null,
 ) {
     val listState = rememberLazyListState()
+    val tokenTotal = conversationTokens ?: messages.filter { it.role == "assistant" }.sumOf { replyTokenUsage(it.meta) ?: 0L }
     val persistedResults = messages.filter { it.role == "assistant" }.flatMap {
         DisplayResultParser.parseArray(it.meta?.optJSONArray("displayResults"))
     }
@@ -92,18 +102,24 @@ internal fun MainChatScreen(
     val stoppedAnswerPersisted = messages.lastOrNull()?.let {
         it.role == "assistant" && it.meta?.optBoolean("stopped") == true && it.content == chatState.answer
     } == true
-    val followupSchedule = messages.asReversed().firstNotNullOfOrNull { message ->
+    val followupSchedule = messages.lastOrNull()?.takeIf { it.role == "assistant" }?.let { message ->
         DisplayResultParser.parseArray(message.meta?.optJSONArray("displayResults"))
             .filterIsInstance<TrainScheduleDisplay>().lastOrNull()
     }
+    val readingBaseline = remember(chatState.reading) {
+        Triple(messages.size, chatState.answer.length, chatState.results.size)
+    }
+    val hasNewReadingContent = chatState.reading && (messages.size > readingBaseline.first ||
+        chatState.answer.length > readingBaseline.second || chatState.results.size > readingBaseline.third)
     val inputFocusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
+    var scrollingToLatest by remember { mutableStateOf(false) }
     LaunchedEffect(listState) {
         snapshotFlow {
             val layout = listState.layoutInfo
             val last = layout.visibleItemsInfo.lastOrNull()
             val atBottom = if (layout.totalItemsCount > 0) {
-                last != null && last.index == layout.totalItemsCount - 1 && last.offset + last.size <= layout.viewportEndOffset
+                !listState.canScrollForward
             } else null
             ScrollDiagnostics(
                 firstVisibleIndex = listState.firstVisibleItemIndex,
@@ -116,13 +132,21 @@ internal fun MainChatScreen(
         }.collect { diagnostic ->
             onScrollDiagnostics?.invoke(diagnostic.firstVisibleIndex, diagnostic.firstVisibleOffset,
                 diagnostic.viewportStart, diagnostic.viewportEnd, diagnostic.visibleIndices)
-            diagnostic.atBottom?.let { onReadingChange(!it) }
+            diagnostic.atBottom?.let { bottom ->
+                if (!scrollingToLatest && (bottom || listState.isScrollInProgress)) onReadingChange(!bottom)
+            }
         }
     }
     LaunchedEffect(chatState.answer, chatState.results.size, chatState.phase, chatState.reading, messages.size) {
         if (autoScrollToLatest && !chatState.reading) {
             val itemCount = snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
-            if (!chatState.reading) listState.animateScrollToItem(itemCount - 1)
+            if (!chatState.reading) {
+                scrollingToLatest = true
+                try {
+                    listState.scrollToItem(itemCount - 1)
+                    listState.scrollBy(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.size?.toFloat() ?: 0f)
+                } finally { scrollingToLatest = false }
+            }
         }
     }
 
@@ -132,28 +156,28 @@ internal fun MainChatScreen(
     Column((if (applySystemInsets) pageModifier.windowInsetsPadding(systemInsets).imePadding() else pageModifier)
         .captureLayoutConstraints("main-safe-content", onLayoutDiagnostics)
         .testTag("main-safe-content")) {
-      Column(Modifier.fillMaxSize().padding(horizontal = 15.dp).testTag("main-page-content")) {
+      Column(Modifier.fillMaxSize().railEntrance().padding(horizontal = 15.dp).testTag("main-page-content")) {
         Box(
-            Modifier.fillMaxWidth().height(44.dp).captureLayoutConstraints("main-topbar", onLayoutDiagnostics).testTag("main-topbar"),
+            Modifier.fillMaxWidth().height(56.dp).captureLayoutConstraints("main-topbar", onLayoutDiagnostics).testTag("main-topbar"),
         ) {
             Box(
-                Modifier.align(androidx.compose.ui.Alignment.CenterStart).requiredSize(44.dp)
-                    .clickable(onClick = onBack).semantics { contentDescription = "返回"; role = Role.Button }
-                    .testTag("main-back-control"),
+                Modifier.align(androidx.compose.ui.Alignment.CenterStart).requiredSize(48.dp)
+                    .clickable { onSettings(null) }.semantics { contentDescription = "设置"; role = Role.Button }
+                    .testTag("main-settings-control"),
                 contentAlignment = androidx.compose.ui.Alignment.Center,
             ) {
-                RailIcon("chevron-left", Modifier.offset(x = (-12.5).appDp, y = (-2.25).appDp).size(20.appDp), NativeColors.ink, "main-back-icon")
+                RailIcon("settings", Modifier.size(24.dp), NativeColors.ink, "main-settings-icon")
             }
             Box(
-                Modifier.align(androidx.compose.ui.Alignment.CenterStart).offset(x = 44.dp).requiredSize(44.dp)
+                Modifier.align(androidx.compose.ui.Alignment.CenterStart).offset(x = 48.dp).requiredSize(48.dp)
                     .clickable(onClick = onOpenHistory).semantics { contentDescription = "对话历史"; role = Role.Button }
                     .testTag("main-history-control"),
                 contentAlignment = androidx.compose.ui.Alignment.Center,
             ) {
-                RailIcon("history", Modifier.offset(x = (-9.5).appDp).size(24.appDp), NativeColors.ink, "main-history-icon")
+                RailIcon("history", Modifier.size(24.dp), NativeColors.ink, "main-history-icon")
             }
             Row(
-                Modifier.align(androidx.compose.ui.Alignment.TopCenter),
+                Modifier.align(androidx.compose.ui.Alignment.Center),
                 horizontalArrangement = Arrangement.spacedBy(5.appDp),
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             ) {
@@ -163,19 +187,21 @@ internal fun MainChatScreen(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
             }
             Box(
-                Modifier.align(androidx.compose.ui.Alignment.CenterEnd).requiredSize(44.dp)
+                Modifier.align(androidx.compose.ui.Alignment.CenterEnd).requiredSize(48.dp)
                     .clickable(onClick = onNewConversation).semantics { contentDescription = "新建对话"; role = Role.Button }
                     .testTag("main-new-control"),
                 contentAlignment = androidx.compose.ui.Alignment.Center,
             ) {
-                RailIcon("plus", Modifier.offset(x = (4.3).appDp, y = (-2.15).appDp).size(24.appDp), NativeColors.ink, "main-new-icon")
+                RailIcon("plus", Modifier.size(24.dp), NativeColors.ink, "main-new-icon")
             }
         }
         if (!connected && status.isNotBlank()) {
-            BasicText(status, style = TextStyle(color = NativeColors.muted, fontSize = 13.appSp))
+            BasicText(status, style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
         }
         Box(Modifier.weight(1f).fillMaxWidth().captureLayoutConstraints("main-list-container", onLayoutDiagnostics).testTag("main-list-container")) {
-        LazyColumn(
+        if (messages.isEmpty() && !chatState.busy) {
+            ChatWelcome(onDraft = { draft -> onFollowup(draft); inputFocusRequester.requestFocus() })
+        } else LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().captureLayoutConstraints("main-message-list", onLayoutDiagnostics).testTag("main-message-list"),
             verticalArrangement = Arrangement.spacedBy(14.appDp),
@@ -189,7 +215,7 @@ internal fun MainChatScreen(
                             .captureLayoutConstraints("main-user-prompt-row", onLayoutDiagnostics).testTag("main-user-prompt-row")) {
                             Row(Modifier.fillMaxWidth().padding(end = 42.appDp), horizontalArrangement = Arrangement.End) {
                                 Box(
-                                    Modifier.widthIn(min = 249.appDp).heightIn(min = 50.appDp)
+                                    Modifier.heightIn(min = 50.appDp)
                                         .captureLayoutConstraints("main-user-prompt-frame", onLayoutDiagnostics)
                                         .background(NativeColors.blue, RoundedCornerShape(16.appDp)).testTag("main-user-prompt-frame"),
                                     contentAlignment = androidx.compose.ui.Alignment.CenterStart,
@@ -213,8 +239,7 @@ internal fun MainChatScreen(
                                     RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue, "main-assistant-avatar-icon")
                                 }
                             }
-                            BasicText(message.content, Modifier.weight(1f).testTag("main-answer-$index"),
-                                style = TextStyle(color = NativeColors.ink, fontSize = 16.appSp))
+                            MarkdownAnswer(message.content, Modifier.weight(1f).testTag("main-answer-$index"), firstTextTag = "main-answer-$index-text")
                         }
                         val metadata = message.meta
                         val storedResults = DisplayResultParser.parseArray(metadata?.optJSONArray("displayResults"))
@@ -231,9 +256,8 @@ internal fun MainChatScreen(
                             }.orEmpty(),
                         )
                         storedResults.forEachIndexed { resultIndex, result ->
-                                val edgeToEdgeResult = result is TrainBatchDisplay || result is EmptyDisplay || result is ErrorDisplay
                                 Row(Modifier.fillMaxWidth().captureLayoutConstraints("result-card-host", onLayoutDiagnostics)) {
-                                    if (edgeToEdgeResult) Spacer(Modifier.width(0.appDp)) else Box(
+                                    Box(
                                         Modifier.width(50.appDp).heightIn(min = 32.appDp),
                                         contentAlignment = androidx.compose.ui.Alignment.TopStart,
                                     ) {
@@ -249,63 +273,107 @@ internal fun MainChatScreen(
                                     onRetry = { onRetryQuery(metadata?.optString("query").orEmpty()) },
                                     modifier = Modifier.weight(1f).captureLayoutConstraints("result-card", onLayoutDiagnostics),
                                     onSettings = {
-                                        val category = (result as? ErrorDisplay)?.value?.category
-                                            ?: metadata?.optString("errorCategory")
+                                        val category = (result as? ErrorDisplay)?.value?.message?.let(::mainErrorCategory)
+                                            ?: metadata?.optString("error")?.let(::mainErrorCategory)
                                         onSettings(category)
                                     },
                                     datePicker = datePicker,
                                     )
                                 }
-                                (result as? TrainScheduleDisplay)?.let { schedule ->
-                                    Row(Modifier.padding(start = 54.appDp, top = 2.appDp).captureLayoutConstraints("result-actions", onLayoutDiagnostics).testTag("result-actions"), horizontalArrangement = Arrangement.spacedBy(40.appDp)) {
-                                        ResultAction("复制", "copy", "result-copy", onClick = { onCopy(scheduleClipboardText(schedule.value)) })
-                                        ResultAction("重新生成", "refresh", "result-regenerate", onClick = { onRegenerate(metadata?.optString("query").orEmpty()) })
+
+                        }
+                        metadata?.optString("error")?.takeIf { it.isNotBlank() && storedResults.none { result -> result is ErrorDisplay } }?.let { errorMessage ->
+                            Row(Modifier.fillMaxWidth()) {
+                                Box(Modifier.width(50.appDp)) {
+                                    if (message.content.isBlank() && storedResults.isEmpty()) {
+                                        Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                            RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue)
+                                        }
                                     }
                                 }
-                        }
-                        metadata?.optString("error")?.takeIf(String::isNotBlank)?.let { errorMessage ->
-                            Row(Modifier.fillMaxWidth()) {
-                                Spacer(Modifier.width(0.appDp))
                                 DisplayResultCard(
                                     ErrorDisplay(ErrorResult("failed", errorMessage, metadata.optString("errorCategory"), null)),
                                     chatState, onAction,
                                     onRetry = { onRetryQuery(metadata.optString("query")) },
-                                    onSettings = { onSettings(metadata.optString("errorCategory")) },
+                                    onSettings = { onSettings(mainErrorCategory(errorMessage)) },
                                     modifier = Modifier.weight(1f),
                                 )
                             }
                         }
+                        val replyText = listOf(message.content.takeIf(String::isNotBlank),
+                            storedResults.joinToString("\n\n") { replyClipboardText(it) }.takeIf(String::isNotBlank),
+                            metadata?.optString("error")?.takeIf(String::isNotBlank)).filterNotNull().distinct().joinToString("\n\n")
+                        val originalQuery = metadata?.optString("query")?.takeIf(String::isNotBlank)
+                            ?: messages.take(index).lastOrNull { it.role == "user" }?.content.orEmpty()
+                        FlowRow(Modifier.fillMaxWidth().padding(start = 50.appDp, top = 2.appDp)
+                            .captureLayoutConstraints("result-actions", onLayoutDiagnostics).testTag("result-actions"),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            ResultAction("复制", "copy", "result-copy") { onCopy(replyText) }
+                            ResultAction("重新生成", "refresh", "result-regenerate") { onRegenerate(originalQuery) }
+                            ResultAction("分享", "share", "result-share") { onShare(replyText) }
+                        }
+                        Box(Modifier.fillMaxWidth().padding(start = 50.appDp, bottom = 2.dp), contentAlignment = androidx.compose.ui.Alignment.CenterEnd) {
+                            val tokens = replyTokenUsage(metadata)
+                            BasicText(tokens?.let { "${formatTokenCount(it)} Token" } ?: "Token 未返回",
+                                Modifier.testTag("reply-token-usage-$index"),
+                                style = TextStyle(color = NativeColors.muted, fontSize = 16.appSp))
+                        }
+
                     }
                 }
             }
-            if (chatState.busy) item {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.appDp)) {
-                    QueryLoadingCard(chatState.recognized, chatState.stage, Modifier.weight(1f))
+            if (chatState.busy) item(key = "live-assistant") {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.Top) {
+                    Box(Modifier.width(50.appDp)) {
+                        Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape).testTag("main-live-assistant-avatar"),
+                            contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue)
+                        }
+                    }
+                    Column(Modifier.weight(1f).animateContentSize()) {
+                        RailReveal(chatState.answer.isBlank()) {
+                            QueryLoadingCard(chatState.recognized, chatState.stage)
+                        }
+                        if (chatState.answer.isNotBlank()) MarkdownAnswer(chatState.answer)
+                    }
                 }
             }
-            if (chatState.answer.isNotBlank() && chatState.busy) item {
-                BasicText(chatState.answer, style = TextStyle(color = NativeColors.ink, fontSize = 16.appSp))
-            }
             if (chatState.phase == ChatPhase.STOPPED && chatState.answer.isNotBlank() && !stoppedAnswerPersisted) item {
-                BasicText(chatState.answer, style = TextStyle(color = NativeColors.ink, fontSize = 16.appSp))
+                MarkdownAnswer(chatState.answer)
             }
-            itemsIndexed(if (chatState.busy || chatState.phase == ChatPhase.STOPPED) unpersistedResults else emptyList()) { _, result ->
+            itemsIndexed(if (chatState.busy || chatState.phase == ChatPhase.STOPPED) unpersistedResults else emptyList()) { resultIndex, result ->
+                Row(Modifier.fillMaxWidth()) {
+                    Box(Modifier.width(50.appDp)) {
+                        if (!chatState.busy && resultIndex == 0 && chatState.answer.isBlank()) {
+                            Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue)
+                            }
+                        }
+                    }
                 DisplayResultCard(
                     result, chatState, onAction, onRetry,
-                    onSettings = { onSettings(chatState.error?.let(::classifyMainError)) },
+                    onSettings = { onSettings(chatState.error?.let(::mainErrorCategory)) },
+                    modifier = Modifier.weight(1f),
                 )
+                }
             }
         }
-        }
-        // Keep the reading control outside the scroll viewport so it cannot
-        // cover visible result actions; its independent 44dp target is retained.
-        if (chatState.reading) {
+        // Float only the button above the list: no opaque full-width band or reserved row.
+        RailReveal(chatState.reading, Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = 4.dp)) {
                         Box(
-                Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
-                    .heightIn(min = 44.dp)
+                Modifier.heightIn(min = 44.dp)
                     .clickable {
-                        onReadingChange(false)
-                        scope.launch { listState.animateScrollToItem((listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)) }
+                        scope.launch {
+                            scrollingToLatest = true
+                            try {
+                                val lastIndex = listState.layoutInfo.totalItemsCount - 1
+                                if (lastIndex >= 0) {
+                                    listState.scrollToItem(lastIndex)
+                                    listState.scrollBy(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.size?.toFloat() ?: 0f)
+                                }
+                                onReadingChange(false)
+                            } finally { scrollingToLatest = false }
+                        }
                     }
                     .semantics {
                         contentDescription = "回到底部"
@@ -324,27 +392,24 @@ internal fun MainChatScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.appDp),
                 ) {
                     RailIcon("down", Modifier.size(18.appDp), NativeColors.blue, "return-to-bottom-icon")
-                    BasicText("有新内容 · 回到底部", Modifier.testTag("return-to-bottom-label"), style = TextStyle(color = NativeColors.blue, fontSize = 14.appSp))
+                    BasicText(if (hasNewReadingContent) "有新内容 · 回到底部" else "回到底部", Modifier.testTag("return-to-bottom-label"), style = TextStyle(color = NativeColors.blue, fontSize = 16.appSp))
                 }
             }
+        }
         }
         followupSchedule?.let { schedule ->
             ScheduleFollowupActions(schedule.value, chatState.reading, inputFocusRequester, onFollowup, onLayoutDiagnostics)
         }
-        val separateInputPresentation = chatState.busy || chatState.reading
-        val loadingInputInset = when {
-            chatState.busy -> 16.appDp
-            chatState.reading -> 17.appDp
-            else -> 0.appDp
+        Box(Modifier.fillMaxWidth().padding(top = 4.dp, end = 8.dp), contentAlignment = androidx.compose.ui.Alignment.CenterEnd) {
+            BasicText("本对话累计 ${formatTokenCount(tokenTotal)} Token", Modifier.testTag("conversation-token-total"),
+                style = TextStyle(color = NativeColors.muted, fontSize = 16.appSp))
         }
         val composerShape = RoundedCornerShape(30.appDp)
         Row(
             Modifier.fillMaxWidth()
-                .padding(horizontal = loadingInputInset)
-                .padding(top = 8.appDp).heightIn(min = maxOf(44.dp, if (chatState.busy) 51.appDp else 56.appDp))
-                .then(if (separateInputPresentation) Modifier else Modifier
-                    .background(NativeColors.surface, composerShape)
-                    .border(1.appDp, NativeColors.line, composerShape))
+                .padding(top = 8.dp).heightIn(min = 56.dp)
+                .background(NativeColors.surface, composerShape)
+                .border(1.dp, NativeColors.line, composerShape)
                 .captureLayoutConstraints("main-fixed-input", onLayoutDiagnostics).testTag("main-fixed-input"),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.appDp),
@@ -352,26 +417,23 @@ internal fun MainChatScreen(
             BasicTextField(
                 value = input,
                 onValueChange = onInputChange,
+                maxLines = 5,
                 textStyle = TextStyle(color = NativeColors.ink, fontSize = 16.appSp),
                 modifier = Modifier.weight(1f)
-                    .heightIn(min = maxOf(44.dp, if (chatState.busy) 51.appDp else 56.appDp))
-                    .then(if (separateInputPresentation) Modifier
-                        .background(NativeColors.surface, composerShape)
-                        .border(1.appDp, NativeColors.line, composerShape) else Modifier)
-                    .padding(horizontal = 16.appDp, vertical = 15.appDp)
+                    .heightIn(min = 56.dp, max = 144.dp)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
                     .focusRequester(inputFocusRequester)
                     .semantics { contentDescription = "消息输入框" }.testTag("main-input-field"),
                 decorationBox = { inner ->
-                    if (input.isEmpty()) BasicText("继续追问…", Modifier.testTag("main-input-placeholder"),
+                    if (input.isEmpty()) BasicText(if (messages.isEmpty()) "输入你的问题…" else "继续追问…", Modifier.testTag("main-input-placeholder"),
                         style = TextStyle(color = NativeColors.muted, fontSize = 16.appSp))
                     inner()
                 },
             )
             Box(
-                Modifier.then(if (separateInputPresentation) Modifier else Modifier.padding(end = 3.appDp))
-                    .size(if (chatState.busy) maxOf(44.dp, 50.appDp) else 44.dp)
-                    .background(NativeColors.blue, CircleShape)
-                    .clickable(enabled = if (chatState.busy) true else connected, role = Role.Button) {
+                Modifier.padding(end = 4.dp).size(48.dp)
+                    .background(if (chatState.busy || (connected && input.isNotBlank())) NativeColors.blue else NativeColors.blue.copy(alpha = .35f), CircleShape)
+                    .clickable(enabled = if (chatState.busy) true else connected && input.isNotBlank(), role = Role.Button) {
                         if (chatState.busy) onStop() else onSubmit()
                     }
                     .semantics {
@@ -380,9 +442,8 @@ internal fun MainChatScreen(
                     }.testTag("main-submit-control"),
                 contentAlignment = androidx.compose.ui.Alignment.Center,
             ) {
-                RailIcon(if (chatState.busy) "stop" else if (chatState.reading) "up" else "send",
-                    Modifier.then(if (!chatState.busy && !chatState.reading) Modifier.offset(x = 2.25.appDp, y = (-1.9).appDp) else Modifier)
-                        .size(22.appDp), Color.White,
+                RailIcon(if (chatState.busy) "stop" else "send",
+                    Modifier.size(22.dp), Color.White,
                     if (chatState.busy) "main-stop-icon" else "main-send-icon")
             }
         }
@@ -394,14 +455,54 @@ internal fun MainChatScreen(
     }
 }
 
+/** Empty conversations expose working examples rather than a blank message list. */
+@Composable
+private fun ChatWelcome(onDraft: (String) -> Unit) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("chat-welcome"),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+        RailIcon("train-logo", Modifier.size(56.dp), NativeColors.blue)
+        Spacer(Modifier.height(16.dp))
+        BasicText("想查哪趟列车？", style = TextStyle(color = NativeColors.ink, fontSize = 24.appSp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
+        Spacer(Modifier.height(8.dp))
+        BasicText("票价、时刻、车组交路，直接问我。", style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
+        Spacer(Modifier.height(24.dp))
+        val examples = listOf(
+            Triple("查票价", "search", "明天北京南到上海虹桥的 G1 票价"),
+            Triple("查时刻", "calendar", "G1 今天的时刻表"),
+            Triple("查交路", "train-logo", "CR400AF-5033 今天的交路"),
+            Triple("找机位", "search", "我想找一个拍 CR400AF 的机位"),
+        )
+        examples.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { (label, icon, query) ->
+                    Row(Modifier.weight(1f).heightIn(min = 56.dp)
+                        .background(NativeColors.surface, RoundedCornerShape(16.dp))
+                        .border(1.dp, NativeColors.line, RoundedCornerShape(16.dp))
+                        .clickable(role = Role.Button) { onDraft(query) }.padding(12.dp)
+                        .testTag("welcome-$label"),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RailIcon(icon, Modifier.size(20.dp), NativeColors.blue)
+                        BasicText(label, style = TextStyle(color = NativeColors.ink, fontSize = 15.appSp))
+                    }
+                }
+            }
+        }
+        BasicText("点选示例后可修改，再发送查询", Modifier.padding(top = 6.dp),
+            style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
+    }
+}
+
 @Composable
 private fun ResultAction(label: String, icon: String, tag: String, onClick: () -> Unit) {
     Box(Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick)
         .semantics { contentDescription = label; role = Role.Button }.testTag("$tag-action")) {
         Row(Modifier.padding(top = 9.appDp), horizontalArrangement = Arrangement.spacedBy(10.appDp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            RailIcon(icon, Modifier.size(16.appDp), NativeColors.muted, "$tag-icon")
-            BasicText(label, Modifier.testTag("$tag-label"), style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
+            RailIcon(icon, Modifier.size(18.appDp), NativeColors.muted, "$tag-icon")
+            BasicText(label, Modifier.testTag("$tag-label"), style = TextStyle(color = NativeColors.muted, fontSize = 16.appSp))
         }
     }
 }
@@ -414,10 +515,12 @@ private fun ScheduleFollowupActions(
     onFollowup: (String) -> Unit,
     onLayoutDiagnostics: ((String, IntArray, IntArray) -> Unit)?,
 ) {
+    val future = runCatching { LocalDate.parse(schedule.date).isAfter(LocalDate.now(java.time.ZoneId.of("Asia/Shanghai"))) }.getOrDefault(false)
     val choices = if (reading) listOf("查余票" to "search", "换个日期" to "calendar")
-        else listOf("查票价" to null, "查担当车组" to null)
+        else if (future) listOf("查票价" to "search", "换个日期" to "calendar")
+        else listOf("查票价" to "search", "查担当车组" to "train-logo")
     Box(Modifier.fillMaxWidth().padding(bottom = 7.appDp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-        Row(Modifier.offset(x = 5.appDp).captureLayoutConstraints("result-suggestions", onLayoutDiagnostics).testTag("result-suggestions"), horizontalArrangement = Arrangement.spacedBy(if (reading) 12.appDp else 8.appDp)) {
+        Row(Modifier.captureLayoutConstraints("result-suggestions", onLayoutDiagnostics).testTag("result-suggestions"), horizontalArrangement = Arrangement.spacedBy(if (reading) 12.appDp else 8.appDp)) {
             choices.forEachIndexed { choiceIndex, (choice, icon) ->
                 Box(
                     Modifier.heightIn(min = 44.dp).clickable(role = Role.Button) {
@@ -431,16 +534,16 @@ private fun ScheduleFollowupActions(
                         Modifier.testTag("result-followup-${choiceIndex + 1}-visual")
                             .then(if (reading) Modifier else Modifier.heightIn(min = 44.appDp))
                             .border(1.appDp, NativeColors.line, CircleShape)
-                                .padding(horizontal = if (reading) 14.5.appDp else 34.5.appDp,
+                                .padding(horizontal = 16.dp,
                                 vertical = if (reading) 6.appDp else 11.appDp),
                         horizontalArrangement = Arrangement.spacedBy(6.appDp),
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                     ) {
                         icon?.let { RailIcon(it, Modifier.size(16.appDp), NativeColors.blue) }
                         val choiceStyle = if (reading) {
-                            TextStyle(color = NativeColors.ink, fontSize = 14.appSp, lineHeight = 20.appSp)
+                            TextStyle(color = NativeColors.ink, fontSize = 16.appSp, lineHeight = 22.appSp)
                         } else {
-                            TextStyle(color = NativeColors.ink, fontSize = 14.appSp)
+                            TextStyle(color = NativeColors.ink, fontSize = 16.appSp)
                         }
                         BasicText(choice, Modifier.testTag("result-followup-${choiceIndex + 1}-label"), style = choiceStyle)
                     }
@@ -469,12 +572,6 @@ private data class ScrollDiagnostics(
     val atBottom: Boolean?,
 )
 
-private fun classifyMainError(message: String): String = when {
-    Regex("HTTP\\s*401|鉴权|API.?Key|密钥", RegexOption.IGNORE_CASE).containsMatchIn(message) -> "auth"
-    Regex("连接|网络|超时|DNS", RegexOption.IGNORE_CASE).containsMatchIn(message) -> "network"
-    else -> "service"
-}
-
 private fun scheduleClipboardText(value: ScheduleResult): String = buildString {
     append(value.trainCode.orEmpty()).append(' ').append(listOfNotNull(value.fromStation, value.toStation).joinToString(" → "))
     value.date?.let { append('\n').append(it) }
@@ -483,8 +580,30 @@ private fun scheduleClipboardText(value: ScheduleResult): String = buildString {
 }
 
 private fun suggestedQuery(choice: String, value: ScheduleResult): String = when (choice) {
-    "查余票" -> "查一下 ${value.trainCode.orEmpty()} 的余票"
+    "查余票" -> if (!value.fromStation.isNullOrBlank() && !value.toStation.isNullOrBlank())
+        "查一下 ${value.date.orEmpty()} ${value.trainCode.orEmpty()} ${value.fromStation} 到 ${value.toStation} 的余票"
+    else "查一下 ${value.date.orEmpty()} ${value.trainCode.orEmpty()} 从出发站到到达站的余票"
     "换个日期" -> "查一下 ${value.trainCode.orEmpty()} 其他日期的时刻表"
-    "查票价" -> "查一下 ${value.fromStation.orEmpty()} 到 ${value.toStation.orEmpty()} 的票价"
-    else -> "查一下 ${value.trainCode.orEmpty()} 的担当车组"
+    "查票价" -> "查一下 ${value.date.orEmpty()} ${value.trainCode.orEmpty()} ${value.fromStation.orEmpty()} 到 ${value.toStation.orEmpty()} 的票价"
+    else -> "查一下 ${value.date.orEmpty()} ${value.trainCode.orEmpty()} 的担当车组"
 }
+
+private fun replyClipboardText(result: DisplayResult): String = when (result) {
+    is TrainScheduleDisplay -> scheduleClipboardText(result.value)
+    is TrainBatchDisplay -> result.value.items.joinToString("\n\n") { replyClipboardText(it) }
+    is RoutingDisplay -> buildString {
+        append(result.value.query.orEmpty()).append(" · ").append(result.value.focusDate.orEmpty())
+        append("\n以下为交路记录时间，不是列车到发时间。")
+        result.value.records.forEach { record ->
+            append("\n").append(record.optString("train_code")).append("  ").append(record.optString("date")).append("  ").append(record.optString("time"))
+            val units = record.optJSONArray("units")
+            if (units != null) append("  ").append((0 until units.length()).joinToString(" + ") { units.optJSONObject(it)?.optString("emu_no_display").orEmpty() })
+            if (record.optBoolean("coupled")) append("（重联）")
+        }
+    }
+    is EmptyDisplay -> "${result.value.query.orEmpty()} ${result.value.date.orEmpty()}：未查到记录，不能据此判断停运。"
+    is ErrorDisplay -> result.value.message.orEmpty()
+    is UnsupportedDisplay -> "当前客户端暂不支持该结果格式。"
+}
+
+private fun formatTokenCount(value: Long): String = java.text.NumberFormat.getIntegerInstance(java.util.Locale.CHINA).format(value)

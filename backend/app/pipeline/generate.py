@@ -60,6 +60,37 @@ _POLICY_KNOWLEDGE = (
     "“本次未检索到相关资料，以下为模型知识，建议核实”。\n"
 )
 
+
+# Main 的常识与闲聊采用自然简答；LM 保留原策略。
+_MAIN_KNOWLEDGE_POLICY = (
+    "【作答策略：知识与闲聊】\n"
+    "直接回答用户的问题，可结合可靠的铁路常识；检索事实优先，冲突或不确定处如实说明。\n"
+    "常识定义不必逐句附免责声明；未检索确认的具体型号、编号、年份和参数，"
+    "只在相关内容处简短标注一次，不确定就不要猜精确值。\n"
+    "检索为空仍可回答稳定常识，但不要冒充查证结果；需要来源说明时，"
+    "在末尾一句说明依据常识、未经本次检索确认。未知事实直接说无法确认。\n"
+)
+
+_MAIN_KNOWLEDGE_REQUIREMENTS = (
+    "回答要求：\n"
+    "- 第一句就回答问题，不写‘结论先行’‘本次检索情况’等过程标题或开场白。"
+    "简单定义、是非题和普通追问默认2—4句、约80—200字；闲聊通常1—2句。"
+    "这是默认篇幅而非硬截断：用户要求详细、原理、对比、举例或多个问题时按需要展开。\n"
+    "- 只补充理解答案必需的条件、原因或一个例子；追问承接上文，不重新讲整套背景。"
+    "不主动罗列所有车型、技术参数、历史与罕见例外，不重复结论，不在末尾邀请继续提问。\n"
+    "- 不复述工具调用、命中条数、检索日志或长段自我审计。来源只保留支持答案的必要引用，"
+    "不贴无关搜索结果。事实确有截断且影响答案的完整性时，仍须说明原有总数与展示数，"
+    "不把部分结果称全部；完整返回的搜索条数无需专门报告。\n"
+    "- 历史仅用于理解追问，不作为本次检索事实；每条事实按自己的来源与时效判断。"
+    "资讯采用有日期的最新来源，冲突须说明；无日期不能确认现状，不能由周年等反推日期。\n"
+    "- 不猜当日时刻、余票、担当或开行状态；只能依据查询日实际事实。"
+    "结构性事实可引用其他日期图定资料，但一句说明日期和参考性质，不冒充实际运行。"
+    "交路记录时间不是到发时刻，多车次不能相互推算；已确认的同车不同号可按事实说明。\n"
+    "- 不编造来源或交叉印证；只在同日期同对象存在可比来源时才能称印证。"
+    "必要的不确定性、事实冲突与失败原因用一句说清，不用长免责声明代替答案。\n"
+    "- 思考只做必要核对，不在思考中完整起草或复述答案；正文只回答一次。\n\n"
+)
+
 _POLICY_MIXED = (
     "【作答策略：混合型】\n"
     "本问题同时包含实时诉求与知识诉求，请**分开处理**：\n"
@@ -355,6 +386,11 @@ def build_prompt(
     compact_gen = bool(getattr(settings, "llm_generation_compact_prompt", False))
     requirements = (_STRUCTURED_REQUIREMENTS if is_structured_realtime(retrieval, question_type)
                     else _COMPACT_REQUIREMENTS if compact_gen else _LONG_REQUIREMENTS)
+    policy = answer_policy(question_type, compact=compact_gen)
+    if (os.environ.get("APP_VARIANT", "main").lower() != "lm"
+            and question_type == "knowledge"):
+        policy = _MAIN_KNOWLEDGE_POLICY
+        requirements = _MAIN_KNOWLEDGE_REQUIREMENTS
     structured_boundary = ""
     if structured_tools.intersection({"train.schedule", "emu.routing"}):
         structured_boundary = (
@@ -365,7 +401,7 @@ def build_prompt(
 
     return (
         "以下是一句铁路相关请求，我已解析意图与关键信息，并调用了数据源工具。\n"
-        f"{answer_policy(question_type, compact=compact_gen)}\n"
+        f"{policy}\n"
         f"{structured_boundary}"
         # 必须显式用 `+`：`requirements` 现在是变量，不能像原来那样靠相邻字符串字面量
         # 做隐式拼接 —— 从字面量换成变量时漏掉这一步就是一个语法错误。
@@ -388,6 +424,10 @@ async def generate(
     question_type: str | None = None,
 ) -> tuple[str, list[str], str]:
     """生成最终回答，返回 (answer, sources, thinking)。"""
+    from app.pipeline.ticket_answer import direct_answer
+    receipt = direct_answer(retrieval)
+    if receipt:
+        return receipt, retrieval.get("sources") or [], ""
     prompt = build_prompt(user_message, slots, retrieval, history, question_type)
     # 历史已在 prompt 的 [对话历史] 区块中；不再重复传入 messages（见模块 docstring）
     answer, thinking = await chat_with_reasoning(prompt, **completion_options(retrieval, question_type))

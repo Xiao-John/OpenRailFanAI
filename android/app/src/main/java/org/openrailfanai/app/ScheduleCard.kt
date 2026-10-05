@@ -59,16 +59,16 @@ fun QueryLoadingCard(recognized: String?, stage: String, modifier: Modifier = Mo
     Column(
         modifier.fillMaxWidth().background(RailPanel, RoundedCornerShape(14.appDp))
             .border(1.appDp, RailLine, RoundedCornerShape(14.appDp)).testTag("query-loading")
-            .padding(start = 21.appDp, end = 21.appDp, top = 22.appDp, bottom = 19.appDp),
+            .padding(start = 14.appDp, end = 14.appDp, top = 16.appDp, bottom = 16.appDp),
         verticalArrangement = Arrangement.spacedBy(24.appDp),
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(23.appDp)) {
-            Canvas(Modifier.width(49.16.appDp).height(49.16.appDp).testTag("query-loading-spinner")) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.appDp)) {
+            Canvas(Modifier.width(28.appDp).height(28.appDp).testTag("query-loading-spinner")) {
                 drawDesignGlyph(NativeDesignPaths.querySpinner)
             }
                 Column(Modifier.testTag("query-loading-title-and-stage"), verticalArrangement = Arrangement.spacedBy(1.appDp)) {
-                BasicText("正在查询列车数据…", Modifier.testTag("query-loading-title"), style = TextStyle(color = RailInk, fontWeight = FontWeight.Bold, fontSize = 18.appSp))
-                BasicText(listOfNotNull(recognized?.takeIf(String::isNotBlank)?.let { "已识别 $it" }, stage.takeIf(String::isNotBlank)).joinToString(" · "), Modifier.testTag("query-loading-stage"), style = TextStyle(color = RailMuted, fontSize = 14.appSp, letterSpacing = .05.appSp))
+                BasicText(queryLoadingTitle(stage), Modifier.testTag("query-loading-title"), style = TextStyle(color = RailInk, fontWeight = FontWeight.Bold, fontSize = 16.appSp))
+                BasicText(listOfNotNull(recognized?.takeIf(String::isNotBlank)?.let { "已识别 $it" }, queryLoadingCaption(stage)).joinToString(" · "), Modifier.testTag("query-loading-stage"), style = TextStyle(color = RailMuted, fontSize = 14.appSp, letterSpacing = .05.appSp))
             }
         }
         Column(Modifier.testTag("query-loading-skeletons"), verticalArrangement = Arrangement.spacedBy(10.appDp)) {
@@ -90,7 +90,7 @@ fun DisplayResultCard(
 ) {
     when (result) {
         is TrainScheduleDisplay -> ScheduleCard(result.value, request, modifier)
-        is TrainBatchDisplay -> BatchCard(result.value, onAction, modifier)
+        is TrainBatchDisplay -> BatchCard(result.value, request, onAction, modifier)
         is RoutingDisplay -> RoutingCard(result.value, request, onAction, modifier.padding(top = 5.appDp))
         is EmptyDisplay -> EmptyCard(result.value, onAction, modifier, datePicker)
         is ErrorDisplay -> ConnectionErrorCard(result.value, onRetry, onSettings, modifier)
@@ -108,7 +108,7 @@ private fun ScheduleCard(value: ScheduleResult, request: ChatUiState, modifier: 
         Row(Modifier.fillMaxWidth().padding(start = 5.25.appDp, end = 1.9.appDp).heightIn(min = 31.appDp).testTag("schedule-title-row"), horizontalArrangement = Arrangement.SpaceBetween) {
             NativeLineText(value.trainCode ?: "列车时刻", 23.appSp, Modifier.testTag("schedule-title"), style = TextStyle(color = RailInk, fontSize = 27.appSp, lineHeight = 23.appSp, lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None, LineHeightStyle.Mode.Fixed), platformStyle = PlatformTextStyle(includeFontPadding = false), fontWeight = FontWeight.Bold))
             val badges = listOfNotNull(value.scheduleType?.takeIf(String::isNotBlank), "示例数据".takeIf { value.sampleData })
-            if (badges.isNotEmpty()) BasicText(badges.joinToString(" · "), Modifier.testTag("schedule-classification"), style = TextStyle(color = RailMuted, fontSize = 12.appSp))
+            if (badges.isNotEmpty()) BasicText(badges.joinToString(" · "), Modifier.testTag("schedule-classification"), style = TextStyle(color = RailMuted, fontSize = 13.appSp))
         }
         val route = listOfNotNull(value.fromStation, value.toStation).joinToString(" → ")
         if (route.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(start = 5.25.appDp, end = 1.9.appDp).heightIn(min = 30.appDp).testTag("schedule-route-summary")) {
@@ -214,8 +214,9 @@ private fun RoutingCard(value: RoutingResult, request: ChatUiState, onAction: (J
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.appDp)) {
           Row(Modifier.fillMaxWidth().padding(horizontal = 2.appDp).heightIn(min = 31.appDp).testTag("routing-title-row"), horizontalArrangement = Arrangement.SpaceBetween) {
             BasicText(value.query ?: "车组交路", Modifier.testTag("routing-title"), style = TextStyle(color = RailInk, fontSize = 24.appSp, lineHeight = 29.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false), fontWeight = FontWeight.Bold))
-            if (value.sampleData) BasicText("示例数据", Modifier.testTag("routing-sample-badge"), style = TextStyle(color = RailMuted, fontSize = 12.appSp))
+            if (value.sampleData) BasicText("示例数据", Modifier.testTag("routing-sample-badge"), style = TextStyle(color = RailMuted, fontSize = 13.appSp))
           }
+          if (value.focusDate.isNullOrBlank()) BasicText("最近交路记录 · 按原始日期展示", style = TextStyle(color = RailMuted, fontSize = 15.appSp))
           value.focusDate?.let { BasicText("${dateLabel(it)} · 交路记录", Modifier.fillMaxWidth().padding(horizontal = 2.appDp).testTag("routing-date-record"), style = TextStyle(color = RailMuted, fontSize = 17.appSp, letterSpacing = 1.05.appSp, lineHeight = 22.appSp, lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None, LineHeightStyle.Mode.Fixed), platformStyle = PlatformTextStyle(includeFontPadding = false))) }
         }
         InfoNote("时间口径", value.timeSemantics ?: "以下为记录时间，不是列车到发时间。", "routing-time-semantics", verticalPadding = 14,
@@ -224,7 +225,7 @@ private fun RoutingCard(value: RoutingResult, request: ChatUiState, onAction: (J
         Column(Modifier.fillMaxWidth().testTag("routing-records")) {
         Row(Modifier.fillMaxWidth().heightIn(min = 38.appDp).background(RailPanel, RoundedCornerShape(8.appDp)).padding(start = 20.appDp, end = 24.appDp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(.45f)) {
-                BasicText("车次", Modifier.testTag("routing-header-train"), style = TextStyle(color = RailInk, fontSize = 15.appSp, lineHeight = 20.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false), fontWeight = FontWeight.Medium))
+                BasicText(if (value.queryKind == "train") "担当车组" else "车次", Modifier.testTag("routing-header-train"), style = TextStyle(color = RailInk, fontSize = 15.appSp, lineHeight = 20.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false), fontWeight = FontWeight.Medium))
             }
             Box(Modifier.weight(.55f)) {
                 BasicText("记录时间", Modifier.testTag("routing-header-time"), style = TextStyle(color = RailInk, fontSize = 15.appSp, lineHeight = 20.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false), fontWeight = FontWeight.Medium))
@@ -232,17 +233,26 @@ private fun RoutingCard(value: RoutingResult, request: ChatUiState, onAction: (J
         }
         value.records.forEachIndexed { index, record ->
             val train = record.optString("train_code").takeIf(String::isNotBlank) ?: "—"
-            val rowHeight = if (index == value.records.lastIndex) 64.appDp else 73.appDp
+            val rowHeight = if (value.focusDate.isNullOrBlank()) 88.appDp else 64.appDp
             val openTrainSchedule: () -> Unit = {
                 onAction(action("train_schedule_batch", "trains" to listOf(train), "date" to (value.focusDate ?: record.optString("date"))), "查询 $train 的时刻表", false)
             }
             Row(Modifier.fillMaxWidth().heightIn(min = rowHeight).clickable(onClick = openTrainSchedule)
                 .testTag("routing-record-$train").padding(start = 15.appDp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(.46f).height(rowHeight), contentAlignment = Alignment.CenterStart) {
-                    BasicText(train, Modifier.testTag("routing-train-$train"), style = TextStyle(color = RailInk, fontSize = 22.appSp, lineHeight = 26.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false), fontWeight = FontWeight.Bold))
+                Column(Modifier.weight(.46f).heightIn(min = rowHeight).padding(vertical = 8.appDp), verticalArrangement = Arrangement.Center) {
+                    val units = record.optJSONArray("units")
+                    val labels = if (units == null) emptyList() else (0 until units.length()).mapNotNull {
+                        units.optJSONObject(it)?.optString("emu_no_display")?.takeIf(String::isNotBlank)
+                    }
+                    BasicText(if (value.queryKind == "train") labels.joinToString(" + ").ifBlank { "车组未提供" } else train,
+                        Modifier.testTag("routing-train-$train"), style = TextStyle(color = RailInk,
+                            fontSize = if (value.queryKind == "train") 16.appSp else 22.appSp,
+                            fontWeight = FontWeight.Bold))
+                    if (record.optBoolean("coupled")) BasicText("重联", style = TextStyle(color = RailAccent, fontSize = 13.appSp))
+                    if (value.queryKind != "train" && labels.size > 1) BasicText(labels.joinToString(" + "), style = TextStyle(color = RailMuted, fontSize = 13.appSp))
                 }
                 Column(Modifier.weight(.54f).height(rowHeight).padding(top = 16.5.appDp)) {
-                    BasicText(record.optString("time", "—"), Modifier.testTag("routing-time-$train"), style = TextStyle(color = RailInk, fontSize = 20.appSp, lineHeight = 24.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false)))
+                    BasicText(if (value.focusDate.isNullOrBlank()) "${record.optString("date")}\n${record.optString("time", "—")}" else record.optString("time", "—"), Modifier.testTag("routing-time-$train"), style = TextStyle(color = RailInk, fontSize = 20.appSp, lineHeight = 24.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false)))
                     BasicText("查看该车次时刻", Modifier.clickable(onClick = openTrainSchedule).testTag("routing-record-link-$train"), style = TextStyle(color = RailMuted, fontSize = 15.appSp, letterSpacing = .95.appSp, lineHeight = 20.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false)))
                 }
                 Box(Modifier.size(24.appDp), contentAlignment = Alignment.Center) {
@@ -254,21 +264,23 @@ private fun RoutingCard(value: RoutingResult, request: ChatUiState, onAction: (J
         }
         QueryDetailsPanel(value.sources.firstOrNull(), value.focusDate, value.timeSemantics, value.sampleData, request)
       }
-      Spacer(Modifier.height(13.appDp))
-      val codes = value.records.mapNotNull { it.optString("train_code").takeIf(String::isNotBlank) }
+      if (!value.focusDate.isNullOrBlank()) {
+      Spacer(Modifier.height(8.appDp))
+      val codes = value.records.mapNotNull { it.optString("train_code").takeIf(String::isNotBlank) }.distinct()
       ActionButton("查询这${chineseCount(codes.size)}趟车的时刻表", "routing-batch", minWidth = 209, minHeight = 46, centerText = true,
           textStyle = TextStyle(color = RailAccent, fontSize = 17.appSp, letterSpacing = .45.appSp, lineHeight = 22.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false), textAlign = androidx.compose.ui.text.style.TextAlign.Center)) {
           onAction(action("train_schedule_batch", "trains" to codes, "date" to value.focusDate), "查询 ${codes.size} 趟车的时刻表", false)
       }
-      Spacer(Modifier.height(12.5.appDp))
+      Spacer(Modifier.height(8.appDp))
+      }
       InfoNote("说明", "记录可能不完整，以实际运行情况为准。", "routing-integrity-note")
     }
 }
 
 @Composable
-private fun BatchCard(value: BatchScheduleResult, onAction: (JSONObject, String, Boolean) -> Unit, modifier: Modifier) {
-    Column(modifier.fillMaxWidth().testTag("batch-result").padding(horizontal = 16.appDp), verticalArrangement = Arrangement.spacedBy(10.appDp)) {
-      Column(Modifier.fillMaxWidth().background(NativeColors.surface, RoundedCornerShape(14.appDp))
+private fun BatchCard(value: BatchScheduleResult, request: ChatUiState, onAction: (JSONObject, String, Boolean) -> Unit, modifier: Modifier) {
+    Column(modifier.fillMaxWidth().testTag("batch-result"), verticalArrangement = Arrangement.spacedBy(10.appDp)) {
+      Column(Modifier.fillMaxWidth().padding(horizontal = 16.appDp).background(NativeColors.surface, RoundedCornerShape(14.appDp))
           .border(1.appDp, RailLine, RoundedCornerShape(14.appDp)).testTag("batch-card"),
           verticalArrangement = Arrangement.spacedBy(0.appDp)) {
         val scheduleItems = value.items.filterIsInstance<TrainScheduleDisplay>()
@@ -277,7 +289,7 @@ private fun BatchCard(value: BatchScheduleResult, onAction: (JSONObject, String,
             .padding(horizontal = 14.appDp, vertical = 6.appDp).testTag("batch-title-row"),
             horizontalArrangement = Arrangement.SpaceBetween) {
             BasicText("时刻查询", Modifier.testTag("batch-heading"), style = TextStyle(color = RailInk, fontSize = 18.appSp, fontWeight = FontWeight.Bold))
-            BasicText("$succeeded / ${value.items.size} 已返回", Modifier.background(Color(0xFFFFF0C2), RoundedCornerShape(16.appDp)).padding(horizontal = 12.appDp, vertical = 7.appDp).testTag("batch-count"), style = TextStyle(color = Color(0xFF754B00), fontSize = 13.appSp))
+            BasicText("$succeeded / ${value.items.size} 已返回", Modifier.background(Color(0xFFFFF0C2), RoundedCornerShape(16.appDp)).padding(horizontal = 12.appDp, vertical = 7.appDp).testTag("batch-count"), style = TextStyle(color = Color(0xFF754B00), fontSize = 14.appSp))
         }
         scheduleItems.forEachIndexed { index, item ->
             val trainCode = item.value.trainCode ?: "unknown"
@@ -295,6 +307,10 @@ private fun BatchCard(value: BatchScheduleResult, onAction: (JSONObject, String,
         }
         Spacer(Modifier.height(6.appDp))
       }
+        // The summary reports task status; each item still owns its complete timetable.
+        value.items.filterIsInstance<TrainScheduleDisplay>().forEach { item ->
+            ScheduleCard(item.value, request, Modifier)
+        }
         val failed = value.items.filterIsInstance<TrainScheduleDisplay>().filter { it.value.status == "failed" }
         if (failed.isNotEmpty()) {
             val failedCodes = failed.mapNotNull { it.value.trainCode }
@@ -302,7 +318,7 @@ private fun BatchCard(value: BatchScheduleResult, onAction: (JSONObject, String,
                 onAction(action("train_schedule_batch", "trains" to failedCodes, "date" to failed.firstNotNullOfOrNull { it.value.date }), "重试 ${failedCodes.joinToString("、")} 的时刻查询", true)
             }
             Box(Modifier.fillMaxWidth().heightIn(min = 22.appDp).testTag("batch-retain-success"), contentAlignment = Alignment.Center) {
-                BasicText("保留已查到的结果", Modifier.testTag("batch-retain-success-text"), style = TextStyle(color = RailMuted, fontSize = 13.appSp, letterSpacing = .3.appSp))
+                BasicText("保留已查到的结果", Modifier.testTag("batch-retain-success-text"), style = TextStyle(color = RailMuted, fontSize = 14.appSp, letterSpacing = .3.appSp))
             }
         }
     }
@@ -352,13 +368,13 @@ private fun EmptyCard(
             }
             Box(Modifier.weight(208f)) {
                 StateActionButton("查看最近记录", "empty-recent", fillWidth = true, visualMinHeight = 40.5.appDp, backgroundColor = Color(0xFFDCE9FC)) {
-                    onAction(action("emu_routing", "query" to value.query, "date" to null), "查看最近交路记录", false)
+                    onAction(action("emu_routing", "query" to value.query, "date" to null, "recent" to true), "查看最近交路记录", false)
                 }
             }
         }
         Spacer(Modifier.height(9.appDp))
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            BasicText("历史记录将单独标注日期", Modifier.testTag("empty-history-note"), style = TextStyle(color = RailMuted, fontSize = 13.appSp, letterSpacing = .18.appSp, lineHeight = 17.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false)))
+            BasicText("历史记录将单独标注日期", Modifier.testTag("empty-history-note"), style = TextStyle(color = RailMuted, fontSize = 14.appSp, letterSpacing = .18.appSp, lineHeight = 17.appSp, platformStyle = PlatformTextStyle(includeFontPadding = false)))
         }
     }
 }
@@ -373,14 +389,17 @@ private fun ConnectionErrorCard(value: ErrorResult, onRetry: () -> Unit, onSetti
                 RailIcon("cloud-error", Modifier.width(66.appDp).height(59.appDp), Color(0xFFF0524F), "error-icon")
             }
             Column {
-                BasicText("暂时无法连接模型服务", Modifier.testTag("error-title"), style = TextStyle(color = RailInk, fontSize = 18.appSp, fontWeight = FontWeight.Bold))
+                BasicText(when (mainErrorCategory(value.message.orEmpty())) { "configuration" -> "请检查云端模型配置"; "service" -> "查询服务暂时异常"; else -> "暂时无法连接模型服务" }, Modifier.testTag("error-title"), style = TextStyle(color = RailInk, fontSize = 18.appSp, fontWeight = FontWeight.Bold))
                 BasicText("你的提问已保留，可稍后重试。", Modifier.testTag("error-explanation"), style = TextStyle(color = RailMuted, fontSize = 14.appSp, letterSpacing = 2.1.appSp, lineHeight = 19.appSp))
             }
         }
         Spacer(Modifier.height(1.appDp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.appDp)) {
             Box(Modifier.weight(.91f)) { StateActionButton("重试", "connection-retry", fillWidth = true, visualMinHeight = 39.17.appDp, backgroundColor = RailAccent, foregroundColor = Color.White, onClick = onRetry) }
-            Box(Modifier.weight(1f)) { StateActionButton("检查模型设置", "connection-settings", fillWidth = true, visualMinHeight = 39.17.appDp, onClick = onSettings) }
+            Box(Modifier.weight(1f)) {
+                if (mainErrorCategory(value.message.orEmpty()) == "service") StateActionButton("查看错误详情", "connection-settings", fillWidth = true, visualMinHeight = 39.17.appDp, onClick = { expanded = !expanded })
+                else StateActionButton("检查模型设置", "connection-settings", fillWidth = true, visualMinHeight = 39.17.appDp, onClick = onSettings)
+            }
         }
         Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { expanded = !expanded }.testTag("error-details-toggle"), contentAlignment = Alignment.Center) {
             Row(Modifier.fillMaxWidth().height(45.appDp).border(1.appDp, RailLine, RoundedCornerShape(10.appDp)).testTag("error-details-toggle-visual"),
@@ -389,16 +408,16 @@ private fun ConnectionErrorCard(value: ErrorResult, onRetry: () -> Unit, onSetti
                 RailIcon(if (expanded) "chevron-up" else "chevron-down", Modifier.width(18.appDp).height(18.appDp).padding(end = 4.appDp), RailInk, "error-details-chevron")
             }
         }
-        if (expanded) BasicText(value.message ?: "查询失败", style = TextStyle(color = RailMuted, fontSize = 12.appSp))
-        if (value.category == "auth") {
-            BasicText("API Key", Modifier.testTag("api-key-label"), style = TextStyle(color = RailInk, fontSize = 13.appSp, letterSpacing = .15.appSp))
+        if (expanded) BasicText(value.message ?: "查询失败", style = TextStyle(color = RailMuted, fontSize = 13.appSp))
+        if (mainErrorCategory(value.message.orEmpty()) == "auth") {
+            BasicText("API Key", Modifier.testTag("api-key-label"), style = TextStyle(color = RailInk, fontSize = 14.appSp, letterSpacing = .15.appSp))
             Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("api-key-field"), contentAlignment = Alignment.Center) {
                 Row(Modifier.fillMaxWidth().height(44.appDp).border(1.appDp, Color(0xFFF0524F), RoundedCornerShape(8.appDp)).testTag("api-key-field-visual").padding(horizontal = 12.appDp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     BasicText("••••••••••••••••", style = TextStyle(color = RailInk))
-                    RailIcon("warning", Modifier.size(20.appDp).background(Color(0xFFF0524F), CircleShape), Color(0xFFF0524F), "api-key-error-icon")
+                    RailIcon("warning", Modifier.size(20.appDp), Color(0xFFF0524F), "api-key-error-icon")
                 }
             }
-            BasicText("密钥无效，请检查后重试", Modifier.testTag("api-key-error"), style = TextStyle(color = Color(0xFFF0524F), fontSize = 13.appSp, letterSpacing = .25.appSp))
+            BasicText("密钥无效，请检查后重试", Modifier.testTag("api-key-error"), style = TextStyle(color = Color(0xFFF0524F), fontSize = 14.appSp, letterSpacing = .25.appSp))
         }
     }
 }
@@ -429,10 +448,10 @@ fun QueryDetailsPanel(
                 val effectiveSourceRowMinHeight = if (expanded) maxOf(sourceRowMinHeight, 42) else sourceRowMinHeight
                 Row(Modifier.fillMaxWidth().heightIn(min = effectiveSourceRowMinHeight.appDp).padding(horizontal = 10.appDp), verticalAlignment = Alignment.CenterVertically) {
                     SourceLink(source, sourceLabel(source), "details-source", Modifier.weight(1f), expanded = expanded)
-                    if (expanded && sampleData) BasicText("示例数据", Modifier.testTag("details-sample-badge"), style = TextStyle(color = RailMuted, fontSize = 12.appSp))
+                    if (expanded && sampleData) BasicText("示例数据", Modifier.testTag("details-sample-badge"), style = TextStyle(color = RailMuted, fontSize = 13.appSp))
                     if (!expanded) {
                         BasicText("查询详情", Modifier.clickable { expanded = true }.padding(horizontal = 6.appDp, vertical = 8.appDp).testTag("query-details-toggle"),
-                            style = TextStyle(color = RailMuted, fontSize = 13.appSp))
+                            style = TextStyle(color = RailMuted, fontSize = 14.appSp))
                         RailIcon(if (source?.contains("rail.re") == true) "chevron" else "chevron-down", Modifier.size(16.appDp), RailMuted, "query-details-chevron")
                     }
                 }
@@ -458,7 +477,7 @@ fun QueryDetailsPanel(
                 RailIcon(if (showLogs) "chevron-up" else "chevron", Modifier.size(16.appDp), RailInk, "technical-log-chevron")
             }
             }
-            if (showLogs) request.processLogs.forEach { BasicText(it, Modifier.padding(horizontal = 10.appDp).testTag("technical-log-entry"), style = TextStyle(color = RailMuted, fontSize = 11.appSp)) }
+            if (showLogs) request.processLogs.forEach { BasicText(it, Modifier.padding(horizontal = 10.appDp).testTag("technical-log-entry"), style = TextStyle(color = RailMuted, fontSize = 13.appSp)) }
         }
     }
 }
@@ -477,7 +496,7 @@ private fun SourceLink(url: String?, label: String, tag: String? = null, modifie
         } else RailIcon("link", Modifier.size(18.appDp), RailMuted, "${tag ?: "source"}-icon")
         BasicText(label, Modifier.padding(start = if (expanded) 8.appDp else 13.appDp).then(if (tag == null) Modifier else Modifier.testTag("$tag-label")), style = if (expanded)
             TextStyle(color = RailInk, fontSize = 16.appSp, lineHeight = 22.appSp, lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None, LineHeightStyle.Mode.Fixed), platformStyle = PlatformTextStyle(includeFontPadding = false))
-            else TextStyle(color = RailMuted, fontSize = 13.appSp))
+            else TextStyle(color = RailMuted, fontSize = 14.appSp))
     }
 }
 
@@ -512,7 +531,7 @@ private fun ActionButton(
     }
     BasicText(label, widthModifier.widthIn(min = minWidth.appDp).border(1.appDp, RailAccent, RoundedCornerShape(10.appDp)).heightIn(min = maxOf(44.dp, minHeight.appDp))
         .clickable(onClick = onClick).testTag(tag).padding(horizontal = 13.appDp, vertical = 8.appDp),
-        style = textStyle ?: TextStyle(color = RailAccent, fontSize = 14.appSp, textAlign = if (centerText) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Start))
+        style = textStyle ?: TextStyle(color = RailAccent, fontSize = 16.appSp, textAlign = if (centerText) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Start))
 }
 
 @Composable
@@ -537,7 +556,7 @@ private fun StateActionButton(
                 .padding(horizontal = 13.appDp),
             contentAlignment = Alignment.Center,
         ) {
-            BasicText(label, Modifier.testTag("$tag-label"), style = TextStyle(color = foregroundColor, fontSize = 14.appSp, textAlign = androidx.compose.ui.text.style.TextAlign.Center))
+            BasicText(label, Modifier.testTag("$tag-label"), style = TextStyle(color = foregroundColor, fontSize = 16.appSp, textAlign = androidx.compose.ui.text.style.TextAlign.Center))
         }
     }
 }
@@ -546,17 +565,8 @@ private fun StateActionButton(
 private fun BatchItemStatus(status: String, trainCode: String) {
     val success = status == "success"
     Row(Modifier.offset(y = 2.5.appDp).testTag("batch-status-$trainCode"), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.appDp)) {
-        Canvas(Modifier.width(24.appDp).height(24.appDp).testTag("batch-status-icon-$trainCode")) {
-            val color = if (success) Color(0xFF10B981) else Color(0xFFF59E0B)
-            drawCircle(color)
-            if (success) {
-                drawLine(Color.White, Offset(size.width * .33f, size.height * .53f), Offset(size.width * .46f, size.height * .63f), 1.5.appDp.toPx(), cap = StrokeCap.Round)
-                drawLine(Color.White, Offset(size.width * .46f, size.height * .63f), Offset(size.width * .68f, size.height * .40f), 1.5.appDp.toPx(), cap = StrokeCap.Round)
-            } else {
-                drawLine(Color.White, Offset(size.width * .5f, size.height * .28f), Offset(size.width * .5f, size.height * .51f), 2.appDp.toPx(), cap = StrokeCap.Round)
-                drawCircle(Color.White, radius = .84.appDp.toPx(), center = Offset(size.width * .5f, size.height * .65f))
-            }
-        }
+        RailIcon(if (success) "check" else "warning", Modifier.size(24.appDp),
+            if (success) Color(0xFF10B981) else Color(0xFFF59E0B), "batch-status-icon-$trainCode")
         BasicText(if (success) "已查到" else "暂未返回", Modifier.testTag("batch-status-label-$trainCode"), style = TextStyle(color = if (success) Color(0xFF38665B) else Color(0xFFB66A00), fontSize = 14.appSp))
     }
 }
@@ -584,7 +594,7 @@ private fun InfoNote(
         .then(if (tag == null) Modifier else Modifier.testTag(tag))
         .padding(horizontal = 15.appDp, vertical = verticalPaddingOverride ?: verticalPadding.appDp)) {
         RailIcon(if (icon == "时间口径") "clock" else "info", Modifier.width(18.appDp).height(18.appDp))
-        BasicText(text, Modifier.padding(start = textStartPadding).then(if (tag == null) Modifier else Modifier.testTag("$tag-text")), style = textStyle ?: TextStyle(color = RailMuted, fontSize = 13.appSp))
+        BasicText(text, Modifier.padding(start = textStartPadding).then(if (tag == null) Modifier else Modifier.testTag("$tag-text")), style = textStyle ?: TextStyle(color = RailMuted, fontSize = 14.appSp))
     }
 }
 
@@ -614,3 +624,18 @@ private fun tokenLabel(json: String): String = runCatching {
     JSONObject(json).optInt("total_tokens").takeIf { it > 0 }?.let { String.format(java.util.Locale.US, "%,d Token", it) } ?: ""
 }.getOrDefault("")
 private fun chineseCount(value: Int): String = when (value) { 1 -> "一"; 2 -> "二"; 3 -> "三"; 4 -> "四"; 5 -> "五"; else -> value.toString() }
+
+internal fun queryLoadingTitle(stage: String): String = when {
+    stage == "intent" || stage == "extract" -> "正在理解你的问题…"
+    stage == "retrieve" || stage.contains("生成") -> "正在生成回复…"
+    stage.contains("连接") || stage.contains("检索") || stage.contains("查询") -> "正在检索相关资料…"
+    else -> "正在处理你的问题…"
+}
+
+private fun queryLoadingCaption(stage: String): String = when (stage) {
+    "intent" -> "正在分析提问"
+    "extract" -> "正在确认查询条件"
+    "retrieve" -> "正在整理已返回结果"
+    "" -> "请稍候"
+    else -> stage
+}

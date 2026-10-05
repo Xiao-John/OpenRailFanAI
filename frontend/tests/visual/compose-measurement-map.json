@@ -573,25 +573,6 @@
           "comparison": "rect"
         },
         {
-          "selector": "history-actions-panel",
-          "designElement": "action_panel",
-          "kind": "container",
-          "comparison": "rect",
-          "vertical_anchor": "safe_bottom"
-        },
-        {
-          "selector": "history-actions-cancel",
-          "designElement": "cancel_action",
-          "kind": "touch_target",
-          "comparison": "rect",
-          "vertical_anchor": "safe_bottom",
-          "size_rule": "minimum",
-          "minimum_touch_px": {
-            "width": 44,
-            "height": 44
-          }
-        },
-        {
           "selector": "history-title-selected",
           "designElement": "leaf_history_title_selected_ink_region",
           "kind": "painted_text",
@@ -604,21 +585,6 @@
           ],
           "expected_text": "北京南到上海虹桥票价",
           "foreground_class": "dark",
-          "actual_clip_tag": "history-scroll-container"
-        },
-        {
-          "selector": "history-subtitle-selected",
-          "designElement": "leaf_history_subtitle_selected_ink_region",
-          "kind": "painted_text",
-          "comparison": "painted_rect",
-          "compare_fields": [
-            "x",
-            "y",
-            "width",
-            "height"
-          ],
-          "expected_text": "G1 · 明天出发",
-          "foreground_class": "muted",
           "actual_clip_tag": "history-scroll-container"
         },
         {
@@ -637,21 +603,6 @@
           "actual_clip_tag": "history-scroll-container"
         },
         {
-          "selector": "history-subtitle-tomorrow",
-          "designElement": "leaf_history_subtitle_tomorrow_ink_region",
-          "kind": "painted_text",
-          "comparison": "painted_rect",
-          "compare_fields": [
-            "x",
-            "y",
-            "width",
-            "height"
-          ],
-          "expected_text": "3 条交路记录",
-          "foreground_class": "muted",
-          "actual_clip_tag": "history-scroll-container"
-        },
-        {
           "selector": "history-title-schedule",
           "designElement": "leaf_history_title_schedule_ink_region",
           "kind": "painted_text",
@@ -664,21 +615,6 @@
           ],
           "expected_text": "G8932 列车时刻",
           "foreground_class": "dark",
-          "actual_clip_tag": "history-scroll-container"
-        },
-        {
-          "selector": "history-subtitle-schedule",
-          "designElement": "leaf_history_subtitle_schedule_ink_region",
-          "kind": "painted_text",
-          "comparison": "painted_rect",
-          "compare_fields": [
-            "x",
-            "y",
-            "width",
-            "height"
-          ],
-          "expected_text": "秦皇岛 → 北京南",
-          "foreground_class": "muted",
           "actual_clip_tag": "history-scroll-container"
         },
         {
@@ -737,16 +673,8 @@
         "CR400BF-5033 今日交路",
         "G8932 列车时刻",
         "京沪线沿线车站",
-        "对话操作",
-        "重命名",
-        "删除对话",
-        "取消",
         "模型与设置",
-        "使用帮助",
-        "对话操作",
-        "重命名",
-        "删除对话",
-        "取消"
+        "帮助"
       ],
       "interaction_expected": [
         "history:actions-open",
@@ -807,14 +735,14 @@
           "purpose": "record actual ScrollState offset and viewport; item indexes are not applicable"
         }
       ],
-      "actual_origin_tag": "history-content",
+      "actual_origin_tag": "history-safe-content",
       "unmeasured_evidence": [
         "The fixed_bottom_links design target is a visible-content group, while history-fixed-bottom-links is a full-width layout row; their rectangles are not comparable. The HR13 safe-bottom reference does not establish a measured painted-content union or icon silhouette acceptance.",
         "History uses a continuous verticalScroll Column. ScrollState offset and viewport are recorded separately; LazyList item-index fields are not applicable."
       ],
       "scale_basis": {
         "mode": "application_window",
-        "actual_canvas_tag": "history-content"
+        "actual_canvas_tag": "history-safe-content"
       }
     },
     "query_loading": {
@@ -869,7 +797,7 @@
         }
       ],
       "copy_expected": [
-        "正在查询列车数据…",
+        "正在检索相关资料…",
         "已识别 G8932 · 正在连接 12306",
         "再看看明天的",
         "停止生成",
@@ -1231,7 +1159,7 @@
       ],
       "copy_expected": [
         "以下是 G8932 次列车的时刻信息：",
-        "有新内容 · 回到底部",
+        "回到底部",
         "查余票",
         "换个日期",
         "继续追问…"

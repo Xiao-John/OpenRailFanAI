@@ -98,7 +98,14 @@ def start(message: str, date_hint: str | None = None) -> Prefetch | None:
     main = os.environ.get("APP_VARIANT", "main").lower() != "lm"
     if main and re.search(r"为什么|原理|区别|历史|科普|多少钱|票价", text):
         return None
+    ticket_request = main and bool(re.search(r"余票|还有.{0,12}票|有票|候补|买票|订票", text))
     if main:
+        # A scalar planner hint must not collapse a date collection, nor let
+        # speculation bypass the batch's invalid/oversized-date admission.
+        from app.pipeline.service_dates import select_dates
+        dates = select_dates(text)
+        if dates.error or len(dates.days) > 1:
+            return None
         date_str, matched = resolve_date(date_hint or text, default_today=False)
         if date_hint and not matched:
             return None
@@ -114,7 +121,34 @@ def start(message: str, date_hint: str | None = None) -> Prefetch | None:
             train = cand.upper()
             break
 
-    if train:
+    if ticket_request:
+        from app.pipeline.retrieve import (_ticket_interval_ready, _MULTI_TRAIN_RE,
+                                           _parse_time_window, _parse_seat, _parse_train_type,
+                                           _train_code_from_message, _is_train_code)
+        od = parse_od(text)
+        if not _ticket_interval_ready(od):
+            return None
+        codes = list(dict.fromkeys(m.group(0).upper() for m in _MULTI_TRAIN_RE.finditer(text)))
+        if not codes:
+            code = _train_code_from_message(text)
+            if code and _is_train_code(code):
+                codes = [code]
+            elif re.search(r"这趟|那趟|这车|那车", text):
+                return None  # A history-dependent service cannot be chosen speculatively.
+        if len(codes) > 1:
+            return None
+        after, before = _parse_time_window(text, date_hint)
+        name, params = "ticket.query", {
+            "from_station": od[0], "to_station": od[1], "date": date_str or "今天",
+            "train": codes[0] if codes else None,
+            "after_time": after or None, "before_time": before or None,
+            "seat": _parse_seat(text) or None, "train_type": _parse_train_type(text) or None,
+        }
+    elif train:
+        # 未来担当尚未发生，不能在计划过滤前投机调用交路工具。
+        from app.dates import future_railway_date
+        if future_railway_date(date_hint or text):
+            return None
         # 车次是最强信号：动车组的"担当"与"时刻/经停"两个意图都会用到它，
         # 其中 emu.routing 只查 rail.re（便宜、且最常被问）→ 预取它。
         name, params = "emu.routing", {"train": train, "date": date_str or "今天"}

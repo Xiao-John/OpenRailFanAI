@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import json
 import shutil
 import subprocess
@@ -45,6 +46,51 @@ def test_summary(paths: list[Path]) -> dict:
                           else "skipped" if case.find("skipped") is not None else "passed"}
     return {"total": len(cases), **{status: sum(case["status"] == status for case in cases.values())
             for status in ("passed", "failed", "skipped")}, "cases": list(cases.values())}
+
+
+def extract_usability_captures(paths: list[Path], destination: Path) -> list[Path]:
+    chunks: dict[str, tuple[int, dict[int, str]]] = {}
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            lines = path.read_text(errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            marker = "UX_CAPTURE|"
+            if marker not in line:
+                continue
+            payload = line.split(marker, 1)[1].strip().split("|")
+            if len(payload) != 4:
+                raise ValueError(f"Malformed UX_CAPTURE record in {path}")
+            slug, index_text, total_text, encoded = payload
+            if not slug or any(char not in "abcdefghijklmnopqrstuvwxyz0123456789-" for char in slug):
+                raise ValueError(f"Invalid usability capture name: {slug!r}")
+            try:
+                index, total = int(index_text), int(total_text)
+            except ValueError as error:
+                raise ValueError(f"Invalid UX_CAPTURE chunk index for {slug}") from error
+            if total < 1 or index < 0 or index >= total or len(encoded) > 3000:
+                raise ValueError(f"Invalid UX_CAPTURE chunk bounds for {slug}")
+            count, parts = chunks.setdefault(slug, (total, {}))
+            if count != total or index in parts:
+                raise ValueError(f"Inconsistent or duplicate UX_CAPTURE chunk for {slug}")
+            parts[index] = encoded
+    captures: dict[str, bytes] = {}
+    for slug, (total, parts) in chunks.items():
+        if set(parts) != set(range(total)):
+            raise ValueError(f"Incomplete UX_CAPTURE chunks for {slug}: {len(parts)}/{total}")
+        data = base64.b64decode("".join(parts[index] for index in range(total)), validate=True)
+        if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise ValueError(f"Usability capture is not a PNG: {slug}")
+        if len(data) < 24 or int.from_bytes(data[16:20], "big") != 390 or int.from_bytes(data[20:24], "big") != 844:
+            raise ValueError(f"Usability capture has unexpected PNG dimensions: {slug}")
+        captures[slug] = data
+    for slug, data in captures.items():
+        destination.mkdir(parents=True, exist_ok=True)
+        (destination / f"{slug}.png").write_bytes(data)
+    return [destination / f"{slug}.png" for slug in sorted(captures)]
 
 
 def stamp_indices(root: Path, run_id: str, manifest_ref: str, generated_after: datetime) -> list[Path]:
@@ -115,6 +161,7 @@ def run(root: Path = ROOT) -> int:
                             f"-Pandroid.testInstrumentationRunnerArguments.acceptanceRunToken={run_id}"])
         # Archive immediately: later focused tests overwrite Gradle's connected result directory.
         archived = archive_files(results, directory / "test-results", started_ns)
+        extract_usability_captures(archived, directory / "usability-captures")
         xmls = [path for path in archived if path.suffix == ".xml"]
         manifest["tests"] = test_summary(xmls)
         save()
@@ -195,5 +242,58 @@ def run(root: Path = ROOT) -> int:
     return final_code
 
 
+def review_run(run_id: str, root: Path = ROOT) -> int:
+    """Re-evaluate a reviewed, unchanged formal capture without repeating device tests."""
+    import re
+    if not re.fullmatch(r"\d{8}T\d{6}-[a-f0-9]{8}", run_id):
+        raise ValueError("Invalid formal run id")
+    directory = root / "acceptance/runs" / run_id
+    manifest_path = directory / "manifest.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text())
+    tests = manifest.get("tests") or {}
+    if not tests.get("total") or tests.get("failed") or manifest.get("status") not in ("not_accepted", "passed"):
+        raise ValueError("Only a complete formal capture with passing tests can be reviewed")
+    artifacts = {item["file"]: item["sha256"] for item in manifest["artifacts"]}
+    live = root / "android/app/build/native-captures"
+    for archived in sorted((directory / "captures").glob("*")):
+        if not archived.is_file():
+            continue
+        relative = str(archived.relative_to(directory))
+        if hashlib.sha256(archived.read_bytes()).hexdigest() != artifacts.get(relative):
+            raise ValueError("Archived capture evidence changed")
+        if not (live / archived.name).is_file() or (live / archived.name).read_bytes() != archived.read_bytes():
+            raise ValueError("Current captures differ from the reviewed formal run")
+    started = datetime.now(ZoneInfo("Asia/Shanghai"))
+    attempt = len(manifest.get("reviews", [])) + 1
+    log = directory / f"review-{attempt}.log"
+    with log.open("w") as stream:
+        result = subprocess.run([str(root / "backend/.venv/bin/python"), "scripts/android/build-native-acceptance.py",
+                                 "--expected-run-token", run_id], cwd=root, stdout=stream, stderr=subprocess.STDOUT)
+    if result.returncode not in (0, 1):
+        return result.returncode
+    # The comparison script always generates the full batch; bind fresh indices to the original capture.
+    indices = stamp_indices(root, run_id, str(manifest_path.relative_to(root)), started)
+    generated = [path for path in indices if path.suffix == ".png"]
+    if len(generated) != 9:
+        raise ValueError("Reviewed comparison did not generate all nine formal states")
+    for path in indices:
+        target = directory / "acceptance" / path.relative_to(root / "acceptance")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+    manifest.setdefault("reviews", []).append({"reviewed_at": started.isoformat(timespec="seconds"),
+        "exit_code": result.returncode, "log": str(log.relative_to(root)), "capture_reused": True})
+    manifest["status"] = "passed" if result.returncode == 0 else "not_accepted"
+    manifest["artifacts"] = [{"file": str(path.relative_to(directory)), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+                             for path in sorted(directory.rglob("*")) if path.is_file() and path != manifest_path]
+    manifest_path.write_text(yaml.safe_dump(manifest, allow_unicode=True, sort_keys=False))
+    print(json.dumps({"index": "acceptance/index.yaml", "failed_index": "acceptance/_failed/index.yaml",
+                      "run_id": run_id, "status": manifest["status"]}, ensure_ascii=False))
+    return result.returncode
+
+
 if __name__ == "__main__":
-    raise SystemExit(run())
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--review-run")
+    arguments = parser.parse_args()
+    raise SystemExit(review_run(arguments.review_run) if arguments.review_run else run())

@@ -54,7 +54,7 @@ data class ScheduleResult(
 )
 
 data class BatchScheduleResult(val status: String, val items: List<DisplayResult>)
-data class RoutingResult(val status: String, val query: String?, val focusDate: String?, val timeSemantics: String?, val records: List<JSONObject>, val sources: List<String>, val sampleData: Boolean)
+data class RoutingResult(val status: String, val query: String?, val focusDate: String?, val timeSemantics: String?, val records: List<JSONObject>, val sources: List<String>, val sampleData: Boolean, val queryKind: String? = null)
 data class EmptyResult(val status: String, val date: String?, val query: String?, val historicalRecords: List<JSONObject>, val sources: List<String>)
 data class ErrorResult(val status: String, val message: String?, val category: String?, val tool: String?)
 data class UnsupportedResult(val kind: String?, val status: String?, val schemaVersion: Int?)
@@ -102,7 +102,7 @@ object DisplayResultParser {
             )
             "emu_routing" -> RoutingDisplay(
                 RoutingResult(status ?: "unknown", item.string("query"), item.string("focus_date"),
-                    item.string("time_semantics"), item.objectArray("records"), item.stringArray("sources"), item.optBoolean("sample_data"))
+                    item.string("time_semantics"), item.objectArray("records"), item.stringArray("sources"), item.optBoolean("sample_data"), item.string("query_kind"))
             )
             "empty" -> EmptyDisplay(
                 EmptyResult(status ?: "unknown", item.string("date"), item.string("query"), item.objectArray("historical_records"), item.stringArray("sources"))

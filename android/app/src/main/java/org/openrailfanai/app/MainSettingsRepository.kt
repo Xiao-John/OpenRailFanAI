@@ -32,7 +32,8 @@ data class ProviderConfig(
 class MainSettingsRepository private constructor(private val files: File) {
     constructor(context: Context) : this(context.applicationContext.filesDir)
     internal constructor(files: File, isolated: Boolean) : this(files)
-    private val lock = Any()
+    private val lock = sessionLock
+    private val sessionNamespace = files.absolutePath
 
     fun entries(): List<ProviderConfig> = synchronized(lock) {
         val saved = loadOrMigrateLlm()
@@ -41,7 +42,8 @@ class MainSettingsRepository private constructor(private val files: File) {
         (0 until entries.length()).mapNotNull { index ->
             val item = entries.optJSONObject(index) ?: return@mapNotNull null
             val id = item.optString("id").takeIf(String::isNotBlank) ?: return@mapNotNull null
-            val key = item.optString("key").ifBlank { if (remember) secureGet(id) else "" }
+            val key = sessionKeys[sessionNamespace]?.get(id)
+                ?: item.optString("key").ifBlank { if (remember) secureGet(id) else "" }
             ProviderConfig(id, item.optString("label", id), item.optString("base_url"), item.optString("model"),
                 item.optString("api", "auto"), key, item.optBoolean("custom"), item.optInt("max_tokens").takeIf { it > 0 },
                 item.optInt("context_tokens").takeIf { it > 0 })
@@ -63,6 +65,8 @@ class MainSettingsRepository private constructor(private val files: File) {
         val root = readState()
         val secrets = readSecrets()
         val activeIds = configs.mapTo(mutableSetOf()) { it.id }
+        // Session credentials remain usable without opting into disk persistence.
+        sessionKeys[sessionNamespace] = configs.associate { it.id to it.key }
         val savedIds = secrets.keys().asSequence().toList()
         savedIds.filterNot(activeIds::contains).forEach(secrets::remove)
         val entries = JSONArray()
@@ -121,7 +125,12 @@ class MainSettingsRepository private constructor(private val files: File) {
             .put("api", saved.optString("api", "auto")).put("custom", id == "custom")
             .put("max_tokens", JSONObject.NULL).put("context_tokens", JSONObject.NULL)
         val secrets = readSecrets()
-        if (legacyKey.isNotBlank()) securePut(secrets, id, legacyKey)
+        if (legacyKey.isNotBlank()) {
+            sessionKeys.getOrPut(sessionNamespace) { emptyMap() }.let { current ->
+                sessionKeys[sessionNamespace] = current + (id to legacyKey)
+            }
+            if (remember) securePut(secrets, id, legacyKey) else secrets.remove(id)
+        }
         val migrated = JSONObject().put("entries", JSONArray().put(config)).put("activeId", id).put("rememberKey", remember)
         writeSecrets(secrets)
         root.put(LLM_KEY, migrated.toString())
@@ -169,6 +178,8 @@ class MainSettingsRepository private constructor(private val files: File) {
     }
 
     companion object {
+        private val sessionLock = Any()
+        private val sessionKeys = mutableMapOf<String, Map<String, String>>()
         private const val LLM_KEY = "railfan_llm_v1"
         private const val THEME_KEY = "railfan_theme"
         private const val SECRETS_FILE = "secrets.json"

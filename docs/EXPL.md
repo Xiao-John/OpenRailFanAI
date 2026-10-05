@@ -54,7 +54,7 @@ scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预
 
 `backend/app/display_result.py` 只把工具返回的规范化 `ToolResult.data` 投影成前端安全对象，不使用模型回答文本，也不暴露供应商原始响应。当前可判别类型为：
 
-结构化对象使用 `schema_version: 1`。站点记录只投影 `station_no`、`station`、`arrive_time`、`start_time`、`stopover_time`；交路记录只投影 `train_code`、`date`、`time`。各顶层结果及嵌套项均带版本字段。Main 前端忽略声明了未知版本的结果，保留其旧 Markdown 降级显示；未带版本的既有结果仍可兼容读取。列车时刻的 `time_basis` 区分 `reference` 与 `stations_only`。12306 实时查询确认有当日车次时，接口提供的发到及经停时刻可显示，但经停时刻仍标作图定参考；工具明确标记当日时刻不可用且无单独 reference 时，不投影当日发到时刻。
+结构化对象使用 `schema_version: 1`。站点记录只投影 `station_no`、`station`、`arrive_time`、`start_time`、`stopover_time`；交路记录投影 `train_code`、`date`、`time`，并附带白名单车组列表 `units`（`emu_no`、`emu_no_display`）及 `coupled` 标记。同日、同记录时刻、同车次的记录合并；去除重复车组后有多个车组才标注重联。缺少日期、车次或时间的记录不推断合并。各顶层结果及嵌套项均带版本字段。Main 前端忽略声明了未知版本的结果，保留其旧 Markdown 降级显示；未带版本的既有结果仍可兼容读取。列车时刻的 `time_basis` 区分 `reference` 与 `stations_only`。12306 实时查询确认有当日车次时，接口提供的发到及经停时刻可显示，但经停时刻仍标作图定参考；工具明确标记当日时刻不可用且无单独 reference 时，不投影当日发到时刻。
 
 | kind | 主要字段 | 状态 |
 |---|---|---|
@@ -64,7 +64,7 @@ scripts/                   # setup.sh（一键安装启动） / prewarm.sh（预
 | `empty` | 空交路日期、查询对象及来源错误说明 | `empty` |
 | `error` | 相关工具与错误说明 | `failed` |
 
-批量时刻操作通过可选 `ChatRequest.display_action` 传递 `{kind: "train_schedule_batch", trains: [...], date: "YYYY-MM-DD"}`；只重试失败项时，前端只发送失败车次。日期切换和最近交路入口通过 `{kind: "emu_routing", query, date}` 发起结构化动作。单项状态由工具结果分别投影，成功项不因另一项失败而丢弃。交路记录的 `time_semantics` 明确说明其为记录时间，不是列车到发时间。
+批量时刻操作通过可选 `ChatRequest.display_action` 传递 `{kind: "train_schedule_batch", trains: [...], date: "YYYY-MM-DD"}`；只重试失败项时，前端只发送失败车次。日期切换通过 `{kind: "emu_routing", query, date}` 发起结构化动作；最近记录入口另外传 `recent: true`，不回落到今日筛选。结果 `query_kind` 区分车次查担当车组与车组查车次；最近记录保留各条原始日期，打开时刻表使用对应记录日期。单项状态由工具结果分别投影，成功项不因另一项失败而丢弃。交路记录的 `time_semantics` 明确说明其为记录时间，不是列车到发时间。
 
 Main 移动端对话历史使用 `#/history`，按会话更新时间分组，复用 `store.js` 现有搜索、切换、重命名和删除能力。流式滚动在用户离开底部后暂停，点击“回到底部”提示恢复跟随；追问只写入输入框，不直接发送。设计状态的静态文案集中在 `frontend/src/ui-copy.js`，图标资源位于 `frontend/assets/icons/`。
 
@@ -141,3 +141,9 @@ Main 移动端视觉夹具位于 `frontend/tests/visual/fixtures.json`，用 `no
 **前端**（`frontend/`）：`src/main.js`（hash 路由 `#/c/<id>` `#/doc/<key>`、SSE 消费、对话列表、AbortController、编辑重发）、`src/store.js`（对话/主题持久化 + 容量上限；持久化后端可切换：浏览器用 localStorage，Android 用原生桥写的应用私有文件）、`src/native.js`（原生桥的 JS 契约，未接桥时全部安全退化）、`src/theme.js`（外观三档：跟随系统/浅色/深色；单独成模块是为了能脱离浏览器用 node 跑测试）、`src/markdown.js`（回答正文的轻量 Markdown 渲染，含 GFM 表格；单独成模块是为了能脱离浏览器用 node 跑测试）、`src/throttle.js`（流式渲染的合并/限频）、`src/pages.js`（帮助/免责/联系静态页 + 设置页：供应商 BYOK、模型探测、外观、关于卡片）、`index.html`（移动优先三端自适应 UI）、`tests/*.test.mjs`（node 直跑前端单测：数据层 / Markdown / 节流 / 主题）。
 
 **配套文档**：`docs/datasources.md`（数据源端点、参数、字段与踩坑）、`docs/run.md`（安装、配置、启动、测试、数据准备）。
+
+### 当前会话 Token 展示（2026-10-04）
+
+每条助手回复显示服务端实际上报的 `usage.total_tokens`；缺失则显示用量未返回，不从正文估算。当前会话以其独立 `totalTokens` 累计，回复保存时只累加一次，切换会话按会话ID读取；新对话为0，超过120条消息而裁剪历史时累计值保留。旧会话首次读取从保留回复迁移，因此已被旧版本裁剪的历史消耗不能补算。请求尚未返回用量的取消或失败不虚构Token。
+
+普速车次时刻不自动联查 rail.re；用户明确查询其交路或担当时，说明当前数据源不支持，不把能力限制呈现为模型连接失败。

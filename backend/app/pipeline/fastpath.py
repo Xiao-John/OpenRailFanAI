@@ -23,6 +23,7 @@ LLM 往返**（意图分类 + 槽位抽取）上——检索层的工具调用�
 from __future__ import annotations
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 
@@ -178,6 +179,12 @@ def _time_phrase(text: str) -> str:
 def _train_code(text: str) -> str:
     for m in re.finditer(r"(0?[GDCTZKYSLBN]\d{1,5}[A-Z]?|\d{1,4})(?:次|列车)?", text or "", re.I):
         cand = m.group(1)
+        if os.environ.get("APP_VARIANT", "main").lower() != "lm" and cand.isdigit():
+            before, after = text[:m.start()], text[m.end():]
+            if (before[-1:].isdigit() or after[:1].isdigit()
+                    or (m.group(0) == cand and re.match(r"[月日号点分:：-]|时(?!刻表)|车组|组", after))
+                    or re.search(r"\d[-:：]$", before)):
+                continue
         # 不能把车型里的数字当车次：实测「CR400AF 这车型都担当哪些交路？」抠出 "400"，
         # target 变成 "400" 而不是 CR400AF。判据是**词边界**——紧挨着字母的数字属于型号。
         if m.start() > 0 and text[m.start() - 1].isascii() and text[m.start() - 1].isalpha():

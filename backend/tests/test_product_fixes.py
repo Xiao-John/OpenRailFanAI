@@ -12,7 +12,7 @@
 | `test_station_candidate_degradation` | G01★/E05 | 缺陷 4：地名降级不到位 |
 | `test_station_lookup_suggests_alternatives` | E07 | 次级：错别字无纠错动作 |
 | `test_retrieve_station_fact_forces_lookup` | E01★/E06 | 缺陷 3：知识型误判导致该查站的去查网页 |
-| `test_retrieve_ticket_with_train_code` | C04/C09 | 席别问题走了站点查询 |
+| `test_retrieve_ticket_with_train_code` | C04/C09 | Main 车次余票缺区间必须澄清，不用时刻替代 |
 | `test_retrieve_conventional_train_routing` | A07/D06/R04 | 普速改查时刻 |
 | `test_retrieve_non_code_target_is_honest` | A09 | "京沪标杆"被当车组号 |
 | `test_retrieve_missing_info_notes` | C06/C08/L03/D09 | 把"没查"说成"查询失败" |
@@ -204,20 +204,21 @@ def test_retrieve_station_fact_forces_lookup():
 
 
 def test_retrieve_ticket_with_train_code():
-    """C04/C09：问"某车次还有商务座吗"应查 train.schedule，而不是 station.lookup('G1')。"""
+    """Main 余票必须指定乘车区间，不能用时刻查询当作余票成功。"""
     with _Recorder() as rec:
-        _retrieve("ticket", target="G1", time="明天")
-    assert "station.lookup" not in rec.names(), f"仍在拿车次号查站点：{rec.calls}"
-    assert "train.schedule" in rec.names(), rec.calls
-    print(f"[PASS] 车次席别 -> {rec.names()}")
+        out = _retrieve("ticket", target="G1", time="明天")
+    assert rec.names() == [], rec.calls
+    assert "出发站" in out["direct_answer"] and "到达站" in out["direct_answer"], out
+    print("[PASS] 车次余票缺区间 -> 可见澄清，不查询时刻或站点")
 
 
 def test_retrieve_conventional_train_routing():
-    """A07/D06/L04：普速车次改查实时时刻，并说明担当数据无公开来源。"""
+    """明确问普速担当：如实说明不支持，不替换成未请求的时刻查询。"""
     with _Recorder() as rec:
         out = _retrieve("emu_routing", target="K53", time="今天")
     assert "emu.routing" not in rec.names(), f"普速仍去查交路库：{rec.calls}"
-    assert "train.schedule" in rec.names(), rec.calls
+    assert rec.names() == [], rec.calls
+    assert "不支持" in out["direct_answer"], out
     assert "普速" in out["note"], out["note"]
     print(f"[PASS] 普速交路意图 -> {rec.names()}｜{out['note'][:40]}…")
 

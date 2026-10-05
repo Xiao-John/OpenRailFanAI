@@ -1,6 +1,7 @@
 """Stable UI projections of normalized tool data (never model prose)."""
 from __future__ import annotations
 
+import os
 from typing import Any
 from app.dates import normalize_date
 
@@ -17,8 +18,23 @@ def _project_stop(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _project_routing_record(item: dict[str, Any]) -> dict[str, Any]:
-    return {"train_code": item.get("train_code"), "date": item.get("date"), "time": item.get("time")}
+def _project_routing_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[tuple[Any, Any, Any], dict[str, Any]] = {}
+    for index, item in enumerate(records):
+        train, day, time = item.get("train_code"), item.get("date"), item.get("time")
+        # Missing identity/time must not imply coupled operation.
+        key = (train, day, time) if train and day and time else ("incomplete", index, None)
+        record = grouped.setdefault(key, {"train_code": train, "date": day, "time": time, "units": []})
+        raw = item.get("emu_no")
+        label = item.get("emu_no_display") or raw
+        if raw or label:
+            unit = {"emu_no": raw, "emu_no_display": label}
+            identity = str(raw or label).replace("-", "").replace(" ", "").upper()
+            if not any(str(u.get("emu_no") or u.get("emu_no_display")).replace("-", "").replace(" ", "").upper() == identity for u in record["units"]):
+                record["units"].append(unit)
+    for record in grouped.values():
+        record["coupled"] = len(record["units"]) > 1
+    return list(grouped.values())
 
 
 def _schedule(data: dict[str, Any]) -> dict[str, Any]:
@@ -82,15 +98,16 @@ def _schedule(data: dict[str, Any]) -> dict[str, Any]:
 def _routing(data: dict[str, Any]) -> dict[str, Any]:
     records = data.get("records") or []
     focus_date = data.get("focus_date")
-    focus_records = [item for item in records if isinstance(item, dict) and item.get("date") == focus_date]
+    focus_records = [item for item in records if isinstance(item, dict) and (data.get("query_mode") == "recent" or item.get("date") == focus_date)]
     if focus_date and not focus_records:
         return {
             "kind": "empty",
             "status": "empty",
             "tool": "emu.routing",
             "query": data.get("query"),
+            "query_kind": data.get("kind"),
             "date": focus_date,
-            "historical_records": [_project_routing_record(item) for item in records if isinstance(item, dict)],
+            "historical_records": _project_routing_records([item for item in records if isinstance(item, dict)]),
             "source": "rail.re",
             "sources": [],
         }
@@ -98,8 +115,9 @@ def _routing(data: dict[str, Any]) -> dict[str, Any]:
         "kind": "emu_routing",
         "status": "success" if focus_records else "empty",
         "query": data.get("query"),
+        "query_kind": data.get("kind"),
         "focus_date": focus_date,
-        "records": [_project_routing_record(item) for item in focus_records],
+        "records": _project_routing_records(focus_records),
         "source": "rail.re",
         "time_semantics": "以下为记录时间，不是列车到发时间。",
         "sample_data": bool(data.get("sample_data")),
@@ -109,6 +127,30 @@ def _routing(data: dict[str, Any]) -> dict[str, Any]:
 
 def serialize_display_results(tool_data: list[dict[str, Any]], errors: list[dict[str, str]] | None = None) -> list[dict[str, Any]]:
     """Project the internal tool contract into versioned, UI-safe result objects."""
+    # Existing clients retry a schedule batch using one date. Keep each date
+    # in its own old-format card/batch, so retries cannot silently use day one.
+    if (os.environ.get("APP_VARIANT", "main").lower() != "lm"
+            and any("query_date" in item for item in [*tool_data, *(errors or [])])):
+        groups = {}
+        other_data, other_errors = [], []
+        for item in tool_data:
+            if item.get("tool") == "train.schedule" and isinstance(item.get("data"), dict):
+                day = item.get("query_date") or item["data"].get("train_date")
+                groups.setdefault(day, ([], []))[0].append(item)
+            else:
+                other_data.append(item)
+        for item in errors or []:
+            if item.get("tool") == "train.schedule":
+                day = item.get("query_date") or normalize_date(item.get("date"))
+                groups.setdefault(day, ([], []))[1].append(item)
+            else:
+                other_errors.append(item)
+        if len(groups) > 1:
+            results = []
+            for entries, failures in groups.values():
+                results.extend(serialize_display_results(entries, failures))
+            results.extend(serialize_display_results(other_data, other_errors))
+            return results
     schedules = []
     for item in tool_data:
         if item.get("tool") == "train.schedule" and isinstance(item.get("data"), dict):

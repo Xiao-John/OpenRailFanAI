@@ -210,7 +210,7 @@
       {
         "selector": ".query-loading strong",
         "mode": "text",
-        "expected": "正在查询列车数据…"
+        "expected": "正在检索相关资料…"
       },
       {
         "selector": ".query-loading-stage",
@@ -392,7 +392,7 @@
       {
         "selector": "#new-content-cue",
         "mode": "text",
-        "expected": "有新内容 · 回到底部"
+        "expected": "回到底部"
       },
       {
         "selector": ".row.assistant.has-table-answer .followups > button:nth-child(1)",
@@ -506,29 +506,14 @@
         "expected": "北京南到上海虹桥票价"
       },
       {
-        "selector": ".history-item:nth-of-type(1) .history-select span",
-        "mode": "text",
-        "expected": "G1 · 明天出发"
-      },
-      {
         "selector": ".history-item:nth-of-type(2) .history-select strong",
         "mode": "text",
         "expected": "CR400BF-5033 今日交路"
       },
       {
-        "selector": ".history-item:nth-of-type(2) .history-select span",
-        "mode": "text",
-        "expected": "3 条交路记录"
-      },
-      {
         "selector": ".history-item:nth-of-type(3) .history-select strong",
         "mode": "text",
         "expected": "G8932 列车时刻"
-      },
-      {
-        "selector": ".history-item:nth-of-type(3) .history-select span",
-        "mode": "text",
-        "expected": "秦皇岛 → 北京南"
       },
       {
         "selector": ".history-group-title:nth-of-type(2)",
@@ -541,26 +526,6 @@
         "expected": "京沪线沿线车站"
       },
       {
-        "selector": ".history-action-title",
-        "mode": "text",
-        "expected": "对话操作"
-      },
-      {
-        "selector": ".history-rename",
-        "mode": "text",
-        "expected": "重命名"
-      },
-      {
-        "selector": ".history-action-panel button.danger",
-        "mode": "text",
-        "expected": "删除对话"
-      },
-      {
-        "selector": ".history-action-cancel",
-        "mode": "text",
-        "expected": "取消"
-      },
-      {
         "selector": ".history-footer button:nth-child(1)",
         "mode": "text",
         "expected": "模型与设置"
@@ -568,7 +533,7 @@
       {
         "selector": ".history-footer button:nth-child(2)",
         "mode": "text",
-        "expected": "使用帮助"
+        "expected": "帮助"
       }
     ]
   }

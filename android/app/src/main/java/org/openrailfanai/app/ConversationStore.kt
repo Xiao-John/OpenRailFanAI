@@ -16,6 +16,7 @@ data class StoredConversation(
     val createdAt: Long,
     val updatedAt: Long,
     val messages: List<StoredMessage>,
+    val totalTokens: Long = 0L,
 )
 
 /** Uses the existing WebUI session fields and retains all unknown JSON fields for old clients. */
@@ -38,6 +39,26 @@ class ConversationStore private constructor(private val directory: File) {
         state.put(CONVERSATIONS_KEY, list.toString()).put(CURRENT_KEY, raw.getString("id"))
         persist(state)
         return raw.toConversation()
+    }
+
+    @Synchronized fun pendingOrCreate(): StoredConversation {
+        val pending = all().firstOrNull { it.messages.isEmpty() }
+        if (pending != null) {
+            select(pending.id)
+            return pending
+        }
+        return create()
+    }
+
+    @Synchronized fun draft(id: String): String {
+        val list = readState().optString(CONVERSATIONS_KEY).toJSONArray()
+        return (0 until list.length()).firstNotNullOfOrNull { index ->
+            list.optJSONObject(index)?.takeIf { it.optString("id") == id }?.optString("draft", "")
+        }.orEmpty()
+    }
+
+    @Synchronized fun saveDraft(id: String, text: String) {
+        if (draft(id) != text) mutate(id) { it.put("draft", text) }
     }
 
     @Synchronized fun select(id: String) {
@@ -71,6 +92,7 @@ class ConversationStore private constructor(private val directory: File) {
 
     @Synchronized fun addUser(id: String, text: String) {
         mutate(id) { conversation ->
+            conversation.put("totalTokens", conversation.recordedTokenTotal())
             val messages = conversation.optJSONArray("messages") ?: JSONArray()
             messages.put(JSONObject().put("role", "user").put("content", text))
             conversation.put("messages", trimMessages(messages)).put("updatedAt", System.currentTimeMillis())
@@ -84,6 +106,8 @@ class ConversationStore private constructor(private val directory: File) {
     @Synchronized fun addAssistant(id: String, content: String, meta: JSONObject) {
         mutate(id) { conversation ->
             val messages = conversation.optJSONArray("messages") ?: JSONArray()
+            val previousTokens = conversation.recordedTokenTotal()
+            conversation.put("totalTokens", previousTokens + (replyTokenUsage(meta) ?: 0L))
             messages.put(JSONObject().put("role", "assistant").put("content", content).put("meta", meta))
             conversation.put("messages", trimMessages(messages)).put("updatedAt", System.currentTimeMillis())
         }
@@ -107,7 +131,9 @@ class ConversationStore private constructor(private val directory: File) {
                 return listOf(result.optString("train_code"), result.optString("date")).filter(String::isNotBlank).joinToString(" · ")
             }
         }
-        return conversation.messages.lastOrNull { it.role == "user" }?.content.orEmpty().let { if (it.length > 24) it.take(24) + "…" else it }
+        val text = conversation.messages.lastOrNull { it.role == "user" }?.content.orEmpty()
+        if (text == conversation.title || text.take(18) + "…" == conversation.title) return ""
+        return if (text.length > 24) text.take(24) + "…" else text
     }
 
     private fun mutate(id: String, action: (JSONObject) -> Unit) {
@@ -144,11 +170,21 @@ class ConversationStore private constructor(private val directory: File) {
 
     private fun JSONArray.mapConversations(): List<StoredConversation> = (0 until length()).mapNotNull { optJSONObject(it)?.toConversation() }
 
+    private fun JSONObject.recordedTokenTotal(): Long {
+        if (has("totalTokens")) return optLong("totalTokens").coerceAtLeast(0L)
+        val messages = optJSONArray("messages") ?: return 0L
+        return (0 until messages.length()).sumOf { index ->
+            messages.optJSONObject(index)?.takeIf { it.optString("role") == "assistant" }
+                ?.optJSONObject("meta")?.let { replyTokenUsage(it) } ?: 0L
+        }
+    }
+
     private fun JSONObject.toConversation(): StoredConversation {
         val messages = optJSONArray("messages") ?: JSONArray()
         return StoredConversation(
             id = optString("id"), title = optString("title", "新对话"), titleAuto = optBoolean("titleAuto", true),
             createdAt = optLong("createdAt"), updatedAt = optLong("updatedAt"),
+            totalTokens = recordedTokenTotal(),
             messages = (0 until messages.length()).mapNotNull { index -> messages.optJSONObject(index)?.let { message ->
                 StoredMessage(message.optString("role"), message.optString("content"), message.optJSONObject("meta"))
             } },
@@ -162,4 +198,16 @@ class ConversationStore private constructor(private val directory: File) {
         private const val CURRENT_KEY = "railfan_current_conv_v1"
         private const val MAX_MESSAGES = 120
     }
+}
+
+/** Server-reported usage only; missing values are not estimated from text. */
+internal fun replyTokenUsage(meta: JSONObject?): Long? {
+    val usage = meta?.optJSONObject("usage") ?: return null
+    if (usage.has("total_tokens") && !usage.isNull("total_tokens")) {
+        return usage.optLong("total_tokens").coerceAtLeast(0L)
+    }
+    if (usage.has("prompt_tokens") && usage.has("completion_tokens")) {
+        return usage.optLong("prompt_tokens").coerceAtLeast(0L) + usage.optLong("completion_tokens").coerceAtLeast(0L)
+    }
+    return null
 }

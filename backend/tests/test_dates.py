@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from app.dates import date_note, normalize_date, resolve_date
+from app.dates import date_note, normalize_date, resolve_date, railway_today
 
-# 固定"今天"无法注入（模块直接用 date.today()），因此断言以相对天数表达，任何日期运行都成立。
-TODAY = date.today()
+# 日期断言遵循中国铁路业务日，避免测试机系统时区造成跨日差异。
+TODAY = railway_today()
 
 
 def _rel(days: int) -> str:

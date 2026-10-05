@@ -1,11 +1,16 @@
 package org.openrailfanai.app
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.widget.Toast
 import android.os.Bundle
 import android.os.IBinder
 import androidx.activity.ComponentActivity
@@ -16,6 +21,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,6 +41,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
@@ -53,12 +60,6 @@ import kotlinx.coroutines.flow.collect
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
-
-private fun classifyError(message: String): String = when {
-    Regex("HTTP\\s*401|鉴权|API.?Key|密钥", RegexOption.IGNORE_CASE).containsMatchIn(message) -> "auth"
-    Regex("连接|网络|超时|DNS", RegexOption.IGNORE_CASE).containsMatchIn(message) -> "network"
-    else -> "service"
-}
 
 /** Main's native application host; the stable launcher dispatches here for Main builds. */
 class MainComposeActivity : ComponentActivity(), BackendService.Listener {
@@ -98,6 +99,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         conversationStore = ConversationStore(this)
         if (conversationStore.current() == null) conversationStore.create()
         conversationId = conversationStore.currentId()
+        input = conversationStore.draft(conversationId)
         setContent {
             BackHandler(enabled = pageNavigation.canGoBack) {
                 navigateBackOrDelegateToActivity()
@@ -110,6 +112,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                         repository = settingsRepository,
                         client = SettingsClient("http://127.0.0.1:$port"),
                         onBack = { navigateBackOrDelegateToActivity() },
+                        onSaved = { pageNavigation = MainPageNavigation.root() },
                         onCopy = { text ->
                             (getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager)?.setPrimaryClip(ClipData.newPlainText("RailFanAI", text))
                         },
@@ -128,52 +131,17 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                     ) else BasicText("正在连接设备内服务…")
                 }
                 }
-                MainPage.HISTORY -> {
-                    HistoryScreen(
-                        store = conversationStore, currentId = conversationId, revision = conversationRevision,
-                        onBack = { navigateBackOrDelegateToActivity() },
-                        onCreate = {
-                            if (busy) stopQuery()
-                            conversationId = conversationStore.create().id
-                            conversationRevision++
-                            stateMachine.reset()
-                            chatState = stateMachine.state
-                            pageNavigation = pageNavigation.navigateTo(MainPage.CHAT)
-                        },
-                        onSelect = { id ->
-                            if (busy) stopQuery()
-                            conversationStore.select(id)
-                            conversationId = id
-                            conversationRevision++
-                            stateMachine.reset()
-                            chatState = stateMachine.state
-                            pageNavigation = pageNavigation.navigateTo(MainPage.CHAT)
-                        },
-                        onRename = { id, title -> conversationStore.rename(id, title); conversationRevision++ },
-                        onDelete = { id ->
-                            conversationStore.delete(id)
-                            conversationId = conversationStore.currentId()
-                            conversationRevision++
-                        },
-                        onSettings = { pageNavigation = pageNavigation.navigateTo(MainPage.SETTINGS) },
-                        onHelp = { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(HELP_URL))) },
-                    )
-                }
-                MainPage.CHAT -> MainChatScreen(
+                MainPage.CHAT, MainPage.HISTORY -> Box(Modifier.fillMaxSize()) {
+                key(conversationId) { MainChatScreen(
                 status = status,
                 connected = connectedPort > 0,
                 chatState = chatState,
                 messages = conversationStore.all().firstOrNull { it.id == conversationId }?.messages.orEmpty(),
+                conversationTokens = conversationStore.all().firstOrNull { it.id == conversationId }?.totalTokens ?: 0L,
                 input = input,
                 onInputChange = { input = it },
                 onOpenHistory = { pageNavigation = pageNavigation.navigateTo(MainPage.HISTORY) },
-                onNewConversation = {
-                    if (busy) stopQuery()
-                    conversationId = conversationStore.create().id
-                    conversationRevision++
-                    stateMachine.reset()
-                    chatState = stateMachine.state
-                },
+                onNewConversation = { openNewConversation() },
                 onBack = { navigateBackOrDelegateToActivity() },
                 onSubmit = { submitQuery() },
                 onStop = { stopQuery() },
@@ -192,10 +160,50 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 onCopy = { text ->
                     (getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager)?.setPrimaryClip(ClipData.newPlainText("RailFanAI", text))
                 },
+                onShare = { text ->
+                    val share = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, text)
+                    }
+                    startActivity(Intent.createChooser(share, "分享回复"))
+                },
                 onRegenerate = { query -> submitQuery(query) },
                 onRetryQuery = { query -> submitQuery(query) },
                 onFollowup = { draft -> input = draft },
-                )
+                ) }
+                AnimatedVisibility(pageNavigation.current == MainPage.HISTORY, enter = fadeIn(tween(160)), exit = fadeOut(tween(140))) {
+                    HistoryScreen(
+                        store = conversationStore, currentId = conversationId, revision = conversationRevision,
+                        onBack = { if (pageNavigation.current == MainPage.HISTORY) navigateBackOrDelegateToActivity() },
+                        onCreate = createFromHistory@{
+                            if (pageNavigation.current != MainPage.HISTORY) return@createFromHistory
+                            openNewConversation()
+                        },
+                        onSelect = selectFromHistory@{ id ->
+                            if (pageNavigation.current != MainPage.HISTORY) return@selectFromHistory
+                            if (busy) stopQuery()
+                            saveCurrentDraft()
+                            conversationStore.select(id)
+                            conversationId = id
+                            conversationRevision++
+                            input = conversationStore.draft(id)
+                            stateMachine.reset()
+                            chatState = stateMachine.state
+                            pageNavigation = MainPageNavigation.root()
+                        },
+                        onRename = { id, title -> conversationStore.rename(id, title); conversationRevision++ },
+                        onDelete = { id ->
+                            saveCurrentDraft()
+                            conversationStore.delete(id)
+                            conversationId = conversationStore.currentId()
+                            input = conversationStore.draft(conversationId)
+                            conversationRevision++
+                        },
+                        onSettings = { pageNavigation = pageNavigation.navigateTo(MainPage.SETTINGS) },
+                        onHelp = { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(HELP_URL))) },
+                    )
+                }
+                }
             }
         }
         val intent = Intent(this, BackendService::class.java)
@@ -212,7 +220,17 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         }
     }
 
+    private fun saveCurrentDraft() {
+        if (::conversationStore.isInitialized) conversationStore.saveDraft(conversationId, input)
+    }
+
+    override fun onPause() {
+        saveCurrentDraft()
+        super.onPause()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
+        saveCurrentDraft()
         outState.putStringArrayList(STATE_PAGE_STACK, ArrayList(pageNavigation.savedPages()))
         super.onSaveInstanceState(outState)
     }
@@ -246,14 +264,35 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
 
     override fun onBackendFailed(detail: String) { status = "后端启动失败：$detail" }
 
+    private fun openNewConversation() {
+        val current = conversationStore.all().firstOrNull { it.id == conversationId }
+        if (!busy && current?.messages?.isEmpty() == true) {
+            Toast.makeText(this, "已在新对话中", Toast.LENGTH_SHORT).show()
+            pageNavigation = MainPageNavigation.root()
+            return
+        }
+        if (busy) stopQuery()
+        saveCurrentDraft()
+        conversationId = conversationStore.pendingOrCreate().id
+        conversationRevision++
+        input = conversationStore.draft(conversationId)
+        stateMachine.reset()
+        chatState = stateMachine.state
+        pageNavigation = MainPageNavigation.root()
+    }
+
     private fun submitQuery(retryQuery: String? = null, displayAction: org.json.JSONObject? = null, preserveResults: Boolean = false) {
         val query = (retryQuery ?: input).trim()
         val client = repository ?: return
         if (query.isEmpty() || busy) return
-        input = ""
-        conversationStore.addUser(conversationId, query)
+        if (retryQuery == null) {
+            input = ""
+            saveCurrentDraft()
+        }
+        val requestConversationId = conversationId
+        conversationStore.addUser(requestConversationId, query)
         conversationRevision++
-        val priorMessages = conversationStore.current()?.messages.orEmpty()
+        val priorMessages = conversationStore.all().firstOrNull { it.id == requestConversationId }?.messages.orEmpty()
             .filter { it.role == "user" || (it.role == "assistant" && it.meta?.has("error") != true && it.meta?.optBoolean("stopped") != true) }
             .takeLast(20).map { ChatMessage(it.role, it.content) }
         status = "正在查询…"
@@ -262,7 +301,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         val request = ChatStreamRequest(
             query,
             history = priorMessages.dropLast(1),
-            sessionId = conversationId,
+            sessionId = requestConversationId,
             displayAction = displayAction,
             llmSpec = settingsRepository.requestLlmSpec(),
         )
@@ -294,8 +333,8 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                             .put("processLogs", org.json.JSONArray(outcome.processLogs))
                             .put("usage", outcome.usage)
                             .put("latencyMs", outcome.latencyMs)
-                        if (outcome.error != null) meta.put("error", outcome.error).put("errorCategory", classifyError(outcome.error))
-                        conversationStore.addAssistant(conversationId, outcome.answer, meta)
+                        if (outcome.error != null) meta.put("error", outcome.error).put("errorCategory", mainErrorCategory(outcome.error))
+                        conversationStore.addAssistant(requestConversationId, outcome.answer, meta)
                         conversationRevision++
                         status = outcome.error ?: "查询完成"
                     }
@@ -306,7 +345,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                     }
                     if (stateMachine.fail(requestId, message)) {
                         chatState = stateMachine.state
-                        conversationStore.addAssistant(conversationId, "", org.json.JSONObject().put("error", message).put("errorCategory", classifyError(message)))
+                        conversationStore.addAssistant(requestConversationId, "", org.json.JSONObject().put("error", message).put("errorCategory", mainErrorCategory(message)))
                         conversationRevision++
                         status = message
                     }

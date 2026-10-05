@@ -187,11 +187,12 @@ def _force_legacy():
         _mock.patch("app.pipeline.fastpath.plan_with_reason", new=_mock.AsyncMock(return_value=(None, None))),
         _mock.patch("app.pipeline.planner.chat_structured",
                     new=_mock.AsyncMock(side_effect=RuntimeError("merged call disabled in test"))),
+        _mock.patch("app.pipeline.service_dispatch.decide", return_value=None),
     ]
 
 
 def main():
-    with _force_legacy()[0], _force_legacy()[1]:
+    with _force_legacy()[0], _force_legacy()[1], _force_legacy()[2]:
         _run_all()
 
 

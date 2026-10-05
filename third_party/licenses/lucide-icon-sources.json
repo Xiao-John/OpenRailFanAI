@@ -1,0 +1,188 @@
+[
+  {
+    "name": "calendar",
+    "icon": "calendar",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/calendar.svg"
+  },
+  {
+    "name": "clock",
+    "icon": "clock",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/clock.svg"
+  },
+  {
+    "name": "link",
+    "icon": "link",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/link.svg"
+  },
+  {
+    "name": "info",
+    "icon": "info",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/info.svg"
+  },
+  {
+    "name": "chevron",
+    "icon": "chevron-right",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/chevron-right.svg"
+  },
+  {
+    "name": "chevron-down",
+    "icon": "chevron-down",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/chevron-down.svg"
+  },
+  {
+    "name": "chevron-up",
+    "icon": "chevron-up",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/chevron-up.svg"
+  },
+  {
+    "name": "chevron-left",
+    "icon": "chevron-left",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/chevron-left.svg"
+  },
+  {
+    "name": "search",
+    "icon": "search",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/search.svg"
+  },
+  {
+    "name": "train-search",
+    "icon": "train-front",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/train-front.svg"
+  },
+  {
+    "name": "person",
+    "icon": "user-round",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/user-round.svg"
+  },
+  {
+    "name": "cloud-error",
+    "icon": "cloud-alert",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/cloud-alert.svg"
+  },
+  {
+    "name": "file",
+    "icon": "file-text",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/file-text.svg"
+  },
+  {
+    "name": "plus",
+    "icon": "plus",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/plus.svg"
+  },
+  {
+    "name": "back",
+    "icon": "arrow-left",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/arrow-left.svg"
+  },
+  {
+    "name": "down",
+    "icon": "arrow-down",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/arrow-down.svg"
+  },
+  {
+    "name": "up",
+    "icon": "arrow-up",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/arrow-up.svg"
+  },
+  {
+    "name": "edit",
+    "icon": "square-pen",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/square-pen.svg"
+  },
+  {
+    "name": "trash",
+    "icon": "trash-2",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/trash-2.svg"
+  },
+  {
+    "name": "history",
+    "icon": "history",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/history.svg"
+  },
+  {
+    "name": "settings",
+    "icon": "settings",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/settings.svg"
+  },
+  {
+    "name": "help",
+    "icon": "circle-help",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/circle-help.svg"
+  },
+  {
+    "name": "close",
+    "icon": "x",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/x.svg"
+  },
+  {
+    "name": "stop",
+    "icon": "square",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/square.svg"
+  },
+  {
+    "name": "send",
+    "icon": "send",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/send.svg"
+  },
+  {
+    "name": "check",
+    "icon": "circle-check",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/circle-check.svg"
+  },
+  {
+    "name": "warning",
+    "icon": "circle-alert",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/circle-alert.svg"
+  },
+  {
+    "name": "copy",
+    "icon": "copy",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/copy.svg"
+  },
+  {
+    "name": "refresh",
+    "icon": "rotate-cw",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/rotate-cw.svg"
+  },
+  {
+    "name": "more",
+    "icon": "ellipsis",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/ellipsis.svg"
+  },
+  {
+    "name": "share",
+    "icon": "share-2",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/share-2.svg"
+  }
+]

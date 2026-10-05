@@ -27,7 +27,7 @@ from datetime import date, datetime
 import httpx
 
 from app.config import get_settings
-from app.dates import normalize_date
+from app.dates import normalize_date, railway_today
 from app.tools._http import BROWSER_HEADERS, format_error, get_client
 from app.tools import _rt12306 as rt
 from app.tools.base import Tool, ToolResult
@@ -81,6 +81,7 @@ class EmuRoutingTool(Tool):
             params.get("emu_no") or params.get("unit") or params.get("car_code") or ""
         ).strip().upper()
         limit = int(params.get("limit") or 20)
+        recent = params.get("recent") is True
         # 目标日期（可选）：支持"今天/明天/2026-09-14"等表述；
         # 未指定时默认聚焦今天（见下方 focus_date 逻辑）
         target_date = normalize_date(params.get("date") or params.get("time"), default_today=False)
@@ -124,7 +125,7 @@ class EmuRoutingTool(Tool):
                 note="车组号形如 CR400AF-0207 / CR400BFA5054；若要查车次请用 train 参数",
             )
 
-        focus_day_hint = target_date or date.today().isoformat()
+        focus_day_hint = target_date or railway_today().isoformat()
 
         if train:
             url = f"{base}/train/{quote(train, safe='')}"
@@ -182,7 +183,7 @@ class EmuRoutingTool(Tool):
         # ---- 12306 官方车组号（第二来源）：与 rail.re 并行取，互不阻塞 ----
         # 目的：① 让"哪一组车"有**两个独立来源**可交叉印证；② rail.re 不可达时仍能答。
         official = None
-        if kind == "train":
+        if kind == "train" and not recent:
             official = await rt.get_car_detail(train, focus_day_hint)
 
         # 归一化为统一记录结构
@@ -240,11 +241,11 @@ class EmuRoutingTool(Tool):
                 match_mode = "series"
                 unique = series
 
-        today_str = date.today().isoformat()
+        today_str = railway_today().isoformat()
         # 若显式指定了日期则优先用它，否则默认关注今天
         focus_date = target_date or today_str
         focus_records = [r for r in unique if r["date"] == focus_date]
-        shown = (focus_records or unique)[:limit]
+        shown = (unique if recent else (focus_records or unique))[:limit]
         focus_label = "今日" if focus_date == today_str else focus_date
         units = sorted({r["emu_no_display"] for r in unique})
 
@@ -349,6 +350,10 @@ class EmuRoutingTool(Tool):
         else:
             sources_extra = []
 
+        if recent:
+            summary = "最近交路记录（保留每条原始日期；时间为记录时刻，不是发车时刻）：\n" + "\n".join(
+                f"{r['date']} {r['time']} · {r['train_code']} · {r['emu_no_display']}" for r in shown
+            )
         return ToolResult(
             ok=True,
             data={
@@ -358,9 +363,10 @@ class EmuRoutingTool(Tool):
                 "matched_units": units,
                 "unit_count": len(units),
                 "today": today_str,
-                "focus_date": focus_date,
+                "focus_date": None if recent else focus_date,
+                "query_mode": "recent" if recent else "date",
                 "today_records": focus_records,
-                "records": unique,
+                "records": shown if recent else unique,
                 "count": len(unique),
                 "official": official,
                 "official_car_code": official_car or None,

@@ -371,6 +371,21 @@ async def query_ticket_prices(
     data = await _operation("prices.mcp", fetch(), success=lambda result: result.get("success"))
     if not data.get("success"):
         raise Realtime12306Error(data.get("error") or str(data.get("errors") or "12306 票价查询失败"))
+    if _main():
+        origin = await resolve_station_code(from_station)
+        destination = await resolve_station_code(to_station)
+        if not origin or not destination:
+            raise Realtime12306Error("无法确认票价查询的实际出发站和到达站")
+        # The official endpoint may return extended destinations (e.g. a
+        # Zhengding request also contains Shijiazhuang). Never relabel them.
+        rows = data.get("data") or []
+        exact = [row for row in rows if isinstance(row, dict)
+                 and row.get("from_station") == origin[1]
+                 and row.get("to_station") == destination[1]
+                 and (not train_code or str(row.get("train_code") or "").upper() == train_code.upper())]
+        data = {**data, "data": exact, "from_station": origin[1], "to_station": destination[1]}
+        if "count" in data:
+            data["count"] = len(exact)
     return data
 
 

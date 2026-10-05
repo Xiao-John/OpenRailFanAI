@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+import os
 
 from app.dates import date_note, normalize_date
 from app.tools import _rt12306 as rt
@@ -46,7 +47,9 @@ class TicketPriceTool(Tool):
                 f"{seat} {display_price(price)} 元" for seat, price in prices.items()
             ) or "接口未返回票价"
             lines.append(
-                f"{row.get('train_code')} {row.get('start_time')}–{row.get('arrive_time')}"
+                f"{row.get('train_code')} "
+                + (f"{row.get('from_station')}→{row.get('to_station')} " if os.environ.get("APP_VARIANT", "main").lower() != "lm" else "")
+                + f"{row.get('start_time')}–{row.get('arrive_time')}"
                 f"（历时 {row.get('duration', '未知')}）：{price_text}"
             )
         if not rows:

@@ -29,6 +29,24 @@ class MainSettingsRepositoryTest {
         }
     }
 
+    @Test fun unsavedKeyRemainsAvailableAcrossRepositoriesWithoutDiskPersistence() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val dir = File(context.cacheDir, "settings-session-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            val provider = ProviderConfig("session-provider", "会话提供商", "https://example.invalid/v1", "test-model", key = "session-secret")
+            val repo = MainSettingsRepository(dir, isolated = true)
+            repo.save(listOf(provider), provider.id, rememberKey = false)
+            val newRepository = MainSettingsRepository(dir, isolated = true)
+            assertEquals("session-secret", newRepository.entries().single().key)
+            assertEquals("session-secret", newRepository.requestLlmSpec()?.getString("api_key"))
+            assertFalse(File(dir, "state.json").readText().contains("session-secret"))
+            assertFalse(File(dir, "secrets.json").readText().contains("session-secret"))
+            assertFalse(newRepository.rememberKey())
+            repo.save(emptyList(), "", rememberKey = false)
+            assertEquals(emptyList<ProviderConfig>(), newRepository.entries())
+        } finally { dir.deleteRecursively() }
+    }
+
     @Test fun migratesLegacyProviderAndEncryptsItsSavedKey() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val dir = File(context.cacheDir, "settings-legacy-${System.nanoTime()}").apply { mkdirs() }
