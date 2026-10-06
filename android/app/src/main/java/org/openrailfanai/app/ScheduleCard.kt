@@ -90,6 +90,7 @@ fun DisplayResultCard(
 ) {
     when (result) {
         is TrainScheduleDisplay -> ScheduleCard(result.value, request, modifier)
+        is TicketFareDisplay -> StructuredFareCard(result.value, modifier)
         is TrainBatchDisplay -> BatchCard(result.value, request, onAction, modifier)
         is RoutingDisplay -> RoutingCard(result.value, request, onAction, modifier.padding(top = 5.appDp))
         is EmptyDisplay -> EmptyCard(result.value, onAction, modifier, datePicker)

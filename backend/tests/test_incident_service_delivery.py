@@ -123,7 +123,7 @@ class IncidentDelivery(unittest.IsolatedAsyncioTestCase):
             {"train_code": "K5202", "from_station": "北京西", "to_station": "正定", "prices": {"硬座": 99}},
         ]
         payload = {"success": True, "data": rows, "from_station": "北京西", "to_station": "正定"}
-        with patch.object(rt, "query_ticket_price_validated", AsyncMock(return_value=payload)), \
+        with patch("app.tools.executed_fare.query", AsyncMock(return_value=payload)), \
                 patch.object(rt, "parse_mcp_result", side_effect=lambda x: x), \
                 patch.object(rt, "resolve_station_code", AsyncMock(side_effect=[("BXP", "北京西"), ("ZDP", "正定")])):
             result = await TicketPriceTool().invoke({"from_station": "北京西", "to_station": "正定", "date": "2026-10-05", "train": "K5201"})

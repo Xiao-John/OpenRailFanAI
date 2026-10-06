@@ -30,10 +30,11 @@ val repoRoot: File = rootProject.projectDir.parentFile
 /**
  * 是否把本地数据字典（backend/data/dict.db，约 14MB）打进 APK。
  *
- * 默认**不打**：它会让 APK 从 ~25MB 涨到 ~40MB，而"尽可能轻量化"是本版本的明确目标。
- * 不带字典时，依赖字典的工具（rail.mileage / 车站档案 / 离线时刻）会如实报告不可用，
- * 其余能力（12306 实时查询、交路、站序等）不受影响。
- * 需要完整功能时：bash scripts/android/build.sh -PincludeDict=true assembleRelease
+ * Main 正式版默认打包；LM 与非 release 任务默认不打包。
+ * 可通过 -PincludeDict=true/false 显式覆盖。实际压缩增量以构建产物为准。
+ * 正式版使用只读 SQLite 备份纳入已提交的 WAL 数据；安装启动后独立解压，
+ * 不直接覆盖运行时词典，由后端按版本合并。
+ * 示例：bash scripts/android/build.sh -PincludeDict=true assembleRelease
  */
 // 版本号的**唯一来源**：仓库根的 VERSION 文件（前端与后端也读它）。
 // 为什么必须统一：同一个 "0.1.1" 曾经对应过好几个内容不同的包，用户无法判断
@@ -47,7 +48,8 @@ val appVersionCode: Int = run {
     (seg.getOrElse(0) { 0 } * 10000) + (seg.getOrElse(1) { 0 } * 100) + seg.getOrElse(2) { 0 }
 }
 
-val includeDict: Boolean = (project.findProperty("includeDict") as String?)?.toBoolean() ?: false
+val includeDict: Boolean = (project.findProperty("includeDict") as String?)?.toBoolean()
+    ?: (project.findProperty("lmLabel") == null && gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) })
 
 /**
  * 本地模型版（LM 轨）的独立版本标识：`-PlmLabel=lm1`。
@@ -189,6 +191,15 @@ android {
     }
 }
 
+// Main software updates must not add installer permissions or providers to the LM track.
+if (lmLabel != null) {
+    val updateOverlay = layout.buildDirectory.file("generated/manifest/lm-update-exclusions.xml").get().asFile
+    updateOverlay.parentFile.mkdirs()
+    updateOverlay.writeText("""<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"><uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/><application><provider android:name="androidx.core.content.FileProvider" tools:node="remove"/></application></manifest>""")
+    android.sourceSets.getByName("release").manifest.srcFile(updateOverlay)
+    android.sourceSets.getByName("debug").manifest.srcFile(updateOverlay)
+}
+
 dependencies {
     if (lmLabel == null) coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
     // 固定在 Compose 1.9 系列，兼容当前 compileSdk 35 / AGP 8.7.3。
@@ -276,6 +287,7 @@ val stageDict by tasks.registering {
     val src = repoRoot.resolve("backend/data/dict.db")
     val dstDir = layout.buildDirectory.dir("staged-assets/dict").get().asFile
     inputs.property("includeDict", includeDict)
+    if (includeDict) inputs.file(src)
     outputs.dir(dstDir)
     doLast {
         dstDir.mkdirs()
@@ -287,7 +299,12 @@ val stageDict by tasks.registering {
                         "请先运行 scripts/mirror_dict.py 生成，或不带该开关构建。"
                 )
             }
-            src.copyTo(dst, overwrite = true)
+            // Read-only SQLite backup includes committed WAL data without modifying the live dictionary.
+            project.exec {
+                commandLine(System.getenv("CHAQUOPY_BUILD_PYTHON") ?: "python3", "-c",
+                    "import sqlite3,sys,os; src=sqlite3.connect('file:'+sys.argv[1]+'?mode=ro',uri=True); tmp=sys.argv[2]+'.tmp'; os.path.exists(tmp) and os.unlink(tmp); out=sqlite3.connect(tmp); src.backup(out); out.close(); src.close(); os.replace(tmp,sys.argv[2])",
+                    src.absolutePath, dst.absolutePath)
+            }
             logger.lifecycle("已打包本地字典：${dst.length() / 1024 / 1024} MB")
         } else {
             // 明确删除：避免上一次带字典构建的残留被这次打包进去

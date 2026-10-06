@@ -52,6 +52,13 @@ _last_jp_call = 0.0
 
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS published_fare (
+ train_code TEXT NOT NULL, from_station TEXT NOT NULL, to_station TEXT NOT NULL,
+ valid_from TEXT NOT NULL, valid_until TEXT NOT NULL, seat TEXT NOT NULL,
+ amount TEXT NOT NULL, currency TEXT NOT NULL DEFAULT 'CNY', source TEXT NOT NULL,
+ fetched_at TEXT NOT NULL,
+ PRIMARY KEY(train_code,from_station,to_station,valid_from,seat)
+);
 CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL

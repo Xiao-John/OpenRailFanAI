@@ -225,6 +225,7 @@ fun MainSettingsScreen(
                     }
                 }
             }
+            UpdateSettingsSection(client, onOpenUrl)
             SettingsCard("外观", "") {
                 SettingsDropdown("主题", theme,
                     listOf("auto" to "跟随系统", "light" to "浅色", "dark" to "深色")) { value ->
@@ -282,7 +283,7 @@ fun MainSettingsScreen(
 }
 
 @Composable
-private fun SettingsCard(title: String, subtitle: String, content: @Composable () -> Unit) {
+internal fun SettingsCard(title: String, subtitle: String, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxWidth().railEntrance().background(NativeColors.surface, RoundedCornerShape(20.dp)).border(1.dp, SettingsBorder, RoundedCornerShape(20.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         BasicText(title, style = TextStyle(color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold))
         if (subtitle.isNotBlank()) BasicText(subtitle, style = TextStyle(color = SettingsMuted, fontSize = 14.sp, lineHeight = 21.sp))
@@ -315,7 +316,7 @@ private fun SettingsAction(text: String, modifier: Modifier = Modifier, enabled:
 }
 
 @Composable
-private fun SettingsButton(text: String, modifier: Modifier = Modifier, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun SettingsButton(text: String, modifier: Modifier = Modifier, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val interactions = remember { MutableInteractionSource() }
     val pressed by interactions.collectIsPressedAsState()
     val targetBackground = when {

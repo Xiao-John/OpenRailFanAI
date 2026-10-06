@@ -182,6 +182,8 @@ class Settings(BaseSettings):
     # 由 `scripts/mirror_dict.py` 构建到 backend/data/dict.db（已 gitignore）。
     # 相对路径按 backend/ 解析。
     dict_db_path: str = "data/dict.db"
+    # Immutable dictionary unpacked from a software bundle; merged at startup.
+    dict_bundled_db_path: str = ""
     # GTFS 是周更数据：超过该天数视为快照过期（仅用于提示，不在请求路径里自动下载）
     dict_gtfs_max_age_days: int = 5
     # 对黄河铁路网等**个人站点**的请求间隔下限（秒）——礼貌约束，别为了快调小

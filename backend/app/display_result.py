@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from typing import Any
 from app.dates import normalize_date
+from app.fare_result import project_fares
 
 DISPLAY_SCHEMA_VERSION = 1
 
@@ -182,6 +183,8 @@ def serialize_display_results(tool_data: list[dict[str, Any]], errors: list[dict
     else:
         results.extend(schedules)
     for item in (errors or []):
+        if item.get("tool") == "ticket.price" and os.environ.get("APP_VARIANT", "main").lower() != "lm":
+            continue
         if item.get("tool") == "emu.routing" and any(mark in item.get("message", "") for mark in ("未返回", "没有记录")):
             results.append({"kind": "empty", "status": "empty", "tool": "emu.routing",
                             "query": item.get("query"),
@@ -191,6 +194,8 @@ def serialize_display_results(tool_data: list[dict[str, Any]], errors: list[dict
             results.append({"kind": "error", "status": "failed", "tool": item.get("tool"),
                             "message": item.get("message", "")})
     results.extend(routings)
+    if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+        results.extend(project_fares(tool_data, errors or []))
     for result in results:
         result["schema_version"] = DISPLAY_SCHEMA_VERSION
         if result.get("kind") == "train_schedule_batch":

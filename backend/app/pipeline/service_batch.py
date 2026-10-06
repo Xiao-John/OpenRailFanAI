@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.dates import future_railway_date, normalize_date, railway_today, resolve_date
 from app.pipeline.service_dates import DATE_TOKEN, MAX_DATES
 from app.pipeline import ticket_answer
+from app.pipeline.fare_basis import select as select_fare_basis, CLARIFICATION as FARE_CLARIFICATION
 from app.tools import registry
 from app.tools._rt12306 import is_emu_train_code, is_train_code
 from app.tools.base import ToolResult
@@ -32,6 +33,9 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
     """
     codes = list(dict.fromkeys(str(code).strip().upper() for code in trains if str(code).strip()))
     ops = list(dict.fromkeys(str(op).strip() for op in operations if str(op).strip()))
+    fare_basis = select_fare_basis(message)
+    if "fare" in ops and fare_basis is None:
+        return _response(FARE_CLARIFICATION)
     if len(codes) > MAX_TRAINS:
         return _response(f"本次列出 {len(codes)} 个不同车次，最多支持同时查询 {MAX_TRAINS} 个车次；未发起查询，请减少车次后重试。")
     if not codes:
@@ -104,6 +108,8 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
                     params["recent"] = recent is True
                 else:
                     params.update(from_station=interval[0], to_station=interval[1])
+                    if op == "fare":
+                        params["fare_basis"] = fare_basis
                     if op == "ticket":
                         params.update(after_time=after or None, before_time=before or None,
                                       seat=seat or None, train_type=train_type or None)
@@ -163,6 +169,7 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
             notes.append(f"[{params['train']} {params['date']} {name}] {result.note}")
         if result.ok:
             response["data"].append({**({"query_date": params["date"]} if len(days) > 1 else {}),
+                                     **({"query_context": deepcopy(params)} if op == "fare" else {}),
                                      "tool": name, "data": deepcopy(result.data), "text": result.text,
                                      "sources": list(result.sources), "note": result.note, "total": result.total,
                                      "shown": result.shown, "truncated": result.truncated, "filters": dict(result.filters or {}),
@@ -186,10 +193,12 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
             if result.sources:
                 sections[index] += "\n来源：" + "、".join(result.sources)
             notes.append(f"[{params['train']} {params['date']} {name}] 失败原因：{error}")
-            if op in {"schedule", "routing"}:
+            if op in {"schedule", "routing", "fare"}:
                 response["display_errors"].append({**({"query_date": params["date"]} if len(days) > 1 else {}),
                                                    "tool": name, "train_code": params["train"],
-                                                   "query": params["train"], "date": params["date"] or "", "message": error})
+                                                   "query": params["train"], "date": params["date"] or "", "message": error,
+                                                   **({"query_context": deepcopy(params), "sources": list(result.sources),
+                                                       "fetched_at": result.fetched_at, "note": result.note} if op == "fare" else {})})
 
     response["sources"] = list(dict.fromkeys(response["sources"]))
     response["note"] = "；".join(dict.fromkeys(notes))

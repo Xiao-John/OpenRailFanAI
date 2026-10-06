@@ -58,6 +58,11 @@ data class RoutingResult(val status: String, val query: String?, val focusDate: 
 data class EmptyResult(val status: String, val date: String?, val query: String?, val historicalRecords: List<JSONObject>, val sources: List<String>)
 data class ErrorResult(val status: String, val message: String?, val category: String?, val tool: String?)
 data class UnsupportedResult(val kind: String?, val status: String?, val schemaVersion: Int?)
+data class FarePrice(val seat: String, val amount: String?, val currency: String)
+data class FareResult(val status: String, val trainCode: String?, val date: String?,
+    val fromStation: String?, val toStation: String?, val startTime: String?, val arriveTime: String?,
+    val duration: String?, val prices: List<FarePrice>, val sources: List<String>,
+    val fetchedAt: String?, val error: String?, val note: String, val fareBasis: String? = null)
 
 sealed interface DisplayResult
 data class TrainScheduleDisplay(val value: ScheduleResult) : DisplayResult
@@ -66,6 +71,7 @@ data class RoutingDisplay(val value: RoutingResult) : DisplayResult
 data class EmptyDisplay(val value: EmptyResult) : DisplayResult
 data class ErrorDisplay(val value: ErrorResult) : DisplayResult
 data class UnsupportedDisplay(val value: UnsupportedResult) : DisplayResult
+data class TicketFareDisplay(val value: FareResult) : DisplayResult
 
 data class ChatStreamOutcome(
     val answer: String,
@@ -97,6 +103,8 @@ object DisplayResultParser {
         if (version != SCHEMA_VERSION) return UnsupportedDisplay(UnsupportedResult(kind, status, version))
         return when (kind) {
             "train_schedule" -> TrainScheduleDisplay(schedule(item))
+            "ticket_fare" -> fare(item)?.let(::TicketFareDisplay)
+                ?: UnsupportedDisplay(UnsupportedResult(kind, status, version))
             "train_schedule_batch" -> TrainBatchDisplay(
                 BatchScheduleResult(status ?: "unknown", parseArray(item.optJSONArray("items")))
             )
@@ -110,6 +118,28 @@ object DisplayResultParser {
             "error" -> ErrorDisplay(ErrorResult(status ?: "failed", item.string("message"), item.string("category"), item.string("tool")))
             else -> UnsupportedDisplay(UnsupportedResult(kind, status, version))
         }
+    }
+
+    private fun fare(item: JSONObject): FareResult? {
+        val status = item.string("status")?.takeIf { it in setOf("success", "partial", "empty", "failed") } ?: return null
+        val fields = listOf("train_code", "date", "from_station", "to_station", "start_time", "arrive_time", "duration", "fetched_at", "error", "note", "fare_basis")
+        if (fields.any { item.has(it) && !item.isNull(it) && item.opt(it) !is String }) return null
+        val values = item.optJSONArray("prices") ?: return null
+        val prices = buildList {
+            for (i in 0 until values.length()) {
+                val price = values.optJSONObject(i) ?: return null
+                val seat = (price.opt("seat") as? String)?.takeIf(String::isNotBlank) ?: return null
+                val currency = (price.opt("currency") as? String)?.takeIf(String::isNotBlank) ?: return null
+                val amount = if (price.isNull("amount")) null else price.opt("amount") as? String ?: return null
+                if (amount != null && !Regex("[0-9]+(?:\\.[0-9]+)?").matches(amount)) return null
+                add(FarePrice(seat, amount, currency))
+            }
+        }
+        if (status in setOf("empty", "failed") && prices.isNotEmpty()) return null
+        if (status == "success" && (prices.isEmpty() || prices.any { it.amount == null })) return null
+        return FareResult(status, item.string("train_code"), item.string("date"), item.string("from_station"),
+            item.string("to_station"), item.string("start_time"), item.string("arrive_time"), item.string("duration"),
+            prices, item.stringArray("sources"), item.string("fetched_at"), item.string("error"), item.string("note").orEmpty(), item.string("fare_basis"))
     }
 
     private fun schedule(item: JSONObject): ScheduleResult = ScheduleResult(

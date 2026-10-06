@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Brand geometry from frontend/assets/icons/train-logo.svg. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-<path android:fillColor="#F8FAFD" android:pathData="M0,0H108V108H0Z" />
-<group android:scaleX="2.25" android:scaleY="2.25" android:translateX="18" android:translateY="18">
+
+<group android:scaleX="1.875" android:scaleY="1.875" android:translateX="24" android:translateY="24">
 <path android:fillColor="#075BFF" android:pathData="M4.5,23L5.6,8C6,3.4 8.5,1.5 16,1.5S26,3.4 26.4,8L27.5,23A3,3 0,0 1,24.5 26H7.5A3,3 0,0 1,4.5 23Z" />
 <path android:fillColor="#00000000" android:strokeColor="#075BFF" android:strokeWidth="2.2" android:strokeLineCap="round" android:pathData="M8,28L3,31M24,28L29,31M6,29.5H26" />
 <path android:fillColor="#FFFFFF" android:pathData="M11,4H21V6H11Z M8.5,9H15V15H8Z M17,9H23.5L24,15H17Z M8.35,21A1.65,1.65 0,1 0,11.65 21A1.65,1.65 0,1 0,8.35 21Z M20.35,21A1.65,1.65 0,1 0,23.65 21A1.65,1.65 0,1 0,20.35 21Z" />

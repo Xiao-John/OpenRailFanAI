@@ -24,10 +24,11 @@ import re
 import time
 
 from app.config import get_settings
-from app.dates import future_railway_date
+from app.dates import future_railway_date, normalize_date
 from app.od import parse_od
 from app.pipeline.extract import Slots
 from app.pipeline import ticket_answer
+from app.pipeline.fare_basis import select as select_fare_basis, CLARIFICATION as FARE_CLARIFICATION
 from app.pipeline import service_dispatch
 from app.tools import registry
 from app.tools import _rt12306 as rt
@@ -470,6 +471,9 @@ async def retrieve(
     if _ct_note:
         plan_notes.append(_ct_note)
 
+    if os.environ.get("APP_VARIANT", "main").lower() != "lm" and intent == "ticket" and _FARE_RE.search(message or "") and select_fare_basis(message) is None:
+        return {"data": [], "display_errors": [], "sources": [], "tool_trace": [], "note": FARE_CLARIFICATION, "direct_answer": FARE_CLARIFICATION}
+
     def _plan(intent: str) -> list[tuple[str, dict]]:
         nonlocal ticket_reply
         if intent == "ticket":
@@ -483,8 +487,10 @@ async def retrieve(
                 if od and (not direct_fare or _ticket_interval_ready(od)):
                     plan.append(("ticket.price", {
                         "from_station": od[0], "to_station": od[1],
-                        "date": time_ or None,
+                        "date": (normalize_date(time_) if os.environ.get("APP_VARIANT", "main").lower() != "lm" else time_ or None),
                         "train": requested_trains[0] if requested_trains else None,
+                        **({"fare_basis": select_fare_basis(message or "")}
+                           if os.environ.get("APP_VARIANT", "main").lower() != "lm" else {}),
                     }))
                 else:
                     plan_notes.append("未发起票价查询：需要出发站和到达站（例如「北京南到上海虹桥」）")
@@ -929,6 +935,7 @@ async def retrieve(
         if ok:
             data.append({
                 "tool": name,
+                **({"query_context": dict(_params)} if name == "ticket.price" and os.environ.get("APP_VARIANT", "main").lower() != "lm" else {}),
                 "data": result.data,
                 "text": result.text,
                 "sources": list(result.sources),
@@ -947,10 +954,12 @@ async def retrieve(
         if result.note:
             notes.append(f"[{name}] {result.note}")
         if not ok and result.error:
-            if name in {"train.schedule", "emu.routing"}:
+            if name in {"train.schedule", "emu.routing"} or (name == "ticket.price" and os.environ.get("APP_VARIANT", "main").lower() != "lm"):
                 display_errors.append({"tool": name, "train_code": str(_params.get("train") or ""),
                                        "query": str(_params.get("train") or _params.get("emu_no") or ""),
-                                       "date": str(_params.get("date") or ""), "message": result.error})
+                                       "date": str(_params.get("date") or ""), "message": result.error,
+                                       **({"query_context": dict(_params), "sources": list(result.sources),
+                                           "fetched_at": result.fetched_at, "note": result.note} if name == "ticket.price" else {})})
             # 失败原因必须透传：否则生成层只能说"工具调用失败"（实测 F05/C06 被误述）
             notes.append(f"[{name}] 失败原因：{result.error}")
 

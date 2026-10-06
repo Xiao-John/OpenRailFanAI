@@ -6,6 +6,7 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 
 class SettingsClient(private val baseUrl: String) {
+    internal fun updates(): UpdateClient = UpdateClient(baseUrl)
     fun providers(): JSONObject = request("/api/providers")
     fun models(config: ProviderConfig): JSONObject = request("/api/providers/models", config)
     fun test(config: ProviderConfig): JSONObject = request("/api/providers/test", config)

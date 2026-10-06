@@ -117,15 +117,23 @@ public final class BackendService extends Service {
             File index = new File(webappDir, "index.html");
             if (!index.isFile()) throw new IOException("前端首页缺失：" + index);
             publishStage(copied < 0 ? "前端资源已是最新" : "已准备前端资源：" + copied + " 个文件");
-            extractAssets(DICT, dataDir, false);
+            String version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            boolean lmBuild = version != null && version.startsWith("lm");
+            File bundledDictionary = null;
+            if (lmBuild) extractAssets(DICT, dataDir, false);
+            else bundledDictionary = BundledDictionary.prepare(this, buildVersionTag());
 
             publishStage("启动 Python 解释器…");
             if (!Python.isStarted()) Python.start(new AndroidPlatform(getApplicationContext()));
+            if (!lmBuild) {
+                PyObject environment = Python.getInstance().getModule("os").get("environ");
+                environment.callAttr("__setitem__", "DICT_DB_PATH", new File(dataDir, "dict.db").getAbsolutePath());
+                if (bundledDictionary != null) environment.callAttr("__setitem__", "DICT_BUNDLED_DB_PATH", bundledDictionary.getAbsolutePath());
+                else environment.callAttr("pop", "DICT_BUNDLED_DB_PATH", "");
+            }
             PyObject server = Python.getInstance().getModule("server");
             String nativeLibDir = getApplicationInfo().nativeLibraryDir;
             File external = getExternalFilesDir(null);
-            String version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            boolean lmBuild = version != null && version.startsWith("lm");
             File models = lmBuild ? new File(external != null ? external : dataDir, "models") : null;
             String siblings = lmBuild ? siblingModelDirs(external) : "";
             publishStage("启动设备内 FastAPI 服务…");

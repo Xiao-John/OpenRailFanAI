@@ -31,6 +31,15 @@ settings = get_settings()
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     """Release query work before closing its HTTP and model connections."""
+    if os.environ.get("APP_VARIANT", "main").lower() != "lm" and settings.dict_bundled_db_path:
+        import asyncio
+        from app.updates.dictionary import sync_bundled, run_io
+        from app.data.dict import db_path, BACKEND
+        try:
+            bundled = Path(settings.dict_bundled_db_path)
+            await run_io(sync_bundled, bundled if bundled.is_absolute() else BACKEND / bundled, db_path())
+        except Exception as error:
+            _log.warning("包内词典合并未完成，保留原词典：%s", type(error).__name__)
     try:
         yield
     finally:
@@ -118,6 +127,11 @@ def _include_routes() -> None:
 
     app.include_router(chat_router, prefix="/api")
     app.include_router(providers_router, prefix="/api")
+    if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+        from app.api.software_updates import router as software_updates_router
+        from app.api.dictionary_updates import router as dictionary_updates_router
+        app.include_router(software_updates_router, prefix="/api")
+        app.include_router(dictionary_updates_router, prefix="/api")
     if os.environ.get("APP_VARIANT", "main").lower() == "lm":
         from app.api.local_model import router as local_model_router
 

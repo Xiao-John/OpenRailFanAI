@@ -102,12 +102,17 @@ class ChatStateMachine(initial: ChatUiState = ChatUiState()) {
                 is TrainScheduleDisplay -> result.value.trainCode
                 else -> null
             }
-            merged[code?.uppercase() ?: "#${index}"] = result
+            val date = (result as? TrainScheduleDisplay)?.value?.date.orEmpty()
+            merged[code?.let { "${it.uppercase()}@$date" } ?: "#${index}"] = result
         }
         val items = merged.values.toList()
         val wasBatch = previous.any { it is TrainBatchDisplay } || incoming.any { it is TrainBatchDisplay }
         if (!wasBatch) return items
-        val batchStatus = if (items.any { it is TrainScheduleDisplay && it.value.status != "success" }) "partial" else "success"
-        return listOf(TrainBatchDisplay(BatchScheduleResult(batchStatus, items)))
+        val schedules = items.filterIsInstance<TrainScheduleDisplay>()
+        val batches = schedules.groupBy { it.value.date }.values.map { group ->
+            val status = if (group.any { it.value.status != "success" }) "partial" else "success"
+            TrainBatchDisplay(BatchScheduleResult(status, group))
+        }
+        return batches + items.filterNot { it is TrainScheduleDisplay }
     }
 }

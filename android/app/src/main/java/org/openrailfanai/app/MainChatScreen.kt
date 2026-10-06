@@ -232,17 +232,18 @@ internal fun MainChatScreen(
                             }
                         }
                     } else {
-                        if (message.content.isNotBlank()) Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.Top) {
+                        val metadata = message.meta
+                        val storedResults = DisplayResultParser.parseArray(metadata?.optJSONArray("displayResults"))
+                        val presentationBody = farePresentationBody(message.content, storedResults)
+                        if (presentationBody.isNotBlank()) Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.Top) {
                             Box(Modifier.size(50.appDp), contentAlignment = androidx.compose.ui.Alignment.TopStart) {
                                 Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape).testTag("main-assistant-avatar"),
                                     contentAlignment = androidx.compose.ui.Alignment.Center) {
                                     RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue, "main-assistant-avatar-icon")
                                 }
                             }
-                            MarkdownAnswer(message.content, Modifier.weight(1f).testTag("main-answer-$index"), firstTextTag = "main-answer-$index-text")
+                            MarkdownAnswer(presentationBody, Modifier.weight(1f).testTag("main-answer-$index"), firstTextTag = "main-answer-$index-text")
                         }
-                        val metadata = message.meta
-                        val storedResults = DisplayResultParser.parseArray(metadata?.optJSONArray("displayResults"))
                         val storedRequest = ChatUiState(
                             query = metadata?.optString("query").orEmpty(), phase = ChatPhase.COMPLETED,
                             results = storedResults, intent = metadata?.optString("intent"),
@@ -261,7 +262,7 @@ internal fun MainChatScreen(
                                         Modifier.width(50.appDp).heightIn(min = 32.appDp),
                                         contentAlignment = androidx.compose.ui.Alignment.TopStart,
                                     ) {
-                                        if (message.content.isBlank() && resultIndex == 0) {
+                                        if (presentationBody.isBlank() && resultIndex == 0) {
                                             Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape).testTag("main-assistant-avatar"),
                                                 contentAlignment = androidx.compose.ui.Alignment.Center) {
                                                 RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue, "main-assistant-avatar-icon")
@@ -300,7 +301,7 @@ internal fun MainChatScreen(
                                 )
                             }
                         }
-                        val replyText = listOf(message.content.takeIf(String::isNotBlank),
+                        val replyText = listOf(presentationBody.takeIf(String::isNotBlank),
                             storedResults.joinToString("\n\n") { replyClipboardText(it) }.takeIf(String::isNotBlank),
                             metadata?.optString("error")?.takeIf(String::isNotBlank)).filterNotNull().distinct().joinToString("\n\n")
                         val originalQuery = metadata?.optString("query")?.takeIf(String::isNotBlank)
@@ -590,6 +591,7 @@ private fun suggestedQuery(choice: String, value: ScheduleResult): String = when
 
 private fun replyClipboardText(result: DisplayResult): String = when (result) {
     is TrainScheduleDisplay -> scheduleClipboardText(result.value)
+    is TicketFareDisplay -> fareClipboardText(result.value)
     is TrainBatchDisplay -> result.value.items.joinToString("\n\n") { replyClipboardText(it) }
     is RoutingDisplay -> buildString {
         append(result.value.query.orEmpty()).append(" · ").append(result.value.focusDate.orEmpty())

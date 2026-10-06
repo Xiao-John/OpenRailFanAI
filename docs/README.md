@@ -4,8 +4,11 @@
 
 | 文档 | 内容 |
 |---|---|
+| [`release-0.1.19.md`](release-0.1.19.md) | **发布记录**：执行价卡片、更新入口、随包词典和新安装图标 |
 | [`main-frontend-changes-0.1.17.md`](main-frontend-changes-0.1.17.md) | **前端更改与交接**：回复区、Token、会话隔离及票价卡片；现有APK未包含10月5日后续修复 |
 | [`backend-fare-card-handoff-20261005.md`](backend-fare-card-handoff-20261005.md) | **票价卡片交接**：当前纯客户端展示及后续结构化票价候选契约，不干预正在进行的后端修改 |
+| [`main-structured-fare-integration-20261006.md`](main-structured-fare-integration-20261006.md) | **结构化票价接入**：版本1票价卡片、严格正文去重及混合多日期结果保留，纳入0.1.19 |
+| [`main-updates-integration-20261006.md`](main-updates-integration-20261006.md) | **客户端更新接入**：软件检查、校验安装、GTFS独立更新及正式版随包词典，纳入0.1.19 |
 | [`EXPL.md`](EXPL.md) | **实现**：架构、三层流水线、工具清单、数据完整性契约、测试与运行状态 |
 | [`datasources.md`](datasources.md) | **实现**：各数据源的接入方式、接口形态、关键约束与踩坑记录 |
 | [`run.md`](run.md) | **部署与运行**：安装、启动、配置密钥、接口示例、测试与数据准备 |

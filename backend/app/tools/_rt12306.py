@@ -368,7 +368,11 @@ async def query_ticket_prices(
             "train_code": train_code,
             "purpose_codes": "ADULT",
         }))
-    data = await _operation("prices.mcp", fetch(), success=lambda result: result.get("success"))
+    if _main():
+        from app.tools.executed_fare import query
+        data = await query(from_station, to_station, date_str, train_code)
+    else:
+        data = await _operation("prices.mcp", fetch(), success=lambda result: result.get("success"))
     if not data.get("success"):
         raise Realtime12306Error(data.get("error") or str(data.get("errors") or "12306 票价查询失败"))
     if _main():
