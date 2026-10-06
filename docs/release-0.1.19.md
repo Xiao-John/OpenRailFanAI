@@ -30,3 +30,11 @@ Main Release构建通过，签名沿用既有证书（SHA-256：e644691a89343cc8
 - [软件与词典更新客户端接入](main-updates-integration-20261006.md)
 
 本版包含10月6日的客户端及后端配套修改。历史验收截图不作为本版通过证据。
+
+## 远端发布回执
+
+源码提交2c7411c14ff06c0955583fb491022c2757a70752已推送至codex/main-0.1.19，标签v0.1.19指向该提交。GitHub Release已公开并确认为latest：
+
+https://github.com/Xiao-John/OpenRailFanAI/releases/tag/v0.1.19
+
+APK与SHA-256文件均上传完成，远端大小与digest逐项匹配本地产物。保留既有历史验收文件，不将其混入本次发布提交；本次没有改写远端历史。
