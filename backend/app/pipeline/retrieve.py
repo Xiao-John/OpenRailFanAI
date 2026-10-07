@@ -2,7 +2,7 @@
 
 根据 intent + 槽位选择数据源工具并调用，收集 {data, sources, tool_trace}。
 工具路由（按 intent）：
-- photo_spot  -> station.lookup + cnrail.map + emu.routing(担当车组) + web.search 兜底
+- photo_spot  -> station.lookup + cnrail.map + emu.routing(担当车组) + photo.spot(本地机位库)
 - emu_routing -> emu.routing(担当车组/交路) + train.schedule
 - rail_line   -> rail.line(两站间最短径路: 线路序列+车站+里程)
 - ticket      -> ticket.query(12306 实时余票) + station.lookup
@@ -712,7 +712,19 @@ async def retrieve(
                     "train" if _is_train_code(tgt) else "emu_no": tgt,
                     "date": time_ or None,
                 }))
-            plan.append(("web.search", {"q": f"{loc or ''} {tgt or ''} 铁路拍摄 机位".strip()}))
+            # 机位线索改走**本地库**（photo.spot，零延迟、不联网）。
+            # 为什么不再用 `f"{loc} {tgt} 铁路拍摄 机位"` 打 web.search（2026-10-06 实测）：
+            #   裸地点名会让引擎整体退回"旅游/百科"语境 —— 查「吉林市 铁路拍摄 机位」返回
+            #   吉林市百度百科；查「北京南站 CR400AF 拍摄 机位」返回北京旅游攻略。
+            #   更糟的是工具仍返回 ok=True、"相关 5 条"，把无关内容冒充成机位答案。
+            # 机位有效内容只在"两个具体铁路实体"（如 成昆铁路+关村坝）语境下才被检索到，
+            # 且引擎反爬使实时检索无法稳定；故离线建库 + 线上查表。
+            place = loc or tgt or (od[0] if od else "")
+            if place:
+                plan.append(("photo.spot", {
+                    "station": place,
+                    "line": _detect_line_name(" ".join(filter(None, [tgt, slots.extra, message]))) or None,
+                }))
             return plan
         if intent == "station":
             plan = []

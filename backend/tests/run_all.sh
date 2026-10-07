@@ -36,6 +36,8 @@ SUITES=(
   test_orchestrator_semantics
   test_cost_governance
   test_metrics
+  # 机位本地库（方案 A；纯离线：闸门 + 查表路径 + 选路）
+  test_photo_spots
   test_backend_performance
   test_rt_performance
   test_llm_pool

@@ -232,6 +232,35 @@ class Settings(BaseSettings):
     # 每个页面注入正文的字符上限（**上限**，不是固定值：实际会按注入预算的剩余量
     # 动态下调，见 web_search._fetch_top_pages）。按页截断，且会如实标注。
     web_search_fetch_chars: int = 1800
+
+    # ---- 百度 AI 搜索（千帆官方 API，`web_search`）----
+    # 为什么值得接：网页版百度/Bing 对**批量取数**会反爬（实测约 70 次检索即触发图形验证码，
+    # 且 Bing 会返回退化结果），而机位这类众包数据恰恰需要批量检索才能建库。
+    # 官方 API 是正规通道：不计反爬、返回**真实 URL**（网页版百度返回跳转链，拿不到真实域名）、
+    # 带 `date` / `authority_score`，且官方支持 `search_filter.match.site` **定向站点**
+    # （`site:` 在网页版引擎上实测无效，只有 API 才真的生效）。
+    # 额度：官方文档注明**每月免费 1500 次（按天发放）**，约 50 次/天；超额按量后付费。
+    # 留空 = 不启用（走原有 Bing/百度网页抓取路径）。
+    qianfan_api_key: str = ""
+    # 接口：`/v2/ai_search/web_search` 只返回搜索结果（摘要+网址）；
+    # 另有一个 `/v2/ai_search/chat/completions` 会额外做 AI 总结（不需要，且更贵）。
+    qianfan_search_url: str = "https://qianfan.baidubce.com/v2/ai_search/web_search"
+    # 单次返回条数（官方参数 top_k）
+    qianfan_top_k: int = 20
+    # query 上限：官方文档写明 content **限 72 字符**（一汉字占 2 字符），超长只取前 72 字符检索
+    qianfan_query_max_chars: int = 72
+    # 搜索引擎版本（官方固定值 baidu_search_v2）；edition 可选 standard / turbo
+    qianfan_search_source: str = "baidu_search_v2"
+    qianfan_edition: str = "standard"
+
+    # ---- 阿里云 CleverSee / IQS（统一搜索 + 网页解析）----
+    # 与千帆互补的第二条"百家饭"来源：**控制台各引擎额度独立**（实测各 1000 次免费），
+    # 一家用尽可切下一家。
+    # 决定性优势：`contents.mainText=true` 时**搜索结果直接带 300–3200 字原文正文**，
+    # 因此建库不必再自建抓网页（原先自建抓取知乎/百度百科 403 是常态）。
+    # 控制台口径的 QPS：LiteBasic 10 / Auto 3 / Generic 3 / ReadPage 5。
+    aliyun_iqs_api_key: str = ""
+    aliyun_iqs_base_url: str = "https://cloud-iqs.aliyuncs.com"
     # 离线车次目录（非实时兜底）的缓存有效期（天）；超期后重新下载并保留旧副本兜底
     train_cache_ttl_days: int = 30
     # 12306 预售期参考值（天）：日期超出时在说明里点明“可能超预售期”，

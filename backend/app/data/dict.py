@@ -75,11 +75,23 @@ def _write(sql: str, params: tuple = ()) -> None:
 
 
 def reset_for_tests() -> None:
-    """测试用：丢弃缓存的连接（切换 DB 文件后调用）。"""
+    """测试用：丢弃缓存的连接（切换 DB 文件后调用）。
+
+    ⚠️ 必须同时清掉 `get_settings()` 的缓存：`db_path()` 走 `_settings().dict_db_path`，
+    而 `get_settings` 是 `lru_cache`。只丢连接不清配置的话，测试里改了 `DICT_DB_PATH`
+    仍会读到**切换前**的库路径 —— 表现为"明明指向临时库、查到的却是真实库"，
+    这种静默错位会让测试给出假结论（本次实现机位库时实测踩到）。
+    """
     global _conn
     if _conn is not None:
         _conn.close()
     _conn = None
+    try:
+        from app.config import get_settings
+
+        get_settings.cache_clear()
+    except Exception:  # noqa: BLE001 —— 清理失败不应影响测试主流程
+        pass
 
 
 # ---------- GTFS：离线时刻 / 坐标 / 里程 ----------

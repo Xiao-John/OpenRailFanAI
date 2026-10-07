@@ -28,6 +28,7 @@ from app.tools.railre import RailReTool
 from app.tools.station_lookup import StationLookupTool
 from app.tools.station_screen import StationScreenTool
 from app.tools.t12306 import T12306Tool
+from app.tools.photo_spot import PhotoSpotTool
 from app.tools.ticket_query import TicketQueryTool
 from app.tools.ticket_price import TicketPriceTool
 from app.tools.train_schedule import TrainScheduleTool
@@ -111,6 +112,7 @@ def _register_all() -> None:
     register(StationLookupTool())
     register(StationScreenTool())
     register(RailMileageTool())
+    register(PhotoSpotTool())          # 机位线索（本地库，不联网）
     register(TrainScheduleTool())
     register(TicketQueryTool())
     register(TicketPriceTool())
