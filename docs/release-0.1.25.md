@@ -28,3 +28,13 @@ Main arm64 正式包，沿用原正式签名，包含完整词典。
 - 正式构建、包名、版本、签名及内置词典检查通过；没有将构建成功视为完整真机安装验收。
 
 实现说明与专项检查记录见 [后台更新](frontend-background-updates-20261007.md) 和 [验证记录](verification/background-updates-20261007.json)。
+
+## 发布状态
+
+源码提交 `fbdc386b14ee2fc380977bffe571eeb0b74c7362` 已推送至 `codex/main-0.1.19`；标签 `v0.1.25` 指向该提交。GitHub 正式 Release 已公开并确认为 latest：
+
+https://github.com/Xiao-John/OpenRailFanAI/releases/tag/v0.1.25
+
+APK 和 SHA-256 文件均已上传，匿名公开元数据的文件大小、SHA-256 与本地包一致，正式版本下载地址已确认。以旧版 `current_version=0.1.24`、`abi=arm64-v8a` 调用本机更新检查，返回 `latest_version=0.1.25`、`update_available=true`、`download_supported=true`。
+
+下一步：真机覆盖安装，并检查后台下载进度、熄屏更新、通知取消和词典导入；旧版下载流程本身不会因新包发布而改变。
