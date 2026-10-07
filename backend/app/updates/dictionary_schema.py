@@ -3,3 +3,6 @@ SCHEMA = '\nCREATE TABLE IF NOT EXISTS meta (\n    key TEXT PRIMARY KEY,\n    va
 
 from app.data.published_fares import SCHEMA as FARE_SCHEMA
 SCHEMA += "\n" + FARE_SCHEMA
+
+from app.data.photo_spots import SCHEMA as PHOTO_SCHEMA
+SCHEMA += "\n" + PHOTO_SCHEMA

@@ -143,35 +143,37 @@ internal fun UpdateSettingsSection(settingsClient: SettingsClient, onOpenUrl: (S
             }
         }
     }
-    SettingsCard("词典更新", "更新线路、车站、时刻和里程数据，保留已有档案缓存。") {
+    SettingsCard("词典更新", "在线更新时刻词典；机位攻略库随软件更新接收。") {
         val value = local
-        BasicText(if (value?.optBoolean("available") == true) "数据版本：${value.optString("version", "未提供")}" else "暂未读取到本地数据版本，请刷新确认。", style = updateStyle())
-        value?.optString("pulled_at")?.takeIf(String::isNotBlank)?.let { BasicText("数据更新时间：$it", style = updateStyle()) }
+        BasicText("时刻词典", style = updateStyle().copy(color = NativeColors.ink))
+        BasicText(if (value?.optBoolean("available") == true) "时刻数据版本：${value.optString("version").takeUnless { it.isBlank() || it == "null" } ?: "未提供"}" else "暂未读取到本地时刻版本，请刷新确认。", style = updateStyle())
+        value?.optString("pulled_at")?.takeUnless { it.isBlank() || it == "null" }?.let { BasicText("时刻数据更新时间：$it", style = updateStyle()) }
+        PhotoDictionarySummary(value)
         if (dictionaryMessage.isNotBlank()) BasicText(dictionaryMessage, style = updateStyle())
         if (dictionaryBusy) DictionaryProgressPanel(dictionaryProgress, dictionaryElapsed)
         SettingsButton("刷新本地版本", Modifier.fillMaxWidth(), enabled = !dictionaryBusy) {
             dictionaryOperation("正在读取本地词典…") { client ->
                 local = withContext(Dispatchers.IO) { client.dictionaryLocal() }.optJSONObject("current")
-                dictionaryMessage = "已读取当前本地版本。"
+                dictionaryMessage = "已读取本地词典信息。"
             }
         }
-        SettingsButton(if (dictionaryBusy) "正在处理…" else "检查词典更新", Modifier.fillMaxWidth(), enabled = !dictionaryBusy) {
+        SettingsButton(if (dictionaryBusy) "正在处理…" else "检查时刻词典更新", Modifier.fillMaxWidth(), enabled = !dictionaryBusy) {
             dictionary = null
-            dictionaryOperation("正在检查词典数据源…") { client ->
+            dictionaryOperation("正在检查时刻词典数据源…") { client ->
                 val response = withContext(Dispatchers.IO) { client.dictionary() }
                 require(response.optString("status") == "ok" && response.opt("update_available") is Boolean) { "词典检查未返回有效状态" }
                 dictionary = response; local = response.optJSONObject("current")
-                dictionaryMessage = if (response.optBoolean("update_available")) "发现词典版本 ${response.optString("latest_version")}" else "当前词典数据已是最新版本。"
+                dictionaryMessage = if (response.optBoolean("update_available")) "发现时刻词典版本 ${response.optString("latest_version")}" else "当前时刻词典已是最新版本。"
             }
         }
         val latest = dictionary?.optString("latest_version").orEmpty()
         if (dictionary?.optBoolean("update_available") == true && latest.isNotBlank()) {
-            SettingsButton("更新词典数据", Modifier.fillMaxWidth(), primary = true, enabled = !dictionaryBusy) {
-                dictionaryOperation("正在下载、校验并导入词典…", apply = true) { client ->
+            SettingsButton("更新时刻词典", Modifier.fillMaxWidth(), primary = true, enabled = !dictionaryBusy) {
+                dictionaryOperation("正在下载、校验并导入时刻词典…", apply = true) { client ->
                     val response = withContext(Dispatchers.IO) { client.applyDictionaryStream(latest) { dictionaryProgress = it } }
                     require(response.optString("status") in setOf("updated", "unchanged")) { "词典没有返回有效完成状态" }
                     dictionary = null
-                    dictionaryMessage = if (response.optString("status") == "updated") "词典数据已更新。" else "词典版本无需更新。"
+                    dictionaryMessage = if (response.optString("status") == "updated") "时刻词典已更新，机位攻略库保持原版本。" else "时刻词典版本无需更新。"
                 }
             }
         }
@@ -184,6 +186,30 @@ internal fun UpdateSettingsSection(settingsClient: SettingsClient, onOpenUrl: (S
 
 private fun updateStyle() = TextStyle(color = NativeColors.muted, fontSize = 14.appSp, lineHeight = 21.appSp)
 
+@Composable
+private fun PhotoDictionarySummary(local: JSONObject?) {
+    val photo = local?.optJSONObject("photo_spots")
+    Column(Modifier.fillMaxWidth().background(NativeColors.panel, RoundedCornerShape(10.appDp))
+        .padding(12.appDp), verticalArrangement = Arrangement.spacedBy(6.appDp)) {
+        BasicText("机位攻略库", style = updateStyle().copy(color = NativeColors.ink))
+        when {
+            local == null -> BasicText("尚未读取本地机位库，请刷新确认。", style = updateStyle())
+            photo == null -> BasicText(if (local.optBoolean("available")) "当前服务未提供机位库信息。" else "暂未读取到本地机位库，请刷新确认。", style = updateStyle())
+            !photo.optBoolean("available") -> BasicText("本机尚未收录机位攻略，随软件更新接收。", style = updateStyle())
+            else -> {
+                val documents = photo.optLong("documents", -1)
+                val scopes = photo.optLong("scopes", -1)
+                if (documents >= 0 && scopes >= 0)
+                    BasicText("已收录 $documents 篇攻略 · $scopes 个收录范围", style = updateStyle())
+                val version = photo.optString("version").takeUnless { it.isBlank() || it == "null" }
+                BasicText("机位数据版本：${version ?: "未提供"}", style = updateStyle())
+                BasicText("篇数不代表机位数量；数据版本不代表重新采集时间。", style = updateStyle().copy(fontSize = 12.appSp))
+            }
+        }
+        BasicText("机位攻略随软件内置词典分发，在线时刻词典更新不会刷新机位库。", style = updateStyle().copy(fontSize = 12.appSp))
+    }
+}
+
 
 @Composable
 private fun DictionaryProgressPanel(event: JSONObject?, elapsed: Long) {
@@ -193,12 +219,12 @@ private fun DictionaryProgressPanel(event: JSONObject?, elapsed: Long) {
     val bytes = stage == "download" && event?.optString("unit") == "bytes"
     val measured = bytes && done >= 0 && total > 0 && done <= total
     val title = when (stage) {
-        "check" -> "正在核对词典版本"
+        "check" -> "正在核对时刻词典版本"
         "download" -> "正在下载更新包"
         "verify" -> "正在校验更新包"
-        "import" -> "正在导入词典数据"
+        "import" -> "正在导入时刻词典数据"
         "validate" -> "正在检查数据完整性"
-        "commit" -> "正在保存词典数据"
+        "commit" -> "正在保存时刻词典数据"
         "refresh" -> "正在确认本地词典版本"
         else -> "正在等待更新服务"
     }

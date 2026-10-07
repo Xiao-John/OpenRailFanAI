@@ -28,7 +28,7 @@ val buildPythonPath: String = run {
 val repoRoot: File = rootProject.projectDir.parentFile
 
 /**
- * 是否把本地数据字典（backend/data/dict.db，约 14MB）打进 APK。
+ * 是否把完整本地数据字典（backend/data/dict.db，包含时刻和机位攻略）打进 APK。
  *
  * Main 正式版默认打包；LM 与非 release 任务默认不打包。
  * 可通过 -PincludeDict=true/false 显式覆盖。实际压缩增量以构建产物为准。
@@ -287,8 +287,13 @@ val stageDict by tasks.registering {
     val src = repoRoot.resolve("backend/data/dict.db")
     val dstDir = layout.buildDirectory.dir("staged-assets/dict").get().asFile
     inputs.property("includeDict", includeDict)
+    inputs.property("mainDictionary", lmLabel == null)
+    inputs.file(repoRoot.resolve("scripts/android/stage-dictionary.py"))
     if (includeDict) inputs.file(src)
     outputs.dir(dstDir)
+    // Committed writes may only change the source WAL, not dict.db itself.
+    // Always take a fresh read-only snapshot when including a dictionary.
+    outputs.upToDateWhen { !includeDict }
     doLast {
         dstDir.mkdirs()
         val dst = File(dstDir, "dict.db")
@@ -300,10 +305,21 @@ val stageDict by tasks.registering {
                 )
             }
             // Read-only SQLite backup includes committed WAL data without modifying the live dictionary.
-            project.exec {
-                commandLine(System.getenv("CHAQUOPY_BUILD_PYTHON") ?: "python3", "-c",
-                    "import sqlite3,sys,os; src=sqlite3.connect('file:'+sys.argv[1]+'?mode=ro',uri=True); tmp=sys.argv[2]+'.tmp'; os.path.exists(tmp) and os.unlink(tmp); out=sqlite3.connect(tmp); src.backup(out); out.close(); src.close(); os.replace(tmp,sys.argv[2])",
-                    src.absolutePath, dst.absolutePath)
+            if (lmLabel == null) {
+                project.exec {
+                    val args = mutableListOf(buildPythonPath,
+                        repoRoot.resolve("scripts/android/stage-dictionary.py").absolutePath,
+                        src.absolutePath, dst.absolutePath)
+                    if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) })
+                        args.add("--require-photo-spots")
+                    commandLine(args)
+                }
+            } else {
+                project.exec {
+                    commandLine(System.getenv("CHAQUOPY_BUILD_PYTHON") ?: "python3", "-c",
+                        "import sqlite3,sys,os; src=sqlite3.connect('file:'+sys.argv[1]+'?mode=ro',uri=True); tmp=sys.argv[2]+'.tmp'; os.path.exists(tmp) and os.unlink(tmp); out=sqlite3.connect(tmp); src.backup(out); out.close(); src.close(); os.replace(tmp,sys.argv[2])",
+                        src.absolutePath, dst.absolutePath)
+                }
             }
             logger.lifecycle("已打包本地字典：${dst.length() / 1024 / 1024} MB")
         } else {

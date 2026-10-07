@@ -74,48 +74,8 @@ SEARCH_MIN_INTERVAL_S = 1.2
 # 并发上限：对外部站点并发抓正文
 FETCH_CONCURRENCY = 3
 
-SCHEMA = """
--- 机位线索文档库（由 scripts/build_photo_spots.py 维护）
--- 一行 = 一个"确实在讲某地点拍车"的网页；正文原文入库供生成层阅读，不做结构化点位抽取。
-CREATE TABLE IF NOT EXISTS photo_spot_doc (
-    url         TEXT PRIMARY KEY,
-    domain      TEXT,
-    title       TEXT,
-    source      TEXT,              -- 来源标签（bilibili/sohu/zhihu…）
-    scope       TEXT,              -- 该文档对应的地方（站名/线路名/城市）
-    scope_kind  TEXT,              -- city / station / line
-    entities    TEXT,              -- 命中并校验通过的具体铁路实体（JSON 数组）
-    reasons     TEXT,              -- 判定依据（可复核；回答时用于标注来源可信度）
-    content_hash TEXT,             -- 正文指纹（去重用：同一篇攻略常有多条 URL，如 B站 read/opus/mobile）
-    page_text   TEXT,              -- 抓取到的正文原文（未抓到则为空，snippet 兜底）
-    snippet     TEXT,              -- 搜索引擎摘要（正文抓取失败时的替代证据）
-    fetch_ok    INTEGER NOT NULL DEFAULT 0,
-    char_count  INTEGER NOT NULL DEFAULT 0,
-    published   TEXT,
-    fetched_at  TEXT NOT NULL
-);
+from app.data.photo_spots import SCHEMA, migrate as migrate_photo_schema, stamp as stamp_photo_revision
 
--- 已跑过的发现查询（让建库可续跑，并提供覆盖率口径）
-CREATE TABLE IF NOT EXISTS photo_spot_seed (
-    query      TEXT PRIMARY KEY,
-    scope      TEXT,
-    scope_kind TEXT,
-    ok         INTEGER NOT NULL DEFAULT 0,
-    found      INTEGER NOT NULL DEFAULT 0,   -- 通过三道闸门的文档数
-    raw        INTEGER NOT NULL DEFAULT 0,    -- 引擎返回的原始结果数
-    note       TEXT,
-    ran_at     TEXT NOT NULL
-);
-"""
-
-
-# 索引单独列出：必须在"增量补列"之后执行（见 ensure_schema）
-_INDEXES = (
-    "CREATE INDEX IF NOT EXISTS ix_psd_scope   ON photo_spot_doc(scope)",
-    "CREATE INDEX IF NOT EXISTS ix_psd_domain  ON photo_spot_doc(domain)",
-    "CREATE INDEX IF NOT EXISTS ix_psd_fetched ON photo_spot_doc(fetched_at)",
-    "CREATE INDEX IF NOT EXISTS ix_psd_hash    ON photo_spot_doc(content_hash)",
-)
 
 
 # --------------------------------------------------------------------------- 判定规则
@@ -942,18 +902,7 @@ def ensure_schema(db: Path) -> None:
     db.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db) as c:
         c.executescript(SCHEMA)
-        # 增量补列：`content_hash` 是去重用的后加字段。缺了它查询会直接报
-        # "no such column"，而且**读路径也会挂**（photo.spot 的 SELECT * 之外还有 ORDER BY）。
-        cols = {str(r[1]) for r in c.execute("PRAGMA table_info(photo_spot_doc)")}
-        if cols and "content_hash" not in cols:
-            c.execute("ALTER TABLE photo_spot_doc ADD COLUMN content_hash TEXT")
-        # 索引必须**在补列之后**建，且逐个容错：老库（mirror_dict 建的）可能既缺列、
-        # 又与当前 schema 有别的差异 —— 任何一个索引建不上都不该让整套建库启动即失败。
-        for stmt in _INDEXES:
-            try:
-                c.execute(stmt)
-            except sqlite3.Error as e:  # noqa: PERF203
-                print(f"[warn] 索引未建立（可忽略，仅影响查询速度）：{e}")
+        migrate_photo_schema(c)
         c.commit()
 
 
@@ -980,6 +929,7 @@ def upsert_docs(db: Path, rows: list[dict]) -> int:
                  r.get("page_text", ""), r.get("snippet", ""),
                  1 if r.get("fetch_ok") else 0, len(r.get("page_text") or ""),
                  r.get("date", ""), now, _content_hash(r.get("page_text") or "")))
+        stamp_photo_revision(c)
         c.commit()
     return len(rows)
 
@@ -994,6 +944,7 @@ def record_seed(db: Path, query: str, scope: str, kind: str,
             " ON CONFLICT(query) DO UPDATE SET ok=excluded.ok, found=excluded.found,"
             "  raw=excluded.raw, note=excluded.note, ran_at=excluded.ran_at",
             (query, scope, kind, 1 if ok else 0, found, raw, note[:200], now))
+        stamp_photo_revision(c)
         c.commit()
 
 
@@ -1161,6 +1112,7 @@ def run_rescan(args: argparse.Namespace) -> int:
         print("[error] 库不存在"); return 2
     ent = LocalEntities()
     asyncio.run(ent.load())
+    ensure_schema(db)
     removed = 0
     with sqlite3.connect(db) as c:
         rows = list(c.execute("SELECT url,title,scope,page_text,snippet,entities FROM photo_spot_doc"))
@@ -1171,6 +1123,8 @@ def run_rescan(args: argparse.Namespace) -> int:
                 c.execute("DELETE FROM photo_spot_doc WHERE url = ?", (url,))
                 removed += 1
                 print(f"  ✗ [{scope}] {(title or '')[:46]}（{' '.join(reasons)[:52]}）")
+        if removed:
+            stamp_photo_revision(c)
         c.commit()
     print(f"\n[done] 重扫删除 {removed} 篇；剩余 "
           f"{sqlite3.connect(db).execute('SELECT COUNT(*) FROM photo_spot_doc').fetchone()[0]} 篇")
@@ -1186,6 +1140,7 @@ def run_dedup(args: argparse.Namespace) -> int:
     db = Path(args.db).expanduser() if args.db else DEFAULT_DB
     if not db.exists():
         print("[error] 库不存在"); return 2
+    ensure_schema(db)
     deleted = 0
     with sqlite3.connect(db) as c:
         rows = list(c.execute("SELECT url,title,char_count FROM photo_spot_doc"))
@@ -1201,6 +1156,8 @@ def run_dedup(args: argparse.Namespace) -> int:
                 c.execute("DELETE FROM photo_spot_doc WHERE url = ?", (url,))
                 deleted += 1
             print(f"  · {nt[:46]}：{len(items)} → 1（保留 {items[0][0]} 字）")
+        if deleted:
+            stamp_photo_revision(c)
         c.commit()
     print(f"\n[done] 清理重复 {deleted} 篇")
     stats(db)

@@ -35,6 +35,8 @@ from pathlib import Path
 import httpx
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "backend"))
+from app.data.photo_spots import SCHEMA as PHOTO_SCHEMA, migrate as migrate_photo_schema
 # 与后端配置一致（DICT_DB_PATH 可覆盖；默认 backend/data/dict.db，已 gitignore）。
 # 这里读环境变量而不是 import app.config：脚本要能在不装项目依赖时运行。
 _db = Path(os.environ.get("DICT_DB_PATH", "data/dict.db"))
@@ -135,11 +137,15 @@ CREATE TABLE IF NOT EXISTS station_profile (
 """
 
 
+SCHEMA += "\n" + PHOTO_SCHEMA
+
 def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    migrate_photo_schema(conn)
+    conn.commit()
     return conn
 
 

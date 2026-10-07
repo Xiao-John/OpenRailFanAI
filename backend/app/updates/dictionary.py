@@ -14,6 +14,7 @@ import threading
 import zipfile
 
 from app.updates import github
+from app.data import photo_spots as photos
 from app.updates.dictionary_schema import SCHEMA
 
 LOCK=threading.Lock()
@@ -36,7 +37,13 @@ def local(path: Path) -> dict:
         with closing(sqlite3.connect(f'file:{path}?mode=ro',uri=True)) as conn:
             meta=dict(conn.execute('SELECT key,value FROM meta'))
             counts={name:conn.execute(f'SELECT COUNT(*) FROM {name}').fetchone()[0] for name in GTFS_TABLES}
-        return {'available':True,'version':meta.get('gtfs_tag'),'pulled_at':meta.get('gtfs_pulled_at'),'counts':counts}
+            photo_info = {'available':False,'version':None,'schema_version':None,'documents':0,'scopes':0}
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='photo_spot_doc'").fetchone():
+                docs, scopes = conn.execute('SELECT COUNT(*),COUNT(DISTINCT scope) FROM photo_spot_doc').fetchone()
+                photo_info.update(available=bool(docs or meta.get(photos.VERSION_KEY)),
+                                  version=meta.get(photos.VERSION_KEY),
+                                  schema_version=meta.get(photos.SCHEMA_KEY),documents=docs,scopes=scopes)
+        return {'available':True,'version':meta.get('gtfs_tag'),'pulled_at':meta.get('gtfs_pulled_at'),'counts':counts,'photo_spots':photo_info}
     except sqlite3.Error:raise github.UpdateError('local_invalid','本地词典格式无效，未覆盖原文件') from None
 
 
@@ -53,7 +60,7 @@ async def check(path: Path) -> dict:
     return {'component':'dictionary','status':'ok','current':current,'latest_version':tag,
             'update_available':not old or key>old,'asset':asset,
             'release_url':f'https://github.com/{github.DICT_REPO}/releases/tag/{tag}',
-            'scope':'gtfs','preserved':['line_master','line_station','station_profile']}
+            'scope':'gtfs','preserved':['line_master','line_station','station_profile','published_fare',*photos.TABLES]}
 
 
 def _replace_tables(conn,source,tables):
@@ -61,7 +68,12 @@ def _replace_tables(conn,source,tables):
         columns=[r[1] for r in conn.execute(f'PRAGMA table_info({table})')]
         if not columns:raise github.UpdateError('schema','词典缺少必要数据表')
         conn.execute(f'DELETE FROM {table}')
-        values=source.execute(f'SELECT {",".join(columns)} FROM {table}')
+        source_columns={r[1] for r in source.execute(f'PRAGMA table_info({table})')}
+        missing=set(columns)-source_columns
+        if missing and not (table=='photo_spot_doc' and missing=={'content_hash'}):
+            raise github.UpdateError('schema','词典缺少必要数据列')
+        projection=','.join(c if c in source_columns else f'NULL AS {c}' for c in columns)
+        values=source.execute(f'SELECT {projection} FROM {table}')
         conn.executemany(f'INSERT INTO {table}({",".join(columns)}) VALUES({",".join("?" for _ in columns)})',values)
 
 
@@ -126,6 +138,7 @@ def merge(snapshot: Path, target: Path, *, bundled=False) -> dict:
             target.parent.mkdir(parents=True,exist_ok=True)
             with closing(sqlite3.connect(target,timeout=10)) as conn, conn:
                 conn.executescript("BEGIN IMMEDIATE;\n"+SCHEMA)
+                photos.migrate(conn)
                 old_meta=dict(conn.execute('SELECT key,value FROM meta'))
                 tables=[];meta=[]
                 if (tag_key(old_meta.get('gtfs_tag')) or '')<tag_key(new_meta['gtfs_tag']):
@@ -138,6 +151,20 @@ def merge(snapshot: Path, target: Path, *, bundled=False) -> dict:
                     if exists:
                         tables.append('published_fare')
                         meta.append(('published_fares_pulled_at',new_meta['published_fares_pulled_at']))
+                if bundled:
+                    if new_meta.get(photos.SCHEMA_KEY, '1') != '1':
+                        raise github.UpdateError('schema','机位词典结构版本不受支持')
+                    try:
+                        incoming=photos.revision(source,new_meta)
+                        existing=photos.revision(conn,old_meta)
+                    except ValueError:
+                        raise github.UpdateError('version','机位词典数据版本无效，未覆盖原数据') from None
+                    if incoming and (not existing or incoming>existing):
+                        present={r[0] for r in source.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                        if 'photo_spot_doc' not in present or (new_meta.get(photos.VERSION_KEY) and not set(photos.TABLES)<=present):
+                            raise github.UpdateError('schema','机位词典缺少必要数据表')
+                        tables.extend(t for t in photos.TABLES if t in present)
+                        meta.extend([(photos.VERSION_KEY,incoming.isoformat()),(photos.SCHEMA_KEY,'1')])
                 if not tables:return {'status':'unchanged','current':local(target)}
                 backup=target.with_name(target.stem+'.update-backup.db')
                 with closing(sqlite3.connect(f'file:{target}?mode=ro',uri=True)) as prior, closing(sqlite3.connect(backup)) as saved:
