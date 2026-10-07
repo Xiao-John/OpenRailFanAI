@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-10-07T23:28:09.849532+08:00",
+  "platform": "Android 15 / railfan_test / emulator-5554",
+  "tests": [
+    {
+      "class": "org.openrailfanai.app.UpdateDownloadTest",
+      "name": "rejectsForeignAssetAndRedirect",
+      "seconds": 0.066,
+      "status": "passed"
+    },
+    {
+      "class": "org.openrailfanai.app.UpdateDownloadTest",
+      "name": "mismatchAndCancellationCleanPartialFiles",
+      "seconds": 0.031,
+      "status": "passed"
+    },
+    {
+      "class": "org.openrailfanai.app.UpdateDownloadTest",
+      "name": "realByteProgressAndHash",
+      "seconds": 0.096,
+      "status": "passed"
+    },
+    {
+      "class": "org.openrailfanai.app.UpdateBackgroundTest",
+      "name": "dictionarySurvivesNavigationAndHomeSoftwareCancelIsIndependent",
+      "seconds": 3.578,
+      "status": "passed"
+    },
+    {
+      "class": "org.openrailfanai.app.ComposeDictionaryStatusTest",
+      "name": "separateVersionsAndLegacyCompatibility",
+      "seconds": 1.951,
+      "status": "passed"
+    },
+    {
+      "class": "org.openrailfanai.app.UpdatePublicDownloadTest",
+      "name": "publicReleaseReportsBytesBeforeCancellation",
+      "seconds": 2.728,
+      "status": "passed"
+    }
+  ],
+  "count": 6,
+  "failed": 0,
+  "live_public_transfer": "actual_public_bytes=1378 total=41323504 percent=0",
+  "live_scope": "真实公开安装包接收字节后取消；不代表完整安装验证",
+  "network_note": "模拟器临时连接宿主机现有代理；已恢复原来的无全局代理配置。本机后端更新请求明确绕过系统代理。",
+  "backend_changes": false,
+  "visual_acceptance": "未执行；更新组件没有独立设计参考",
+  "artifact": "dist/android/OpenRailFanAI-0.1.24-arm64-debug.apk",
+  "official_release_built": false
+}

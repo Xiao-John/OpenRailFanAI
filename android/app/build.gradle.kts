@@ -195,7 +195,7 @@ android {
 if (lmLabel != null) {
     val updateOverlay = layout.buildDirectory.file("generated/manifest/lm-update-exclusions.xml").get().asFile
     updateOverlay.parentFile.mkdirs()
-    updateOverlay.writeText("""<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"><uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/><application><provider android:name="androidx.core.content.FileProvider" tools:node="remove"/></application></manifest>""")
+    updateOverlay.writeText("""<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"><uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/><uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove"/><uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" tools:node="remove"/><uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove"/><uses-permission android:name="android.permission.WAKE_LOCK" tools:node="remove"/><application><provider android:name="androidx.core.content.FileProvider" tools:node="remove"/><service android:name="org.openrailfanai.app.UpdateTaskService" tools:node="remove"/></application></manifest>""")
     android.sourceSets.getByName("release").manifest.srcFile(updateOverlay)
     android.sourceSets.getByName("debug").manifest.srcFile(updateOverlay)
 }

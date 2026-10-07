@@ -283,8 +283,8 @@ fun MainSettingsScreen(
 }
 
 @Composable
-internal fun SettingsCard(title: String, subtitle: String, content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().railEntrance().background(NativeColors.surface, RoundedCornerShape(20.dp)).border(1.dp, SettingsBorder, RoundedCornerShape(20.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+internal fun SettingsCard(title: String, subtitle: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Column(modifier.fillMaxWidth().railEntrance().background(NativeColors.surface, RoundedCornerShape(20.dp)).border(1.dp, SettingsBorder, RoundedCornerShape(20.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         BasicText(title, style = TextStyle(color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold))
         if (subtitle.isNotBlank()) BasicText(subtitle, style = TextStyle(color = SettingsMuted, fontSize = 14.sp, lineHeight = 21.sp))
         content()

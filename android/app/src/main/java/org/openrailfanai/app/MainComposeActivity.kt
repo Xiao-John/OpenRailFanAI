@@ -93,6 +93,11 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         // Compose owns safe-area and IME consumption on every supported Android version.
         enableEdgeToEdge()
         pageNavigation = MainPageNavigation.restore(savedInstanceState?.getStringArrayList(STATE_PAGE_STACK))
+        if (intent.getBooleanExtra("open_update_settings", false)) {
+            pageNavigation = pageNavigation.navigateTo(MainPage.SETTINGS)
+            UpdateTasks.get(this).focus(intent.getStringExtra("update_focus").orEmpty())
+            intent.removeExtra("open_update_settings")
+        }
         settingsRepository = MainSettingsRepository(this)
         NativeColors.preference = settingsRepository.theme()
         NativeColors.systemDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
@@ -222,6 +227,16 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
 
     private fun saveCurrentDraft() {
         if (::conversationStore.isInitialized) conversationStore.saveDraft(conversationId, input)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("open_update_settings", false)) {
+            pageNavigation = pageNavigation.navigateTo(MainPage.SETTINGS)
+            UpdateTasks.get(this).focus(intent.getStringExtra("update_focus").orEmpty())
+            intent.removeExtra("open_update_settings")
+        }
     }
 
     override fun onPause() {

@@ -65,6 +65,13 @@ class ComposeDictionaryStatusTest {
             current.set(JSONObject("""{"available":true,"version":"gtfs-fixture","photo_spots":{"available":false}}"""))
             compose.onNodeWithText("刷新本地版本").performScrollTo().performClick()
             waitFor("本机尚未收录机位攻略，随软件更新接收。")
+            val manager = UpdateTasks.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
+            compose.runOnIdle { manager.focus("software") }
+            compose.waitForIdle()
+            compose.onNodeWithText("软件更新").assertIsDisplayed()
+            compose.runOnIdle { manager.focus("dictionary") }
+            compose.waitForIdle()
+            compose.onNodeWithText("词典更新").assertIsDisplayed()
         } finally {
             socket.close()
             worker.join(1000)
