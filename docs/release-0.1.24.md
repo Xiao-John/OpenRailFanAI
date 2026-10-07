@@ -28,8 +28,12 @@
 
 ## 发布状态
 
-安装包已构建，GitHub 发布正在进行。计划发布地址：
+源码提交 `a4fd00ae756d499a10e60fa0b83e8759c2d0b689` 已推送至 `codex/main-0.1.19`，标签 `v0.1.24` 指向该提交。GitHub 正式 Release 已公开并确认为 latest：
 
 https://github.com/Xiao-John/OpenRailFanAI/releases/tag/v0.1.24
+
+APK 与校验文件均已上传；匿名 GitHub 元数据的大小、SHA-256 与本地产物一致。以 `current_version=0.1.19` 请求本地软件更新检查，正确返回 `latest_version=0.1.24`、`update_available=true`、`download_supported=true`；更新检查实现与 0.1.19 源码一致。
+
+完整下载验证等待响应 150 秒后客户端超时；后端已经获得资产的 HTTP 200，并持续缓慢接收，后续观测仅接收约 4.8MB，不能记为完整下载通过。未验证旧版真机的系统覆盖安装。延迟与前后端超时配置见 [下载观测](software-update-download-observation-20261007.md)。
 
 下一步：用旧版应用的“检查软件更新”下载并覆盖安装，确认升级后仍保留会话、配置和较新的本地词典。
