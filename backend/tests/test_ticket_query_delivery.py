@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 from app.pipeline import generate, orchestrator, prefetch
 from app.pipeline.extract import Slots
+from app.dates import normalize_date
 from app.pipeline.intent import Intent
 from app.pipeline.retrieve import retrieve
 from app.tools.base import ToolResult
@@ -23,8 +24,15 @@ SOURCE = "https://kyfw.12306.cn/otn/leftTicket/queryI"
 def fixture(seats=None, **kw):
     return ToolResult(ok=True, data={
         "from_station": "北京南", "to_station": "上海虹桥", "train_date": DAY,
-        "trains": [{"train_no": "G1", "seats": seats if seats is not None else {"second_class": "有", "first_class": "无"}}],
+        "trains": [{"train_no": "G1", "from_station": "北京南", "to_station": "上海虹桥", "seats": seats if seats is not None else {"second_class": "有", "first_class": "无"}}],
     }, sources=[SOURCE], fetched_at="2026-10-04T10:00:00Z", total=1, shown=1, **kw)
+
+
+def fare_fixture(params):
+    return ToolResult(ok=True, data={"query_date":normalize_date(params["date"]), "fare_basis":"executed",
+        "from_station":params["from_station"], "to_station":params["to_station"],
+        "data":[{"train_code":params["train"],"from_station":params["from_station"],"to_station":params["to_station"],"prices":{"二等座":"661"}}]},
+        sources=["https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice"], fetched_at="2026-10-04T10:00:00Z")
 
 
 class TicketDelivery(unittest.IsolatedAsyncioTestCase):
@@ -38,10 +46,34 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
         calls = []
         async def invoke(name, params):
             calls.append((name, dict(params)))
-            return deepcopy(result if result is not None else fixture())
+            return deepcopy((result if result is not None else fixture()) if name != "ticket.price" else fare_fixture(params))
         with patch("app.tools.registry.invoke_by_name", invoke):
             out = await retrieve("ticket", slots, "realtime", message)
         return out, calls
+
+    async def test_aggregate_note_never_doubles_sentence_punctuation(self):
+        """多个工具 note 都以「。」结尾时，聚合 note 不得拼出「。；」。"""
+        qnote = ("12306 实时余票（2026-10-05）；余票为查询时快照，"
+                 "不能保证购票时仍然有票；请以 12306 购票页面显示为准。")
+        pnote = "12306 实际执行票价。"
+        seen = []
+
+        async def invoke(name, params):
+            seen.append(name)
+            if name == "ticket.query":
+                return fixture(note=qnote)
+            if name == "ticket.price":
+                result = fare_fixture(params)
+                result.note = pnote
+                return result
+            return fixture()
+
+        with patch("app.tools.registry.invoke_by_name", invoke):
+            out = await retrieve("ticket", Slots(target="G1", time=DAY, direction="北京南→上海虹桥"),
+                                 "realtime", f"{DAY} 北京南到上海虹桥 G1 的票价和余票")
+        self.assertIn("ticket.query", seen)
+        self.assertIn("[ticket.query]", out["note"])
+        self.assertNotIn("。；", out["note"])
 
     async def test_original_missing_interval_is_visible_and_does_not_query(self):
         message = f"查一下 {DAY} G1 的余票"
@@ -61,7 +93,8 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
     async def test_full_interval_keeps_train_and_filters_without_schedule(self):
         out, calls = await self._retrieve(Slots(target="G1", time=DAY, direction="北京南→上海虹桥"),
                                          f"查一下 {DAY} G1 北京南到上海虹桥下午二等座的余票")
-        self.assertEqual([n for n, _ in calls], ["ticket.query"])
+        self.assertEqual([n for n, _ in calls], ["ticket.query", "ticket.price"])
+        self.assertTrue(all(p["train"] == "G1" and normalize_date(p["date"]) == DAY and p["from_station"] == "北京南" and p["to_station"] == "上海虹桥" for _, p in calls))
         p = calls[0][1]
         self.assertEqual((p["train"], p["date"], p["from_station"], p["to_station"]), ("G1", DAY, "北京南", "上海虹桥"))
         self.assertEqual((p["after_time"], p["before_time"], p["seat"]), ("12:00", "18:00", "second_class"))
@@ -75,8 +108,7 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
 
     async def test_plural_queries_preserve_each_requested_service(self):
         out, calls = await self._retrieve(Slots(time=DAY, direction="北京南→上海虹桥"), f"{DAY} G1 和 G2 北京南到上海虹桥余票")
-        self.assertEqual([p["train"] for _, p in calls], ["G1", "G2"])
-        self.assertTrue(all(name == "ticket.query" for name, _ in calls))
+        self.assertEqual([(n,p["train"]) for n,p in calls], [(n,c) for c in ["G1","G2"] for n in ["ticket.price","ticket.query"]])
         self.assertIn("G1", out["direct_answer"])
         self.assertIn("G2", out["direct_answer"])
 
@@ -103,9 +135,10 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
         out, _ = await self._retrieve(Slots(target="G1", time=DAY, direction="北京南→上海虹桥"), "G1余票", failed)
         self.assertIn("网络超时", out["direct_answer"])
         self.assertIn("可稍后重试", out["direct_answer"])
-        self.assertEqual(out["tool_trace"], ["ticket.query: failed"])
-        self.assertEqual(out["sources"], [SOURCE])
-        self.assertEqual(out["data"], [])
+        self.assertEqual(out["tool_trace"], ["ticket.query: failed", "ticket.price: ok"])
+        self.assertEqual(set(out["sources"]), {SOURCE, "https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice"})
+        self.assertEqual([r["tool"] for r in out["data"]], ["ticket.price"])
+        self.assertEqual(out["display_errors"][0]["tool"], "ticket.query")
 
     async def test_real_ticket_tool_filters_g1_in_g1_g2_fixture(self):
         rows = [{"train_no": code, "from_station": "北京南", "to_station": "上海虹桥",
@@ -113,6 +146,7 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
         async def resolve(name):
             return ("VNP", name) if name == "北京南" else ("AOH", name)
         async def invoke(name, params):
+            if name == "ticket.price": return fare_fixture(params)
             self.assertEqual(name, "ticket.query")
             return await TicketQueryTool().invoke(params)
         with patch.object(rt, "resolve_station_code", resolve), patch.object(rt, "query_tickets", AsyncMock(return_value=rows)), patch("app.tools.registry.invoke_by_name", invoke):
@@ -124,7 +158,8 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
         async def resolve(name): return ("VNP", name)
         for rows, seat, expected in (([], None, "无数据"),
                                      ([{"train_no": "G1", "seats": {"second_class": "无"}, "start_time": "10:00"}], "二等座", "筛选条件")):
-            async def invoke(name, params): return await TicketQueryTool().invoke(params)
+            async def invoke(name, params):
+                return fare_fixture(params) if name == "ticket.price" else await TicketQueryTool().invoke(params)
             with patch.object(rt, "resolve_station_code", resolve), patch.object(rt, "query_tickets", AsyncMock(return_value=rows)), patch("app.tools.registry.invoke_by_name", invoke):
                 out = await retrieve("ticket", Slots(target="G1", time=DAY, direction="北京南→上海虹桥", extra=seat), "realtime", "G1余票")
             self.assertIn(expected, out["direct_answer"])
@@ -137,7 +172,7 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
             async def decision(*a, **kw): return ((Intent.TICKET, "realtime", slots, "llm-merged", "NO_SLOT"), None)
             calls = []
             async def invoke(name, params):
-                calls.append((name, params)); return deepcopy(result)
+                calls.append((name, params)); return deepcopy(result if name != "ticket.price" else fare_fixture(params))
             with patch.object(orchestrator, "_decide_with_prefetch", decision), patch("app.tools.registry.invoke_by_name", invoke), patch.object(generate, "chat_with_reasoning", AsyncMock(side_effect=AssertionError("no generation"))), patch.object(orchestrator.llm_client, "stream_completion", side_effect=AssertionError("no streaming generation")):
                 block = await orchestrator.run(f"查一下 {DAY} G1 的余票")
                 events = [e async for e in orchestrator.run_stream(f"查一下 {DAY} G1 的余票")]
@@ -149,15 +184,25 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(visible)
             self.assertTrue(done[0]["answer_done"])
             self.assertFalse(done[0]["degraded"])
-            self.assertEqual(done[0]["display_results"], [])
-            self.assertEqual(block.display_results, [])
+            self.assertEqual(done[0]["display_results"], block.display_results)
+            if direction is None:
+                self.assertEqual(block.display_results, [])
+            else:
+                self.assertEqual(len(block.display_results), 1)
+                self.assertEqual(block.display_results[0]["kind"], "ticket_fare")
+                self.assertEqual(block.display_results[0]["train_code"], "G1")
+                self.assertEqual(block.display_results[0]["date"], DAY)
+                self.assertEqual(block.display_results[0]["fare_status"], "success")
+                self.assertEqual(block.display_results[0]["availability"]["status"], "success" if result.ok else "failed")
+                self.assertEqual(block.display_results[0]["status"], "success" if result.ok else "partial")
+                self.assertEqual(block.display_results[0]["prices"][0]["amount"], "661")
             self.assertEqual(done[0]["sources"], block.sources)
             self.assertEqual(done[0]["tool_trace"], block.tool_trace)
             self.assertFalse(any(e["type"] in {"error", "think"} for e in events))
 
     async def test_prefetch_does_not_lookup_routing_and_matches_final_ticket_filters(self):
         calls = []
-        async def invoke(name, params): calls.append((name, params)); return fixture()
+        async def invoke(name, params): calls.append((name, params)); return fixture() if name == "ticket.query" else fare_fixture(params)
         with patch("app.tools.registry.invoke_by_name", invoke):
             self.assertIsNone(prefetch.start(f"查一下 {DAY} G1 的余票"))
             self.assertIsNone(prefetch.start(f"{DAY} G1 [出发站]到[到达站]余票"))
@@ -168,8 +213,8 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
                 out = await retrieve("ticket", Slots(target="G1", time=DAY, direction="北京南→上海虹桥"), "realtime", message, prefetch=pf)
             finally:
                 await pf.cancel()
-            self.assertEqual(len(calls), 1)
-            self.assertEqual(calls[0][0], "ticket.query")
+            self.assertEqual([name for name,_ in calls], ["ticket.query","ticket.price"])
+            self.assertEqual(sum(name == "ticket.query" for name,_ in calls), 1)
             self.assertTrue(pf.used)
             self.assertIn("二等座", out["direct_answer"])
 
@@ -201,7 +246,7 @@ class TicketDelivery(unittest.IsolatedAsyncioTestCase):
         async def invoke(name, params): calls.append(name); return ToolResult(ok=True, data={})
         with patch("app.tools.registry.invoke_by_name", invoke):
             fare = await retrieve("ticket", Slots(target="G1", time=DAY, direction="北京南→上海虹桥"), "realtime", "G1票价多少钱")
-            self.assertEqual(calls, ["ticket.price"])
+            self.assertEqual(calls, ["ticket.price", "ticket.query"])
             self.assertIn("direct_answer", fare)
             calls.clear()
             action = await retrieve("ticket", Slots(target="G1", time=DAY), "realtime", "余票", display_action={"kind": "train_schedule_batch", "trains": ["G1"], "date": DAY})

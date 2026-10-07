@@ -12,6 +12,7 @@ from copy import deepcopy
 
 from app.query_cache import QueryCache, query_scope
 from app.dates import normalize_date
+from app.ticket_copy import join_clause
 
 from app.tools.cnrail import CnRailTool
 from app.tools.emu_routing import EmuRoutingTool
@@ -52,6 +53,15 @@ def list_enabled() -> list["Tool"]:
     return [t for t in _REGISTRY.values() if t.enabled]
 
 
+def _append_snapshot_tail(note: str, ttl: int, fetched_at: str) -> str:
+    """把"快照最多复用 N 秒"接到 note 上。
+
+    note 常以句末标点收尾（如 `AVAILABILITY_SNAPSHOT` 以「。」结尾），此时直接续写；
+    否则补一个「；」。历史上无条件插「；」，于是出现「。；」连写。
+    """
+    return join_clause(note, f"查询快照最多复用 {ttl} 秒，采样时间 {fetched_at}")
+
+
 async def invoke_by_name(name: str, params: dict):
     tool = get(name)
     if tool is None or not tool.enabled:
@@ -74,7 +84,7 @@ async def invoke_by_name(name: str, params: dict):
         if ttl and result.ok:
             from datetime import datetime, timezone
             result.fetched_at = result.fetched_at or datetime.now(timezone.utc).isoformat()
-            result.note = (result.note + f"；查询快照最多复用 {ttl} 秒，采样时间 {result.fetched_at}").lstrip("；")
+            result.note = _append_snapshot_tail(result.note, ttl, result.fetched_at)
         return result
 
     return await cache.get(key, fetch, ttl=ttl,

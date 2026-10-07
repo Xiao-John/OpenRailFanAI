@@ -29,9 +29,11 @@ def result_for(name, params):
         return ToolResult(ok=True, data={'query':code,'focus_date':day,
             'records':[{'train_code':code,'date':day,'time':'12:00','emu_no':'CR400BF1234'}]})
     if name == 'ticket.query':
-        return ToolResult(ok=True, data={'train_date':day,
-            'trains':[{'train_no':code,'seats':{'second_class':'有'}}]})
+        return ToolResult(ok=True, data={'train_date':day, 'from_station':params['from_station'], 'to_station':params['to_station'],
+            'trains':[{'train_no':code,'from_station':params['from_station'],'to_station':params['to_station'],'seats':{'second_class':'有'}}]})
     return ToolResult(ok=True, text=f'{day} {code} {params["from_station"]}→{params["to_station"]}：硬座 {int(day[-2:])+35} 元',
+                      data={'query_date':day,'fare_basis':'executed','from_station':params['from_station'],'to_station':params['to_station'],
+                            'data':[{'train_code':code,'from_station':params['from_station'],'to_station':params['to_station'],'prices':{'硬座':int(day[-2:])+35}}]},
                       sources=['https://example.invalid/fare'])
 
 
@@ -115,8 +117,8 @@ class MultiDateDelivery(unittest.IsolatedAsyncioTestCase):
         outputs=[]
         for mode in ['stream','block']:
             _,calls,answer=await self.execute(EXAMPLE,mode)
-            self.assertEqual([name for name,_ in calls],['ticket.price']*3)
-            self.assertEqual([p['date'] for _,p in calls],DAYS)
+            self.assertEqual([(name,p['date']) for name,p in calls],[(name,day) for day in DAYS for name in ['ticket.price','ticket.query']])
+            self.assertEqual([p['date'] for _,p in calls], [day for day in DAYS for _ in range(2)])
             self.assertTrue(all((p['train'],p['from_station'],p['to_station'])==('G1','北京','上海虹桥') for _,p in calls))
             for day in DAYS:
                 self.assertIn(f'G1 · {day} · 票价',answer)
@@ -126,13 +128,13 @@ class MultiDateDelivery(unittest.IsolatedAsyncioTestCase):
 
     async def test_self_contained_multidate_request_overrides_history_without_model(self):
         _,calls,_=await self.execute(EXAMPLE,history=[{'role':'user','content':'昨天G2天津到南京的票价'}])
-        self.assertEqual([p['date'] for _,p in calls],DAYS)
+        self.assertEqual([p['date'] for _,p in calls], [day for day in DAYS for _ in range(2)])
         self.assertTrue(all(p['train']=='G1' and p['from_station']=='北京' and p['to_station']=='上海虹桥' for _,p in calls))
 
     async def test_ranges_do_not_become_multiple_od_intervals(self):
         for text in ['明天到大后天北京到上海虹桥G1票价','G1 10月6日到8日 北京到上海虹桥票价']:
             _,calls,_=await self.execute(text)
-            self.assertEqual([p['date'] for _,p in calls],DAYS,text)
+            self.assertEqual([p['date'] for _,p in calls], [day for day in DAYS for _ in range(2)], text)
             self.assertTrue(all(p['from_station']=='北京' and p['to_station']=='上海虹桥' for _,p in calls),text)
 
     async def test_common_three_dates_two_trains_all_four_services(self):
@@ -201,6 +203,8 @@ class MultiDateDelivery(unittest.IsolatedAsyncioTestCase):
                  'start_time':'07:00','arrive_time':'12:00','duration':'05:00',
                  'prices':{'二等座':int(day[-2:])+35,'商务座':1000}}]}
         async def invoke(name,params):
+            if name == 'ticket.query':
+                return result_for(name,params)
             self.assertEqual(name,'ticket.price')
             return await TicketPriceTool().invoke(params)
         with patch.object(rt,'query_ticket_prices',payload),patch('app.tools.registry.invoke_by_name',invoke):
@@ -210,7 +214,7 @@ class MultiDateDelivery(unittest.IsolatedAsyncioTestCase):
         for day in DAYS:
             self.assertIn(f'北京→上海虹桥（{day}）票价：',result['direct_answer'])
             self.assertIn(f'G1 北京→上海虹桥 07:00–12:00（历时 05:00）：二等座 {int(day[-2:])+35} 元、商务座 1000 元',result['direct_answer'])
-        self.assertEqual(result['direct_answer'].count('以上为票价信息，不表示该席别当前有票。'),3)
+        self.assertEqual(result['direct_answer'].count('票价可作为购票参考，具体以购票页面为准。'),3)
 
     async def test_explicit_single_date_action_ignores_multidate_text(self):
         action={'kind':'train_schedule_batch','trains':['G2'],'date':DAYS[1]}
@@ -226,7 +230,7 @@ class MultiDateDelivery(unittest.IsolatedAsyncioTestCase):
             calls.append(dict(params));return result_for(name,params)
         with patch('app.tools.registry.invoke_by_name',invoke):
             out=await retrieve('ticket',Slots(time='明天',direction='北京→上海虹桥'),'realtime',EXAMPLE)
-        self.assertEqual([p['date'] for p in calls],DAYS)
+        self.assertEqual([p['date'] for p in calls], [day for day in DAYS for _ in range(2)])
         self.assertTrue(all(day in out['direct_answer'] for day in DAYS))
 
     async def test_mixed_comparison_cannot_silently_query_only_one_date(self):

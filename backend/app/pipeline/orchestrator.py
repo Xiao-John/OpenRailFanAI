@@ -23,7 +23,7 @@ from app.config import get_settings
 from app.models import PipelineResult, SlotValue
 from app.display_result import serialize_display_results
 from app.pipeline import generate
-from app.pipeline.ticket_answer import direct_answer
+from app.pipeline.ticket_answer import direct_answer, direct_complete
 from app.pipeline import repetition, planner, prefetch as prefetch_mod, retrieve
 from app.pipeline import service_dispatch
 
@@ -52,7 +52,8 @@ def _ms(t0: float) -> float:
 
 
 async def _receipt_stream(answer: str):
-    yield "text", answer
+    if answer:
+        yield "text", answer
 
 
 async def _decide_with_prefetch(message: str, history: list[dict] | None,
@@ -134,6 +135,7 @@ async def run_stream(
     history: list[dict] | None = None,
     llm: dict | None = None,
     display_action: dict | None = None,
+    client_capabilities: list[str] | None = None,
 ) -> AsyncIterator[dict]:
     """流式编排：逐事件产出 dict。
 
@@ -199,6 +201,9 @@ async def run_stream(
         finally:
             if pf is not None:
                 await pf.cancel()
+        display_results = serialize_display_results(retrieval.get("data") or [], retrieval.get("display_errors") or [])
+        from app.pipeline.ticket_delivery import prepare
+        retrieval = prepare(retrieval, client_capabilities, display_results)
         sources = retrieval.get("sources") or []
         trace_str = str(retrieval.get("tool_trace") or "(无)")
         structured_tool_names = {"train.schedule", "emu.routing"}
@@ -210,7 +215,7 @@ async def run_stream(
             isinstance(item, dict) and item.get("tool") in {"train.schedule", "emu.routing"}
             for item in (retrieval.get("data") or [])
         ) or bool(structured_tool_errors)
-        if direct_answer(retrieval):
+        if direct_complete(retrieval):
             buffer_structured_answer = False
         logs.append(f"[数据检索] 工具：{trace_str} · {_ms(t0)}ms")
         perf_metrics.record_stage("retrieve", _ms(t0))
@@ -231,7 +236,7 @@ async def run_stream(
             # 历史已在 prompt 的 [对话历史] 区块中；不再重复传入 messages（省钱且语义不变）
             checked = 0
             receipt = direct_answer(retrieval)
-            stream = (_receipt_stream(receipt) if receipt else llm_client.stream_completion(
+            stream = (_receipt_stream(receipt) if direct_complete(retrieval) else llm_client.stream_completion(
                 prompt, **generate.completion_options(retrieval, question_type)))
             async for kind, text in stream:
                 if text and kind not in first_upstream:
@@ -342,7 +347,6 @@ async def run_stream(
             truncate_reason = "repetition" if loop_cut else "length"
             if truncate_reason == "length":
                 logs.append("⚠️ 回答因输出长度上限被截断（可提高 LLM_MAX_TOKENS 后重试）")
-        display_results = serialize_display_results(retrieval.get("data") or [], retrieval.get("display_errors") or [])
         if display_results:
             perf_metrics.record_stage("card_delivery", _ms(t_all))
         perf_metrics.record_request("completed", degraded=degraded,
@@ -434,6 +438,7 @@ async def run(
     history: list[dict] | None = None,
     llm: dict | None = None,
     display_action: dict | None = None,
+    client_capabilities: list[str] | None = None,
 ) -> PipelineResult:
     # 供应商与计费都是请求级 ContextVar，与 run_stream 保持一致的就位位置
     llm_client.set_active_provider(llm)
@@ -472,9 +477,13 @@ async def run(
         logs.append(f"[数据检索] 工具：{retrieval.get('tool_trace') or '(无)'} · {_ms(t0)}ms")
         record_stage("retrieve", _ms(t0))
 
+        display_results = serialize_display_results(retrieval.get("data") or [], retrieval.get("display_errors") or [])
+        from app.pipeline.ticket_delivery import prepare
+        retrieval = prepare(retrieval, client_capabilities, display_results)
+
         # 4 回答生成
         t0 = time.perf_counter()
-        if direct_answer(retrieval):
+        if direct_complete(retrieval):
             logs.append("[回答生成] 余票回执直接排版（未调用生成模型）")
         degraded = False
         generation_failed = False
@@ -485,7 +494,7 @@ async def run(
             )
             # 与流式路径**同一套**重复循环兜底。两处都要有：块式接口同样对外可用，
             # 只在流式里加会留下一条没被保护的路径（本仓库吃过"两处各写一份"的亏）。
-            _cut = repetition.detect(answer) if not direct_answer(retrieval) else None
+            _cut = repetition.detect(answer) if not direct_complete(retrieval) else None
             if _cut is not None:
                 loop_cut = True
                 answer = answer[:_cut].rstrip() + "\n\n（后续内容出现连续重复，已在此截断。）"
@@ -539,9 +548,7 @@ async def run(
                 "completion_tokens": metrics["completion_tokens"],
             },
             latency_ms=_ms(t_all),
-            display_results=serialize_display_results(
-                retrieval.get("data") or [], retrieval.get("display_errors") or []
-            ),
+            display_results=display_results,
         )
         if result.answer:
             record_stage("first_public_answer", _ms(t_all))

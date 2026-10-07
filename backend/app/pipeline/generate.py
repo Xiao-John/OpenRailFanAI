@@ -24,6 +24,7 @@ from app.context import format_history
 from app.llm.client import chat_with_reasoning
 from app.llm import client as llm_client
 from app.pipeline.extract import Slots
+from app.ticket_copy import AVAILABLE_TRAIN_COUNT
 
 # 生成层历史深度：比意图/抽取层（4 条）更深，用于对话连贯
 GEN_HISTORY_LIMIT = 6
@@ -170,7 +171,8 @@ def _render_fact_text(d: dict, settings) -> str:
             lines.append("发车时段分布：" + "；".join(f"{k} {v} 趟" for k, v in periods.items() if v))
         seats = payload.get("seat_counts") or {}
         if seats:
-            lines.append("有票席别统计：" + "；".join(f"{k}={v} 趟" for k, v in seats.items()))
+            label = AVAILABLE_TRAIN_COUNT if os.environ.get("APP_VARIANT", "main").lower() != "lm" else "有票席别统计"
+            lines.append(label + "：" + "；".join(f"{k}={v} 趟" for k, v in seats.items()))
         lines.append("车次明细（车次｜发-到｜席别）：")
         for t in rows[:max_rows]:
             lines.append(
@@ -424,9 +426,9 @@ async def generate(
     question_type: str | None = None,
 ) -> tuple[str, list[str], str]:
     """生成最终回答，返回 (answer, sources, thinking)。"""
-    from app.pipeline.ticket_answer import direct_answer
+    from app.pipeline.ticket_answer import direct_answer, direct_complete
     receipt = direct_answer(retrieval)
-    if receipt:
+    if direct_complete(retrieval):
         return receipt, retrieval.get("sources") or [], ""
     prompt = build_prompt(user_message, slots, retrieval, history, question_type)
     # 历史已在 prompt 的 [对话历史] 区块中；不再重复传入 messages（见模块 docstring）

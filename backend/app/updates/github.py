@@ -62,13 +62,14 @@ def asset_info(raw: dict, repo: str, tag: str, limit: int) -> dict:
     return {'id':aid,'name':name,'size':size,'sha256':digest[7:].lower(),'url':url}
 
 
-async def download(asset: dict, directory: Path) -> Path:
+async def download(asset: dict, directory: Path, *, progress=None) -> Path:
     directory.mkdir(parents=True,exist_ok=True)
     fd,path=tempfile.mkstemp(prefix='.update-',suffix='.part',dir=directory)
     import os
     os.close(fd);target=Path(path)
     try:
         url=asset['url'];count=0;digest=hashlib.sha256()
+        if progress:progress({'stage':'download','completed':0,'total':asset['size'],'unit':'bytes'})
         async with httpx.AsyncClient(timeout=httpx.Timeout(30,read=60),trust_env=False,follow_redirects=False) as client:
             for attempt in range(6):
                 validate_url(url,asset=True)
@@ -82,8 +83,10 @@ async def download(asset: dict, directory: Path) -> Path:
                             count+=len(chunk)
                             if count>asset['size']:raise UpdateError('size','下载文件超过声明大小')
                             digest.update(chunk);file.write(chunk)
+                            if progress:progress({'stage':'download','completed':count,'total':asset['size'],'unit':'bytes'})
                     break
             else:raise UpdateError('redirect','下载重定向过多')
+        if progress:progress({'stage':'verify','completed':count,'total':asset['size'],'unit':'bytes'})
         if count!=asset['size'] or digest.hexdigest()!=asset['sha256']:
             raise UpdateError('checksum','下载文件大小或SHA-256不匹配')
         return target

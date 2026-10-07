@@ -81,6 +81,15 @@ SUITES=(
   test_multiturn_slots
   # 本地小模型加固（输出不可用 ≠ 服务不可用：JSON 宽容解析 + 决策层回退；全部无网络）
   test_slm_hardening
+  # Main 票价与余票交付、文案、日期及成对结果回归（2026-10-06）
+  test_ticket_copy
+  test_ticket_query_delivery
+  test_fare_availability
+  test_ticket_pair
+  test_ticket_delivery_dedup
+  test_executed_fare
+  test_fare_contract
+  test_multidate_services
 )
 
 FAILED=()

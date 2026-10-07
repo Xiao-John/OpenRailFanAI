@@ -151,12 +151,15 @@ class ExecutionTests(unittest.IsolatedAsyncioTestCase):
     async def test_explicit_public_batch_dispatches_local_basis(self):
         invoked=[]
         async def invoke(name,params):
-            invoked.append(params)
+            invoked.append((name,params))
             from app.tools.base import ToolResult
             return ToolResult(ok=False,error='本地无记录')
         with patch('app.tools.registry.invoke_by_name',invoke):
             result=await service_batch.execute(['G1','G2'],['fare'],date=DAY,od=('北京南','上海虹桥'),message='G1 G2公布票价')
-        self.assertTrue(all(p['fare_basis']=='published' for p in invoked));self.assertEqual(len(result['display_errors']),2)
+        self.assertEqual([(n,p['train']) for n,p in invoked],[(n,c) for c in ['G1','G2'] for n in ['ticket.price','ticket.query']])
+        self.assertTrue(all(p['fare_basis']=='published' for n,p in invoked if n=='ticket.price'))
+        self.assertTrue(all('fare_basis' not in p for n,p in invoked if n=='ticket.query'))
+        self.assertEqual(len(result['display_errors']),4)
 
 
 if __name__=='__main__':unittest.main()

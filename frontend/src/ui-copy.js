@@ -9,7 +9,7 @@ export const UI_COPY = Object.freeze({
   schedule: Object.freeze({
     columns: Object.freeze(["车站", "到达", "出发"]),
     missingTime: "--",
-    note: "图定时刻不代表实际正晚点。",
+    note: "以下为图定计划时刻，不代表当天实际运行时刻或正晚点状态。",
     source: "列车时刻",
     details: "查询详情",
     sampleData: "示例数据",
@@ -40,7 +40,7 @@ export const UI_COPY = Object.freeze({
     historyNote: "历史记录将单独标注日期",
   }),
   error: Object.freeze({
-    title: "暂时无法连接模型服务",
+    title: "查询服务暂时异常",
     message: "你的提问已保留，可稍后重试。",
     retry: "重试",
     settings: "检查模型设置",

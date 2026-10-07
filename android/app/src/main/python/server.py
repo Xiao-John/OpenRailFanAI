@@ -292,16 +292,6 @@ def serve(host=None, webapp_dir: str = "", data_dir: str = "",
         _beat(host, "导入后端应用 app.main…")
         from app.main import app as asgi_app
 
-        # 一条把"字典到底有没有用上"摆到明处的日志：这个能力以前是**静默**缺失的
-        # （打了包却查不到，用户只会看到工具回"字典尚未构建"，无从判断是谁的问题）。
-        try:
-            from app.data.dict import available as dict_available, db_path as dict_db_path
-
-            _log.info("本地字典：%s（%s）",
-                      "可用" if dict_available() else "不可用", dict_db_path())
-        except Exception:  # 字典是增强能力，探测失败不该拖垮启动
-            _log.warning("本地字典探测失败", exc_info=True)
-
         _beat(host, "导入 uvicorn…")
         import uvicorn
 
@@ -330,6 +320,18 @@ def serve(host=None, webapp_dir: str = "", data_dir: str = "",
 
             _beat(host, f"服务已监听 127.0.0.1:{port}，执行前端自检…")
             _log.info("本地后端已监听 http://%s:%d", HOST, port)
+            # 一条把"字典到底有没有用上"摆到明处的日志：这个能力以前是**静默**缺失的
+            # （打了包却查不到，用户只会看到工具回"字典尚未构建"，无从判断是谁的问题）。
+            # ⚠️ 必须在 uvicorn **started 之后**探测：运行词典由应用 lifespan 启动时
+            # 合并包内词典才建起来（app.main._lifespan → sync_bundled），在那之前探测
+            # 会把"全新安装、尚未合并"如实报成"不可用"，而发布验收正是按首次安装判定的。
+            try:
+                from app.data.dict import available as dict_available, db_path as dict_db_path
+
+                _log.info("本地字典：%s（%s）",
+                          "可用" if dict_available() else "不可用", dict_db_path())
+            except Exception:  # 字典是增强能力，探测失败不该拖垮启动
+                _log.warning("本地字典探测失败", exc_info=True)
             ok, detail = await asyncio.to_thread(_self_check, port)
             if not ok:
                 # 自检不过就直接把结论摆到用户面前，而不是让他对着白屏猜

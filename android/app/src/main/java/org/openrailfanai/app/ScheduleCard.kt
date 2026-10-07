@@ -191,7 +191,7 @@ private fun ScheduleCard(value: ScheduleResult, request: ChatUiState, modifier: 
         }
         if (value.timeBasis == "reference") {
             Spacer(Modifier.height(14.appDp))
-            InfoNote("说明", "图定时刻不代表实际正晚点。", "schedule-source-note", verticalPadding = 9, modifier = Modifier.padding(start = 0.5.appDp, end = 1.appDp))
+            InfoNote("说明", "以下为图定计划时刻，不代表当天实际运行时刻或正晚点状态。", "schedule-source-note", verticalPadding = 9, modifier = Modifier.padding(start = 0.5.appDp, end = 1.appDp))
         }
         if (value.timeBasis == "stations_only") {
             Spacer(Modifier.height(14.appDp))
@@ -390,7 +390,7 @@ private fun ConnectionErrorCard(value: ErrorResult, onRetry: () -> Unit, onSetti
                 RailIcon("cloud-error", Modifier.width(66.appDp).height(59.appDp), Color(0xFFF0524F), "error-icon")
             }
             Column {
-                BasicText(when (mainErrorCategory(value.message.orEmpty())) { "configuration" -> "请检查云端模型配置"; "service" -> "查询服务暂时异常"; else -> "暂时无法连接模型服务" }, Modifier.testTag("error-title"), style = TextStyle(color = RailInk, fontSize = 18.appSp, fontWeight = FontWeight.Bold))
+                BasicText(mainErrorTitle(value.message.orEmpty()), Modifier.testTag("error-title"), style = TextStyle(color = RailInk, fontSize = 18.appSp, fontWeight = FontWeight.Bold))
                 BasicText("你的提问已保留，可稍后重试。", Modifier.testTag("error-explanation"), style = TextStyle(color = RailMuted, fontSize = 14.appSp, letterSpacing = 2.1.appSp, lineHeight = 19.appSp))
             }
         }

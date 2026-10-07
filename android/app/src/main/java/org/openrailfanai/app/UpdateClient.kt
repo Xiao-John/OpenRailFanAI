@@ -51,6 +51,41 @@ internal class UpdateClient(baseUrl: String) {
     fun dictionary(): JSONObject = json("/api/updates/dictionary")
     fun applyDictionary(version: String): JSONObject = json("/api/updates/dictionary/apply", JSONObject().put("latest_version", version))
 
+    fun applyDictionaryStream(version: String, progress: (JSONObject) -> Unit): JSONObject {
+        val conn = open("/api/updates/dictionary/apply/stream", JSONObject().put("latest_version", version))
+        try {
+            require(conn.contentType.orEmpty().substringBefore(';').trim() == "text/event-stream") { "服务未返回词典更新进度，请更新后端" }
+            var terminal: JSONObject? = null
+            conn.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
+                val data = StringBuilder()
+                fun dispatch() {
+                    if (data.isEmpty()) return
+                    val event = JSONObject(data.toString()); data.clear()
+                    when (event.optString("type")) {
+                        "progress" -> progress(event)
+                        "done" -> terminal = event
+                        "error" -> error(event.optString("message", "词典更新失败"))
+                        else -> error("无法识别词典更新事件")
+                    }
+                }
+                while (terminal == null) {
+                    check(!cancelled.get()) { "操作已取消" }
+                    val line = reader.readLine() ?: break
+                    require(line.length <= 64 * 1024) { "词典更新事件超过大小限制" }
+                    when {
+                        line.isEmpty() -> dispatch()
+                        line.startsWith("data:") -> {
+                            if (data.isNotEmpty()) data.append('\n')
+                            data.append(line.removePrefix("data:").removePrefix(" "))
+                            require(data.length <= 64 * 1024) { "词典更新事件超过大小限制" }
+                        }
+                    }
+                }
+            }
+            return terminal ?: error("词典更新连接已中断，请刷新本地版本确认")
+        } finally { conn.disconnect(); connection.set(null) }
+    }
+
     fun download(current: String, latest: String, abi: String, directory: File, expectedHash: String): File {
         require(Regex("[a-fA-F0-9]{64}").matches(expectedHash)) { "发布缺少有效校验信息" }
         directory.mkdirs()

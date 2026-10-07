@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from copy import deepcopy
 import time
 
@@ -13,6 +14,7 @@ from app.pipeline.fare_basis import select as select_fare_basis, CLARIFICATION a
 from app.tools import registry
 from app.tools._rt12306 import is_emu_train_code, is_train_code
 from app.tools.base import ToolResult
+from app.ticket_copy import join_clauses
 
 MAX_TRAINS = 10
 _TOOLS = {"schedule": "train.schedule", "ticket": "ticket.query", "fare": "ticket.price", "routing": "emu.routing"}
@@ -33,8 +35,9 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
     """
     codes = list(dict.fromkeys(str(code).strip().upper() for code in trains if str(code).strip()))
     ops = list(dict.fromkeys(str(op).strip() for op in operations if str(op).strip()))
+    ticket_requested = "ticket" in ops
     fare_basis = select_fare_basis(message)
-    if "fare" in ops and fare_basis is None:
+    if any(op in {"ticket", "fare"} for op in ops) and fare_basis is None:
         return _response(FARE_CLARIFICATION)
     if len(codes) > MAX_TRAINS:
         return _response(f"本次列出 {len(codes)} 个不同车次，最多支持同时查询 {MAX_TRAINS} 个车次；未发起查询，请减少车次后重试。")
@@ -65,6 +68,8 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
                 return _response(f"未发起查询：最多支持 {MAX_DATES} 个不同日期，请减少日期后重试。")
         if recent and len(days) > 1 and "routing" in ops:
             return _response("未发起查询：最近交路与指定多日期不能同时查询，请明确查询范围。")
+    if os.environ.get("APP_VARIANT", "main").lower() != "lm" and any(op in {"ticket", "fare"} for op in ops):
+        ops = list(dict.fromkeys([peer for op in ops for peer in (["fare", "ticket"] if op in {"ticket", "fare"} else [op])]))
     interval = tuple(od) if isinstance(od, (tuple, list)) and len(od) == 2 else None
     interval_ready = _ticket_interval_ready(interval)
     after, before = _parse_time_window(message, date)
@@ -110,7 +115,7 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
                     params.update(from_station=interval[0], to_station=interval[1])
                     if op == "fare":
                         params["fare_basis"] = fare_basis
-                    if op == "ticket":
+                    if op == "ticket" and ticket_requested:
                         params.update(after_time=after or None, before_time=before or None,
                                       seat=seat or None, train_type=train_type or None)
                 jobs.append((index, op, heading, params))
@@ -157,6 +162,7 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
         raise
 
     notes = []
+    delivery_fragments = {}
     for (_, op, _, params), result in zip(jobs, results):
         # Results have independent parameter objects even if a tool mutates its copy.
         name = _TOOLS[op]
@@ -169,11 +175,13 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
             notes.append(f"[{params['train']} {params['date']} {name}] {result.note}")
         if result.ok:
             response["data"].append({**({"query_date": params["date"]} if len(days) > 1 else {}),
-                                     **({"query_context": deepcopy(params)} if op == "fare" else {}),
+                                     **({"query_context": deepcopy(params)} if op in {"fare", "ticket"} else {}),
                                      "tool": name, "data": deepcopy(result.data), "text": result.text,
                                      "sources": list(result.sources), "note": result.note, "total": result.total,
                                      "shown": result.shown, "truncated": result.truncated, "filters": dict(result.filters or {}),
                                      "fetched_at": result.fetched_at, "integrity": result.integrity_line()})
+            if op in {"fare", "ticket"}:
+                delivery_fragments[index] = (name, params, result)
             if op == "ticket":
                 text = ticket_answer.render(params, result)
             elif op == "fare":
@@ -186,6 +194,8 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
                 text = "查询结果已返回，请查看结果卡片。"
             sections[index] = heading + "\n" + text
         else:
+            if op in {"fare", "ticket"}:
+                delivery_fragments[index] = (name, params, result)
             error = result.error or "工具未返回查询结果"
             sections[index] = heading + "\n查询失败：" + error
             if result.note:
@@ -193,14 +203,17 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
             if result.sources:
                 sections[index] += "\n来源：" + "、".join(result.sources)
             notes.append(f"[{params['train']} {params['date']} {name}] 失败原因：{error}")
-            if op in {"schedule", "routing", "fare"}:
+            if op in {"schedule", "routing", "fare", "ticket"}:
                 response["display_errors"].append({**({"query_date": params["date"]} if len(days) > 1 else {}),
                                                    "tool": name, "train_code": params["train"],
                                                    "query": params["train"], "date": params["date"] or "", "message": error,
                                                    **({"query_context": deepcopy(params), "sources": list(result.sources),
-                                                       "fetched_at": result.fetched_at, "note": result.note} if op == "fare" else {})})
+                                                       "fetched_at": result.fetched_at, "note": result.note, "data": deepcopy(result.data)} if op in {"fare", "ticket"} else {})})
 
     response["sources"] = list(dict.fromkeys(response["sources"]))
-    response["note"] = "；".join(dict.fromkeys(notes))
+    response["note"] = join_clauses(notes)
     response["direct_answer"] = "\n\n".join(section for section in sections if section)
+    from app.pipeline.ticket_delivery import fragment
+    response["direct_fragments"] = [fragment(*delivery_fragments[i], section) if i in delivery_fragments
+                                    else {"text": section} for i, section in enumerate(sections) if section]
     return response

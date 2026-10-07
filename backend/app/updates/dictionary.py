@@ -83,7 +83,7 @@ def _validate(conn):
         raise github.UpdateError('integrity','词典完整性检查失败')
 
 
-def build_feed(archive: Path, output: Path, tag: str):
+def build_feed(archive: Path, output: Path, tag: str, progress=None):
     if not tag_key(tag):raise github.UpdateError('release','词典版本无效')
     try:
         with zipfile.ZipFile(archive) as z, closing(sqlite3.connect(output)) as conn, conn:
@@ -98,11 +98,16 @@ def build_feed(archive: Path, output: Path, tag: str):
                    ('trips.txt','g_trip',lambda r:(r['trip_id'],r.get('route_id',''),r.get('trip_short_name',''),int(r['trip_id'].startswith('DUMMY')))),
                    ('stop_times.txt','g_stop_time',lambda r:(r['trip_id'],int(r['stop_sequence']),r['stop_id'],r.get('arrival_time',''),r.get('departure_time',''),_number(r.get('shape_dist_traveled'))))]
             for name,table,convert in specs:
+                processed=0
+                if progress:progress({'stage':'import','table':table,'completed':0,'unit':'records'})
                 with z.open(name) as raw:
                     rows=(convert(r) for r in csv.DictReader(io.TextIOWrapper(raw,encoding='utf-8-sig')))
                     count=4 if table in ('g_stop','g_trip') else 6
                     while batch:=list(itertools.islice(rows,1000)):
                         conn.executemany(f'INSERT INTO {table} VALUES({",".join("?" for _ in range(count))})',batch)
+                        processed+=len(batch)
+                        if progress:progress({'stage':'import','table':table,'completed':processed,'unit':'records'})
+            if progress:progress({'stage':'validate'})
             _validate(conn)
             conn.executemany('INSERT OR REPLACE INTO meta VALUES(?,?)',
                              [('gtfs_tag',tag),('gtfs_pulled_at',datetime.now(timezone.utc).isoformat())])

@@ -32,6 +32,14 @@ class ChatRequest(BaseModel):
     )
     display_action: Optional[dict] = Field(None, description="由界面发起的结构化展示动作参数")
 
+    client_capabilities: list[str] = Field(default_factory=list, max_items=32, description="可选展示能力；未声明保留旧版文字回执")
+
+    @validator("client_capabilities", pre=True)
+    def _check_capabilities(cls, value):
+        if not isinstance(value, list) or len(value) > 32 or any(not isinstance(v, str) or not v or len(v) > 80 for v in value):
+            raise ValueError("client_capabilities须为不超过32项的短字符串列表")
+        return list(dict.fromkeys(value))
+
     # ---- 供应商选择（BYOK：用户自备 Key；同一个后端可服务多套 Key）----
     # 这些字段允许前端按请求指定 LLM 供应商，覆盖服务端配置。
     provider: Optional[str] = Field(

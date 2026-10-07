@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 
 from app.tools.base import ToolResult
+from app.ticket_copy import AVAILABILITY_SNAPSHOT, seat_label
 
 
 def direct_answer(retrieval: dict) -> str:
@@ -14,6 +15,12 @@ def direct_answer(retrieval: dict) -> str:
     return value if isinstance(value, str) else ""
 
 
+def direct_complete(retrieval: dict) -> bool:
+    """An empty body can still be a completed deterministic structured delivery."""
+    return os.environ.get("APP_VARIANT", "main").lower() != "lm" and (
+        retrieval.get("direct_complete") is True or bool(direct_answer(retrieval)))
+
+
 def missing_interval(train: str | None, date: str | None) -> str:
     subject = " ".join(filter(None, [date, train]))
     return (
@@ -22,14 +29,6 @@ def missing_interval(train: str | None, date: str | None) -> str:
         "余票随乘车区间变化，不能用列车全程或时刻表代替。"
         "例如：北京南到上海虹桥。"
     )
-
-
-_SEAT_NAMES = {
-    "business": "商务座", "business_class": "商务座", "special_class": "特等座",
-    "first_class": "一等座", "second_class": "二等座", "soft_sleeper": "软卧",
-    "hard_sleeper": "硬卧", "soft_seat": "软座", "hard_seat": "硬座",
-    "no_seat": "无座", "standing": "无座",
-}
 
 
 def _cell(value) -> str:
@@ -60,7 +59,7 @@ def render(params: dict, result: ToolResult) -> str:
             seats = row.get("seats") if isinstance(row.get("seats"), dict) else {}
             values = []
             for key, value in seats.items():
-                label = _SEAT_NAMES.get(str(key), str(key))
+                label = seat_label(key)
                 state = "未提供" if value is None or str(value).strip() in {"", "--"} else str(value)
                 values.append(f"{label}：{state}")
             seat_text = "；".join(values) or "席别余票数据缺失，无法判断是否有票"
@@ -80,7 +79,8 @@ def render(params: dict, result: ToolResult) -> str:
         parts.append(f"采样时刻：{result.fetched_at}")
     if result.note:
         parts.append(result.note)
-    parts.append("余票实时变化，请以 12306 提交订单时显示为准。")
+    if AVAILABILITY_SNAPSHOT not in (result.note or ""):
+        parts.append(AVAILABILITY_SNAPSHOT)
     if result.sources:
         parts.append("来源：" + "、".join(result.sources))
     return "\n\n".join(parts)

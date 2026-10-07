@@ -22,6 +22,19 @@ def schedule(code):
         "stops": [{"station": "北京南", "start_time": "10:00"}]}, sources=["https://kyfw.12306.cn"])
 
 
+def paired_receipt(name, params, *, seat="有", text=None):
+    code, day = params['train'], params['date']
+    origin, destination = params['from_station'], params['to_station']
+    if name == "ticket.query":
+        return ToolResult(ok=True, data={"train_date":day,"from_station":origin,"to_station":destination,
+            "trains":[{"train_no":code,"from_station":origin,"to_station":destination,"seats":{"second_class":seat}}]},
+            sources=["https://kyfw.12306.cn/otn/leftTicket/queryI"])
+    return ToolResult(ok=True, text=text or f"{code} {origin}→{destination}：硬座 41.5 元；不代表当前有票。",
+        data={"query_date":day,"fare_basis":"executed","from_station":origin,"to_station":destination,
+              "data":[{"train_code":code,"from_station":origin,"to_station":destination,"prices":{"硬座":"41.5"}}]},
+        sources=["https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice"])
+
+
 class IncidentDelivery(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         variant = patch.dict(os.environ, {"APP_VARIANT": "main"})
@@ -100,11 +113,12 @@ class IncidentDelivery(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls, [])
         self.assertIn("出发站", answer); self.assertIn("到达站", answer)
 
-    async def test_ticket_complete_interval_reaches_only_ticket_query(self):
+    async def test_ticket_complete_interval_pairs_price_without_schedule(self):
         def boundary(name, params):
-            return ToolResult(ok=True, data={"trains": [{"train_no": "G1", "seats": {"second_class": "候补"}}]})
+            return paired_receipt(name, params, seat="候补")
         _, calls, answer = await self.execute("查一下 2026-10-05 G1 北京南到上海虹桥的余票", boundary=boundary)
-        self.assertEqual([n for n, _ in calls], ["ticket.query"])
+        self.assertEqual([n for n, _ in calls], ["ticket.price", "ticket.query"])
+        self.assertTrue(all((p["train"], p["date"], p["from_station"], p["to_station"]) == ("G1", "2026-10-05", "北京南", "上海虹桥") for _, p in calls))
         self.assertEqual(calls[0][1]["train"], "G1")
         self.assertIn("二等座：候补", answer)
 
@@ -136,9 +150,10 @@ class IncidentDelivery(unittest.IsolatedAsyncioTestCase):
 
     async def test_fare_screenshot_delivers_actual_tool_receipt_without_model(self):
         def boundary(name, params):
-            return ToolResult(ok=True, text="K5201 北京西→正定 06:17–09:16：硬座 41.5 元；不代表当前有票。")
+            return paired_receipt(name, params, text="K5201 北京西→正定 06:17–09:16：硬座 41.5 元；不代表当前有票。")
         _, calls, answer = await self.execute("查询10月5日 K5201北京西到正定的票价", boundary=boundary)
-        self.assertEqual([n for n, _ in calls], ["ticket.price"])
+        self.assertEqual([n for n, _ in calls], ["ticket.price", "ticket.query"])
+        self.assertTrue(all(p["train"] == "K5201" and p["to_station"] == "正定" for _, p in calls))
         self.assertEqual(calls[0][1]["train"], "K5201")
         self.assertEqual(calls[0][1]["to_station"], "正定")
         self.assertIn("41.5", answer)
@@ -192,9 +207,10 @@ class IncidentDelivery(unittest.IsolatedAsyncioTestCase):
     async def test_integrated_ten_train_fares_and_overflow_without_any_tool_calls(self):
         ten = "、".join(f"G{i}" for i in range(1, 11))
         def boundary(name, params):
-            return ToolResult(ok=True, text=f"{params['train']} 北京南→上海虹桥：41.5元（不代表当前有票）")
+            return paired_receipt(name, params)
         _, calls, answer = await self.execute(f"{ten} 2026-10-05 北京南到上海虹桥的票价", boundary=boundary)
-        self.assertEqual(len(calls), 10)
+        self.assertEqual(len(calls), 20)
+        self.assertEqual({(n,p["train"]) for n,p in calls}, {(n,f"G{i}") for i in range(1,11) for n in ["ticket.price","ticket.query"]})
         self.assertEqual({p['train'] for _, p in calls}, {f'G{i}' for i in range(1, 11)})
         self.assertIn("G10", answer)
         _, calls, answer = await self.execute(f"{ten}、G11 的票价")
@@ -206,7 +222,7 @@ class IncidentDelivery(unittest.IsolatedAsyncioTestCase):
         def boundary(name, params):
             if name == "train.schedule":
                 return schedule(params['train'])
-            return ToolResult(ok=True, text=f"{params['train']} 票价41.5元", data={"trains": [{"train_no": params['train'], "seats": {"second_class": "有"}}]})
+            return paired_receipt(name, params)
         _, calls, answer = await self.execute("G1、G2 2026-10-05 北京南到上海虹桥的时刻表、余票和票价", boundary=boundary)
         self.assertEqual(len(calls), 6)
         self.assertEqual({n for n, _ in calls}, {"train.schedule", "ticket.query", "ticket.price"})
@@ -222,12 +238,15 @@ class IncidentDelivery(unittest.IsolatedAsyncioTestCase):
 
     async def test_ten_real_receipts_are_not_cut_as_model_repetition(self):
         def boundary(name, params):
-            return ToolResult(ok=True, text="共同来源说明" * 80,
-                              sources=["https://kyfw.12306.cn"], note="这是该区间的票价，不代表当前有票。", total=1, shown=1)
+            result = paired_receipt(name, params, text="共同来源说明" * 80)
+            result.note="这是该区间的票价，不代表当前有票。"
+            result.total=1; result.shown=1
+            return result
         trains = "、".join(f"G{i}" for i in range(1, 11))
         for mode in ("stream", "block"):
             done, calls, answer = await self.execute(f"{trains} 北京南到上海虹桥明天的票价", mode=mode, boundary=boundary)
-            self.assertEqual(len(calls), 10)
+            self.assertEqual(len(calls), 20)
+            self.assertEqual({(n,p["train"]) for n,p in calls}, {(n,f"G{i}") for i in range(1,11) for n in ["ticket.price","ticket.query"]})
             self.assertFalse(done["truncated"])
             self.assertIn("G10", answer)
 

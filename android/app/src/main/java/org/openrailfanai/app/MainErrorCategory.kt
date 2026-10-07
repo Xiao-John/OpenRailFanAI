@@ -9,3 +9,20 @@ internal fun mainErrorCategory(message: String): String = when {
     Regex("连接|网络|超时|DNS|timeout|connection", RegexOption.IGNORE_CASE).containsMatchIn(message) -> "network"
     else -> "service"
 }
+
+internal fun mainErrorTitle(message: String): String = when (mainErrorCategory(message)) {
+    "configuration" -> "请检查云端模型配置"
+    "auth" -> "模型认证失败，请检查 API Key"
+    "network" -> "网络连接失败，请稍后重试"
+    else -> "查询服务暂时异常"
+}
+
+internal fun providerFailureCopy(message: String): String = when {
+    Regex("model.{0,30}(?:not found|does not exist)|模型.{0,10}(?:不存在|不可用)", RegexOption.IGNORE_CASE).containsMatchIn(message) -> "模型不存在或暂不可用，请检查模型名称。"
+    else -> when (mainErrorCategory(message)) {
+        "auth" -> "API Key 认证失败，请检查后重试。"
+        "configuration" -> "请检查提供商配置与接口地址。"
+        "network" -> "网络连接失败或超时，请稍后重试。"
+        else -> "请求未成功，请稍后重试或查看提供商服务状态。"
+    }
+}

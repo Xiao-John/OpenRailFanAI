@@ -57,3 +57,12 @@ async def apply(body: ApplyRequest,request: Request):
         return {'component':'dictionary',**result}
     except asyncio.TimeoutError:raise HTTPException(504,detail={'code':'timeout','message':'词典下载超时'})
     except github.UpdateError as error:raise failure(error)
+
+
+@router.post('/apply/stream')
+async def apply_stream(body: ApplyRequest,request: Request):
+    local_mutation(request)
+    from fastapi.responses import StreamingResponse
+    from app.updates.dictionary_progress import stream
+    return StreamingResponse(stream(body.latest_version,data.db_path()),media_type='text/event-stream',
+                             headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})

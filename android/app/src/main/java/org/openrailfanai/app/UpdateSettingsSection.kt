@@ -2,6 +2,10 @@ package org.openrailfanai.app
 
 import android.os.Build
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.*
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -31,6 +35,15 @@ internal fun UpdateSettingsSection(settingsClient: SettingsClient, onOpenUrl: (S
     var dictionary by remember { mutableStateOf<JSONObject?>(null) }
     var dictionaryMessage by remember { mutableStateOf("") }
     var dictionaryBusy by remember { mutableStateOf(false) }
+    var dictionaryProgress by remember { mutableStateOf<JSONObject?>(null) }
+    var dictionaryStartedAt by remember { mutableStateOf(0L) }
+    var dictionaryElapsed by remember { mutableStateOf(0L) }
+    LaunchedEffect(dictionaryBusy) {
+        while (dictionaryBusy) {
+            dictionaryElapsed = (android.os.SystemClock.elapsedRealtime() - dictionaryStartedAt) / 1000
+            delay(1000)
+        }
+    }
     var dictionaryJob by remember { mutableStateOf<Job?>(null) }
     var dictionaryClient by remember { mutableStateOf<UpdateClient?>(null) }
 
@@ -57,6 +70,8 @@ internal fun UpdateSettingsSection(settingsClient: SettingsClient, onOpenUrl: (S
         }
     }
     fun dictionaryOperation(message: String, apply: Boolean = false, operation: suspend (UpdateClient) -> Unit) {
+        dictionaryProgress = null
+        dictionaryStartedAt = android.os.SystemClock.elapsedRealtime(); dictionaryElapsed = 0
         dictionaryBusy = true; dictionaryMessage = message
         val client = settingsClient.updates(); dictionaryClient = client
         dictionaryJob = scope.launch {
@@ -64,8 +79,11 @@ internal fun UpdateSettingsSection(settingsClient: SettingsClient, onOpenUrl: (S
             catch (error: CancellationException) { throw error }
             catch (error: Exception) { dictionaryMessage = "操作失败：${error.message ?: "请稍后重试"}" }
             finally {
-                if (apply) withContext(NonCancellable + Dispatchers.IO) {
-                    runCatching { settingsClient.updates().dictionaryLocal() }.onSuccess { local = it.optJSONObject("current") }
+                if (apply) {
+                    dictionaryProgress = JSONObject().put("stage", "refresh")
+                    withContext(NonCancellable + Dispatchers.IO) {
+                        runCatching { settingsClient.updates().dictionaryLocal() }.onSuccess { local = it.optJSONObject("current") }
+                    }
                 }
                 dictionaryBusy = false; dictionaryClient = null
             }
@@ -125,11 +143,12 @@ internal fun UpdateSettingsSection(settingsClient: SettingsClient, onOpenUrl: (S
             }
         }
     }
-    SettingsCard("词典更新", "独立更新 GTFS 站序、时刻、坐标和里程，保留线路与车站档案缓存。") {
+    SettingsCard("词典更新", "更新线路、车站、时刻和里程数据，保留已有档案缓存。") {
         val value = local
-        BasicText(if (value?.optBoolean("available") == true) "数据版本：${value.optString("version", "未提供")}" else "本地词典尚未就绪或版本未读取。", style = updateStyle())
-        value?.optString("pulled_at")?.takeIf(String::isNotBlank)?.let { BasicText("采样日期：$it", style = updateStyle()) }
+        BasicText(if (value?.optBoolean("available") == true) "数据版本：${value.optString("version", "未提供")}" else "暂未读取到本地数据版本，请刷新确认。", style = updateStyle())
+        value?.optString("pulled_at")?.takeIf(String::isNotBlank)?.let { BasicText("数据更新时间：$it", style = updateStyle()) }
         if (dictionaryMessage.isNotBlank()) BasicText(dictionaryMessage, style = updateStyle())
+        if (dictionaryBusy) DictionaryProgressPanel(dictionaryProgress, dictionaryElapsed)
         SettingsButton("刷新本地版本", Modifier.fillMaxWidth(), enabled = !dictionaryBusy) {
             dictionaryOperation("正在读取本地词典…") { client ->
                 local = withContext(Dispatchers.IO) { client.dictionaryLocal() }.optJSONObject("current")
@@ -142,25 +161,80 @@ internal fun UpdateSettingsSection(settingsClient: SettingsClient, onOpenUrl: (S
                 val response = withContext(Dispatchers.IO) { client.dictionary() }
                 require(response.optString("status") == "ok" && response.opt("update_available") is Boolean) { "词典检查未返回有效状态" }
                 dictionary = response; local = response.optJSONObject("current")
-                dictionaryMessage = if (response.optBoolean("update_available")) "发现词典版本 ${response.optString("latest_version")}" else "当前 GTFS 词典已是最新版本。"
+                dictionaryMessage = if (response.optBoolean("update_available")) "发现词典版本 ${response.optString("latest_version")}" else "当前词典数据已是最新版本。"
             }
         }
         val latest = dictionary?.optString("latest_version").orEmpty()
         if (dictionary?.optBoolean("update_available") == true && latest.isNotBlank()) {
-            SettingsButton("更新 GTFS 词典", Modifier.fillMaxWidth(), primary = true, enabled = !dictionaryBusy) {
+            SettingsButton("更新词典数据", Modifier.fillMaxWidth(), primary = true, enabled = !dictionaryBusy) {
                 dictionaryOperation("正在下载、校验并导入词典…", apply = true) { client ->
-                    val response = withContext(Dispatchers.IO) { client.applyDictionary(latest) }
+                    val response = withContext(Dispatchers.IO) { client.applyDictionaryStream(latest) { dictionaryProgress = it } }
                     require(response.optString("status") in setOf("updated", "unchanged")) { "词典没有返回有效完成状态" }
                     dictionary = null
-                    dictionaryMessage = if (response.optString("status") == "updated") "词典更新已提交。" else "词典版本无需更新。"
+                    dictionaryMessage = if (response.optString("status") == "updated") "词典数据已更新。" else "词典版本无需更新。"
                 }
             }
         }
         if (dictionaryBusy) SettingsButton("取消", Modifier.fillMaxWidth()) {
             dictionaryClient?.cancel(); dictionaryJob?.cancel()
-            dictionaryMessage = "已请求取消；若已进入提交阶段，数据可能已更新。请刷新本地版本确认。"
+            dictionaryMessage = "已请求取消；若已开始写入，数据可能已经更新。请刷新版本确认。"
         }
     }
 }
 
 private fun updateStyle() = TextStyle(color = NativeColors.muted, fontSize = 14.appSp, lineHeight = 21.appSp)
+
+
+@Composable
+private fun DictionaryProgressPanel(event: JSONObject?, elapsed: Long) {
+    val stage = event?.optString("stage").orEmpty()
+    val done = event?.optLong("completed", -1) ?: -1
+    val total = event?.optLong("total", -1) ?: -1
+    val bytes = stage == "download" && event?.optString("unit") == "bytes"
+    val measured = bytes && done >= 0 && total > 0 && done <= total
+    val title = when (stage) {
+        "check" -> "正在核对词典版本"
+        "download" -> "正在下载更新包"
+        "verify" -> "正在校验更新包"
+        "import" -> "正在导入词典数据"
+        "validate" -> "正在检查数据完整性"
+        "commit" -> "正在保存词典数据"
+        "refresh" -> "正在确认本地词典版本"
+        else -> "正在等待更新服务"
+    }
+    Column(Modifier.fillMaxWidth().background(NativeColors.panel, RoundedCornerShape(10.appDp))
+        .padding(12.appDp), verticalArrangement = Arrangement.spacedBy(8.appDp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BasicText(title, Modifier.weight(1f), style = updateStyle().copy(color = NativeColors.ink))
+            BasicText("${elapsed}秒", style = updateStyle())
+        }
+        BoxWithConstraints(Modifier.fillMaxWidth().height(5.appDp).background(NativeColors.line, RoundedCornerShape(3.appDp))) {
+            if (measured) Box(Modifier.fillMaxWidth((done.toFloat() / total).coerceIn(0f, 1f)).fillMaxHeight()
+                .background(NativeColors.blue, RoundedCornerShape(3.appDp)))
+            else {
+                val transition = rememberInfiniteTransition(label = "dictionary-working")
+                val position by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(1200), RepeatMode.Reverse), label = "dictionary-working-position")
+                Box(Modifier.offset(x = maxWidth * (position * 0.7f)).width(maxWidth * 0.3f).fillMaxHeight()
+                    .background(NativeColors.blue, RoundedCornerShape(3.appDp)))
+            }
+        }
+        val detail = when {
+            measured -> "${formatUpdateBytes(done)} / ${formatUpdateBytes(total)} · 下载 ${(done * 100 / total).coerceIn(0, 100)}%"
+            bytes && done >= 0 -> "已下载 ${formatUpdateBytes(done)}，总大小未知"
+            stage == "import" -> {
+                val table = when (event?.optString("table")) { "g_stop" -> "车站"; "g_trip" -> "车次"; "g_stop_time" -> "站序与时刻"; else -> "数据" }
+                "$table · 已处理 ${done.coerceAtLeast(0)} 条记录"
+            }
+            stage == "commit" -> "正在保存数据；即使请求取消，保存仍可能完成。"
+            else -> "本阶段耗时取决于网络和设备性能。"
+        }
+        BasicText(detail, style = updateStyle())
+        BasicText("百分比仅表示下载进度；下载后还需校验并保存数据。", style = updateStyle().copy(fontSize = 12.appSp))
+    }
+}
+
+private fun formatUpdateBytes(bytes: Long): String = when {
+    bytes >= 1024 * 1024 -> String.format(java.util.Locale.ROOT, "%.1f MB", bytes / (1024.0 * 1024))
+    bytes >= 1024 -> String.format(java.util.Locale.ROOT, "%.1f KB", bytes / 1024.0)
+    else -> "$bytes B"
+}

@@ -13,11 +13,13 @@ data class ChatStreamRequest(
     val sessionId: String,
     val displayAction: JSONObject? = null,
     val llmSpec: JSONObject? = null,
+    val clientCapabilities: List<String> = emptyList(),
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("message", message)
         .put("history", JSONArray().also { array -> history.forEach { array.put(it.toJson()) } })
         .put("session_id", sessionId)
+        .put("client_capabilities", JSONArray().also { array -> clientCapabilities.distinct().forEach { array.put(it) } })
         .also { body ->
             displayAction?.let { body.put("display_action", it) }
             llmSpec?.let { spec ->
@@ -59,10 +61,18 @@ data class EmptyResult(val status: String, val date: String?, val query: String?
 data class ErrorResult(val status: String, val message: String?, val category: String?, val tool: String?)
 data class UnsupportedResult(val kind: String?, val status: String?, val schemaVersion: Int?)
 data class FarePrice(val seat: String, val amount: String?, val currency: String)
+data class AvailabilitySeat(val seat: String, val availability: String?, val rawValue: String?, val status: String)
+data class FareAvailability(val status: String, val seats: List<AvailabilitySeat>, val sources: List<String>,
+    val fetchedAt: String?, val error: String?, val note: String?, val startTime: String?, val arriveTime: String?,
+    val duration: String?, val timeDiscrepancy: List<String>)
 data class FareResult(val status: String, val trainCode: String?, val date: String?,
     val fromStation: String?, val toStation: String?, val startTime: String?, val arriveTime: String?,
     val duration: String?, val prices: List<FarePrice>, val sources: List<String>,
-    val fetchedAt: String?, val error: String?, val note: String, val fareBasis: String? = null)
+    val fetchedAt: String?, val error: String?, val note: String, val fareBasis: String? = null,
+    val fareStatus: String? = null, val fareError: String? = null, val availability: FareAvailability? = null) {
+    val priceStatus: String get() = fareStatus ?: status
+    val priceError: String? get() = if (fareStatus == null) error else fareError
+}
 
 sealed interface DisplayResult
 data class TrainScheduleDisplay(val value: ScheduleResult) : DisplayResult
@@ -122,7 +132,7 @@ object DisplayResultParser {
 
     private fun fare(item: JSONObject): FareResult? {
         val status = item.string("status")?.takeIf { it in setOf("success", "partial", "empty", "failed") } ?: return null
-        val fields = listOf("train_code", "date", "from_station", "to_station", "start_time", "arrive_time", "duration", "fetched_at", "error", "note", "fare_basis")
+        val fields = listOf("train_code", "date", "from_station", "to_station", "start_time", "arrive_time", "duration", "fetched_at", "error", "note", "fare_basis", "fare_error")
         if (fields.any { item.has(it) && !item.isNull(it) && item.opt(it) !is String }) return null
         val values = item.optJSONArray("prices") ?: return null
         val prices = buildList {
@@ -135,11 +145,37 @@ object DisplayResultParser {
                 add(FarePrice(seat, amount, currency))
             }
         }
-        if (status in setOf("empty", "failed") && prices.isNotEmpty()) return null
-        if (status == "success" && (prices.isEmpty() || prices.any { it.amount == null })) return null
+        val singleStatuses = setOf("success", "partial", "empty", "failed", "not_requested")
+        val fareStatus = if (item.has("fare_status")) item.string("fare_status")?.takeIf { it in singleStatuses } ?: return null else null
+        val priceStatus = fareStatus ?: status
+        if (priceStatus in setOf("empty", "failed", "not_requested") && prices.isNotEmpty()) return null
+        if (priceStatus == "success" && (prices.isEmpty() || prices.any { it.amount == null })) return null
+        val availability = if (item.has("availability") && !item.isNull("availability")) {
+            val raw = item.optJSONObject("availability") ?: return null
+            val state = raw.string("status")?.takeIf { it in singleStatuses } ?: return null
+            if (listOf("fetched_at", "error", "note", "start_time", "arrive_time", "duration").any {
+                raw.has(it) && !raw.isNull(it) && raw.opt(it) !is String
+            }) return null
+            val rows = raw.optJSONArray("seats") ?: return null
+            val seats = buildList {
+                for (i in 0 until rows.length()) {
+                    val row = rows.optJSONObject(i) ?: return null
+                    val seat = (row.opt("seat") as? String)?.takeIf(String::isNotBlank) ?: return null
+                    val seatStatus = row.string("status")?.takeIf { it in setOf("available", "unavailable", "waitlist", "unknown") } ?: return null
+                    for (key in listOf("availability", "raw_value")) {
+                        val v = row.opt(key)
+                        if (v != null && v != JSONObject.NULL && v !is String && v !is Number) return null
+                    }
+                    add(AvailabilitySeat(seat, row.string("availability"), row.string("raw_value"), seatStatus))
+                }
+            }
+            if (state in setOf("empty", "failed", "not_requested") && seats.isNotEmpty()) return null
+            FareAvailability(state, seats, raw.stringArray("sources"), raw.string("fetched_at"), raw.string("error"),
+                raw.string("note"), raw.string("start_time"), raw.string("arrive_time"), raw.string("duration"), raw.stringArray("time_discrepancy"))
+        } else null
         return FareResult(status, item.string("train_code"), item.string("date"), item.string("from_station"),
             item.string("to_station"), item.string("start_time"), item.string("arrive_time"), item.string("duration"),
-            prices, item.stringArray("sources"), item.string("fetched_at"), item.string("error"), item.string("note").orEmpty(), item.string("fare_basis"))
+            prices, item.stringArray("sources"), item.string("fetched_at"), item.string("error"), item.string("note").orEmpty(), item.string("fare_basis"), fareStatus, item.string("fare_error"), availability)
     }
 
     private fun schedule(item: JSONObject): ScheduleResult = ScheduleResult(

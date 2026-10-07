@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
@@ -50,7 +51,7 @@ def _safe_label(value: Optional[str], *, max_len: int = 32) -> str:
 async def chat(req: ChatRequest) -> PipelineResult:
     """块式接口：一次返回完整结果（测试/兼容用）。"""
     _log.info("chat(block) session=%s", _safe_label(req.session_id))
-    return await orchestrator.run(req.message, history=_to_history(req), llm=req.llm_spec(), display_action=req.display_action)
+    return await orchestrator.run(req.message, history=_to_history(req), llm=req.llm_spec(), display_action=req.display_action, client_capabilities=req.client_capabilities)
 
 
 def _sse_encode(event: dict) -> str:
@@ -68,7 +69,7 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     history = _to_history(req)
 
     async def gen():
-        agen = orchestrator.run_stream(req.message, history=history, llm=req.llm_spec(), display_action=req.display_action)
+        agen = orchestrator.run_stream(req.message, history=history, llm=req.llm_spec(), display_action=req.display_action, client_capabilities=req.client_capabilities)
         completed = False
         try:
             async for event in agen:
@@ -114,6 +115,7 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
 async def sessions_info() -> dict:
     """会话能力自述（前端用于探测是否支持多轮上下文）。"""
     return {
+        **({"supported_client_capabilities": ["ticket_fare_availability_v1"]} if os.environ.get("APP_VARIANT", "main").lower() != "lm" else {}),
         "multi_turn": True,
         "cancellable": True,
         "max_history_turns": 6,

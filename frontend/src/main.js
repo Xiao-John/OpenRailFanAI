@@ -802,7 +802,8 @@ function syncStructuredPresentation(refs, meta) {
 
 function classifyConnectionError(message) {
   const text = String(message || "").toLowerCase();
-  if (text.includes("401") || text.includes("api key") || text.includes("鉴权")) return "auth";
+  if (/未配置|尚未配置|未填写|missing.*(?:key|config)|not configured|base_url|非公网|地址被拒绝/.test(text)) return "configuration";
+  if (/\b401\b|invalid[_ ](?:api[_ ])?key|incorrect.*api.*key|密钥无效|认证失败|鉴权失败|unauthorized/.test(text)) return "auth";
   if (text.includes("timeout") || text.includes("connect") || text.includes("网络") || text.includes("连接")) return "network";
   return "service";
 }
@@ -818,14 +819,16 @@ function buildConnectionError(message, retry) {
   const kind = classifyConnectionError(message);
   const card = el("section", "connection-error");
   const titleRow = el("div", "connection-title-row");
-  titleRow.append(icon("cloud-error", "connection-icon"), el("strong", "connection-error-title", UI_COPY.error.title));
+  titleRow.append(icon("cloud-error", "connection-icon"), el("strong", "connection-error-title", ({ configuration: "请检查云端模型配置", auth: "模型认证失败，请检查 API Key", network: "网络连接失败，请稍后重试", service: UI_COPY.error.title })[kind]));
   card.appendChild(titleRow);
   card.appendChild(el("div", "connection-error-copy", UI_COPY.error.message));
   const actions = el("div", "connection-error-actions");
   const retryButton = el("button", "connection-retry", UI_COPY.error.retry); retryButton.type = "button";
   retryButton.addEventListener("click", () => retry && retry());
   const settingsButton = el("button", "connection-settings", UI_COPY.error.settings); settingsButton.type = "button";
+  if (kind === "service" || kind === "network") settingsButton.textContent = "查看错误详情";
   settingsButton.addEventListener("click", () => {
+    if (kind === "service" || kind === "network") { detailsEl.open = !detailsEl.open; return; }
     if (kind === "auth") state.apiKeyError = { provider: activeCloudEntry()?.id || "", message: UI_COPY.error.invalidKey };
     navigate("#/settings");
   });

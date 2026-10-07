@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets
 /** Owns the HTTP/SSE contract with the existing FastAPI chat endpoint. */
 class ChatRepository(private val baseUrl: String) {
     @Volatile private var activeConnection: HttpURLConnection? = null
+    @Volatile private var capabilitiesChecked = false
+    @Volatile private var ticketFareAvailabilitySupported = false
 
     fun cancel() { activeConnection?.disconnect() }
 
@@ -35,7 +37,9 @@ class ChatRepository(private val baseUrl: String) {
         var latency: Double? = null
         var processLogs: List<String> = emptyList()
         try {
-            connection.outputStream.use { it.write(request.toJson().toString().toByteArray(StandardCharsets.UTF_8)) }
+            val capabilities = if (ensureCapabilities()) listOf("ticket_fare_availability_v1") else emptyList()
+            val effectiveRequest = request.copy(clientCapabilities = capabilities)
+            connection.outputStream.use { it.write(effectiveRequest.toJson().toString().toByteArray(StandardCharsets.UTF_8)) }
             val code = connection.responseCode
             if (code !in 200..299) throw ChatHttpException(code)
             InputStreamReader(connection.inputStream, StandardCharsets.UTF_8).buffered().use { reader ->
@@ -68,6 +72,32 @@ class ChatRepository(private val baseUrl: String) {
         } finally {
             activeConnection = null
             connection.disconnect()
+        }
+    }
+
+    /** Probe once per backend instance; unknown or failed probes keep legacy delivery safe. */
+    private fun ensureCapabilities(): Boolean {
+        if (capabilitiesChecked) return ticketFareAvailabilitySupported
+        synchronized(this) {
+            if (capabilitiesChecked) return ticketFareAvailabilitySupported
+            val probe = (URL("$baseUrl/api/sessions").openConnection() as HttpURLConnection).apply {
+                connectTimeout = 4_000; readTimeout = 4_000; requestMethod = "GET"
+            }
+            try {
+                if (probe.responseCode in 200..299) {
+                    val json = probe.inputStream.bufferedReader(StandardCharsets.UTF_8).use { JSONObject(it.readText()) }
+                    val values = json.optJSONArray("supported_client_capabilities")
+                    ticketFareAvailabilitySupported = (0 until (values?.length() ?: 0)).any {
+                        values?.optString(it) == "ticket_fare_availability_v1"
+                    }
+                }
+            } catch (_: Exception) {
+                ticketFareAvailabilitySupported = false
+            } finally {
+                probe.disconnect()
+                capabilitiesChecked = true
+            }
+            return ticketFareAvailabilitySupported
         }
     }
 

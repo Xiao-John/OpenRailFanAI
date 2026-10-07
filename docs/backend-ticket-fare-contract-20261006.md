@@ -27,7 +27,7 @@
 示例：
 
 ```json
-{"kind":"ticket_fare","schema_version":1,"status":"success","train_code":"G1","date":"2026-10-07","from_station":"北京南","to_station":"上海虹桥","start_time":"06:30","arrive_time":"11:24","duration":"04:54","prices":[{"seat":"二等座","amount":"795.0","currency":"CNY","raw_amount":"795.0"}],"sources":["https://kyfw.12306.cn/otn/leftTicketPrice/queryAllPublicPrice"],"fetched_at":"2026-10-06T01:34:56.179071+00:00","error":null,"note":"票价不代表实时余票；到发时刻为接口区间时刻，不代表实际运行状态。"}
+{"kind":"ticket_fare","schema_version":1,"status":"success","train_code":"G1","date":"2026-10-07","from_station":"北京南","to_station":"上海虹桥","start_time":"06:30","arrive_time":"11:24","duration":"04:54","prices":[{"seat":"二等座","amount":"795.0","currency":"CNY","raw_amount":"795.0"}],"sources":["https://kyfw.12306.cn/otn/leftTicketPrice/queryAllPublicPrice"],"fetched_at":"2026-10-06T01:34:56.179071+00:00","error":null,"note":"票价可作为购票参考；到发时刻为接口区间时刻，不代表实际运行状态。"}
 ```
 
 示例节选同次真实响应的一个席别，完整响应还有一等座、商务座；不要据此裁剪实际数组。

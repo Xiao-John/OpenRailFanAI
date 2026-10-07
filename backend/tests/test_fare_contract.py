@@ -110,23 +110,36 @@ class FareDelivery(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(tool.data['query_date'],DAY)
         self.assertTrue(tool.fetched_at.endswith('+00:00'))
         self.assertIn('二等座 795 元',tool.text)
-        self.assertIn('不表示该席别当前有票',tool.text)
+        self.assertIn('票价可作为购票参考，具体以购票页面为准。',tool.text)
 
     async def test_legacy_scalar_retrieve_success_and_failure_keep_scope(self):
         slots=Slots(target='G1',time=DAY,direction='北京南到上海虹桥')
         for ok in [True,False]:
             tool=ToolResult(ok=ok,data={'data':[dict(ROW)],'query_date':DAY} if ok else None,
                             text='原始票价795元',error='' if ok else '接口超时',sources=[SOURCE])
-            with patch('app.tools.registry.invoke_by_name',AsyncMock(return_value=tool)):
+            async def invoke(name, params):
+                if name == 'ticket.query':
+                    return ToolResult(ok=ok,data={'train_date':DAY,'from_station':'北京南','to_station':'上海虹桥',
+                        'trains':[dict(train_no='G1',from_station='北京南',to_station='上海虹桥',seats={'second_class':'候补'})]} if ok else None,
+                        error='' if ok else '余票超时')
+                self.assertEqual(name,'ticket.price')
+                return tool
+            with patch('app.tools.registry.invoke_by_name',invoke):
                 response=await retrieve('ticket',slots,'realtime','G1北京南到上海虹桥票价')
             value=serialize_display_results(response['data'],response['display_errors'])[0]
             self.assertEqual(value['status'],'success' if ok else 'failed')
             self.assertEqual(value['date'],DAY);self.assertEqual(value['train_code'],'G1')
+            self.assertEqual(value['fare_status'],'success' if ok else 'failed')
+            self.assertEqual(value['availability']['status'],'success' if ok else 'failed')
             self.assertIn('原始票价' if ok else '接口超时',response['direct_answer'])
 
     async def test_stream_block_partial_multitrain_multidate(self):
         async def invoke(name, params):
-            self.assertEqual(name,'ticket.price')
+            self.assertIn(name,{'ticket.price','ticket.query'})
+            if name=='ticket.query':
+                if params['train']=='G2':return ToolResult(ok=False,error='余票超时')
+                rows=[] if params['date']=='2026-10-08' else [dict(train_no='G1',from_station='北京南',to_station='上海虹桥',seats={'second_class':'无'})]
+                return ToolResult(ok=True,data={'train_date':params['date'],'from_station':'北京南','to_station':'上海虹桥','trains':rows})
             if params['train']=='G2':return ToolResult(ok=False,error='接口超时',note='票价不代表余票')
             rows=[] if params['date']=='2026-10-08' else [dict(ROW)]
             return ToolResult(ok=True,data={'data':rows,'query_date':params['date']},

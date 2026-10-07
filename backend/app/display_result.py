@@ -183,7 +183,7 @@ def serialize_display_results(tool_data: list[dict[str, Any]], errors: list[dict
     else:
         results.extend(schedules)
     for item in (errors or []):
-        if item.get("tool") == "ticket.price" and os.environ.get("APP_VARIANT", "main").lower() != "lm":
+        if item.get("tool") in {"ticket.price", "ticket.query"} and os.environ.get("APP_VARIANT", "main").lower() != "lm":
             continue
         if item.get("tool") == "emu.routing" and any(mark in item.get("message", "") for mark in ("未返回", "没有记录")):
             results.append({"kind": "empty", "status": "empty", "tool": "emu.routing",

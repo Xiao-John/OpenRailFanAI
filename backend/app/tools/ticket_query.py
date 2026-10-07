@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import re
+import os
 
 from app.config import get_settings
 from app.dates import date_note, normalize_date
@@ -17,6 +18,7 @@ from app.tools import _rt12306 as rt
 from app.tools._rt12306 import Realtime12306Error
 from app.tools._http import format_error
 from app.tools.base import Tool, ToolResult
+from app.ticket_copy import AVAILABLE_TRAIN_COUNT, AVAILABILITY_SNAPSHOT, join_clause, seat_label
 
 
 def _seat_summary(seats: dict, limit: int = 4) -> str:
@@ -142,10 +144,27 @@ def _seat_counts(trains: list[dict], limit: int = 8) -> dict:
     counts: dict = {}
     for t in trains:
         for k, v in (t.get("seats") or {}).items():
+            if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+                raw = str(v).strip()
+                if raw != "有" and not (raw.isdigit() and int(raw) > 0):
+                    continue
             if str(v) in ("", "无", "--", "0"):
                 continue
             counts[k] = counts.get(k, 0) + 1
     return dict(sorted(counts.items(), key=lambda x: -x[1])[:limit])
+
+
+def _availability_note(date_str: str, date_warn: str, verify_note: str) -> str:
+    """余票 note：各段用 `join_clause` 拼接，避免出现「。；」连写。
+
+    段序：实时余票（日期）→ 日期提醒 → 低余量二次校验说明 → 快照口径（仅 Main）。
+    `verify_note` 历史上自带前导「；」，这里统一交给 `join_clause` 决定分隔符。
+    """
+    note = join_clause(f"12306 实时余票（{date_str}）", date_warn)
+    note = join_clause(note, (verify_note or "").lstrip("；"))
+    if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+        note = join_clause(note, AVAILABILITY_SNAPSHOT)
+    return note
 
 
 def _is_low_count(v) -> bool:
@@ -221,6 +240,10 @@ class TicketQueryTool(Tool):
                       + (f"；另：{presale}" if presale else "")),
             )
 
+        if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+            trains = [row for row in trains if
+                      (not row.get("from_station") or row["from_station"] == from_name) and
+                      (not row.get("to_station") or row["to_station"] == to_name)]
         total_all = len(trains)
 
         if train_filter:
@@ -233,6 +256,9 @@ class TicketQueryTool(Tool):
         trains, applied = _apply_filters(trains, want_filters)
 
         if not trains:
+            empty_meta = dict(data={"availability_status": "empty", "from_station": from_name,
+                                   "to_station": to_name, "train_date": date_str},
+                              sources=["https://kyfw.12306.cn/otn/leftTicket/queryI"], fetched_at=_now_iso()) if os.environ.get("APP_VARIANT", "main").lower() != "lm" else {}
             presale = _presale_hint(date_str)
             if applied:
                 return ToolResult(
@@ -247,7 +273,7 @@ class TicketQueryTool(Tool):
                         "如需可放宽条件（如换时段或换席别）后重查"
                         + (f"；{presale}" if presale else "")
                     ),
-                    total=total_all, shown=0, truncated=False, filters=applied,
+                    total=total_all, shown=0, truncated=False, filters=applied, **empty_meta,
                 )
             return ToolResult(
                 ok=False,
@@ -257,7 +283,7 @@ class TicketQueryTool(Tool):
                     "12306 实时接口正常，但该区间/车次无数据"
                     + (f"；{presale}" if presale else "")
                 ),
-                total=total_all, shown=0,
+                total=total_all, shown=0, **empty_meta,
             )
 
         matched = len(trains)
@@ -280,7 +306,7 @@ class TicketQueryTool(Tool):
                     for k, v in (t.get("seats") or {}).items():
                         ov = (other.get("seats") or {}).get(k)
                         if ov is not None and str(ov) != str(v) and _is_low_count(v):
-                            changes.append(f"{t.get('train_no')} {k}: {v}→{ov}")
+                            changes.append(f"{t.get('train_no')} {seat_label(k)}: {v}→{ov}")
                 if changes:
                     verify_note = (
                         "；**低余量数据在两次采样间发生变化**（余票实时变动）："
@@ -331,11 +357,11 @@ class TicketQueryTool(Tool):
             text=(
                 head + "\n"
                 + (f"发车时段分布：{dist}\n" if dist else "")
-                + (f"有票席别统计：{seat_line}\n" if seat_line else "")
+                + (f"{AVAILABLE_TRAIN_COUNT if os.environ.get('APP_VARIANT', 'main').lower() != 'lm' else '有票席别统计'}：{seat_line}\n" if seat_line else "")
                 + "明细：\n" + "\n".join(lines)
             ),
             sources=["https://kyfw.12306.cn/otn/leftTicket/queryI"],
-            note=(f"12306 实时余票（{date_str}）" + (f"；{date_warn}" if date_warn else "") + verify_note),
+            note=_availability_note(date_str, date_warn, verify_note),
             total=matched, shown=len(shown), truncated=truncated,
             filters=applied, fetched_at=_now_iso(),
         )

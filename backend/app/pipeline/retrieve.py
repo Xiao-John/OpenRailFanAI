@@ -34,6 +34,7 @@ from app.tools import registry
 from app.tools import _rt12306 as rt
 from app.tools._rt12306 import extract_train_code, is_emu_train_code
 from app.tools.base import ToolResult
+from app.ticket_copy import join_clauses
 
 _log = logging.getLogger("railfan.retrieve")
 
@@ -462,7 +463,6 @@ async def retrieve(
     direct_ticket = main_ticket and (question_type or "realtime") == "realtime" and not display_action
     direct_fare = (os.environ.get("APP_VARIANT", "main").lower() != "lm"
                    and intent == "ticket" and bool(_FARE_RE.search(message or ""))
-                   and not re.search(r"余票|有票|候补", message or "")
                    and question_type == "realtime" and not display_action)
     ticket_reply = ""
     # 粗时段口径一次性挂在这里（声明之后、意图分派之前）：凡是按时段筛选的意图都会带上，
@@ -849,6 +849,9 @@ async def retrieve(
         else:
             current_plan.append((name, params))
     plan = current_plan
+    if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+        from app.pipeline.ticket_pair import expand
+        plan = expand(plan, message or "")
 
     # ---- 工具并发执行（M11.1 成本/延迟治理）----
     # 计划内的工具彼此**无依赖**（各自独立取数），早期串行执行导致
@@ -882,8 +885,17 @@ async def retrieve(
                     note="该工具执行时出现异常，已跳过",
                 )
 
-    results = await asyncio.gather(*(_run_one(n, p) for n, p in plan)) if plan else []
+    tasks = [asyncio.create_task(_run_one(n, p)) for n, p in plan]
+    try:
+        results = await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
     if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+        from app.pipeline.ticket_pair import complete_collection
+        await complete_collection(plan, results, _run_one, message or "")
         for index, ((name, params), result) in enumerate(zip(plan, results)):
             payload = result.data if isinstance(result, ToolResult) and isinstance(result.data, dict) else {}
             if (name == "train.schedule" and result.ok and not payload.get("stops")
@@ -935,7 +947,7 @@ async def retrieve(
         if ok:
             data.append({
                 "tool": name,
-                **({"query_context": dict(_params)} if name == "ticket.price" and os.environ.get("APP_VARIANT", "main").lower() != "lm" else {}),
+                **({"query_context": dict(_params)} if name in {"ticket.price", "ticket.query"} and os.environ.get("APP_VARIANT", "main").lower() != "lm" else {}),
                 "data": result.data,
                 "text": result.text,
                 "sources": list(result.sources),
@@ -954,38 +966,38 @@ async def retrieve(
         if result.note:
             notes.append(f"[{name}] {result.note}")
         if not ok and result.error:
-            if name in {"train.schedule", "emu.routing"} or (name == "ticket.price" and os.environ.get("APP_VARIANT", "main").lower() != "lm"):
+            if name in {"train.schedule", "emu.routing"} or (name in {"ticket.price", "ticket.query"} and os.environ.get("APP_VARIANT", "main").lower() != "lm"):
                 display_errors.append({"tool": name, "train_code": str(_params.get("train") or ""),
                                        "query": str(_params.get("train") or _params.get("emu_no") or ""),
                                        "date": str(_params.get("date") or ""), "message": result.error,
                                        **({"query_context": dict(_params), "sources": list(result.sources),
-                                           "fetched_at": result.fetched_at, "note": result.note} if name == "ticket.price" else {})})
+                                           "fetched_at": result.fetched_at, "note": result.note, "data": result.data} if name in {"ticket.price", "ticket.query"} else {})})
             # 失败原因必须透传：否则生成层只能说"工具调用失败"（实测 F05/C06 被误述）
             notes.append(f"[{name}] 失败原因：{result.error}")
 
     # 计划层面的说明（"为何没查/缺什么"）与工具说明合并，让生成层如实转述
-    note = "；".join(dict.fromkeys(plan_notes + notes)) or (
+    note = join_clauses(plan_notes + notes) or (
         "已完成工具调用（部分数据源依赖外部服务，结果见 tool_trace）。"
     )
     response = {"data": data, "display_errors": display_errors, "sources": list(dict.fromkeys(sources)), "tool_trace": trace, "note": note}
-    if direct_ticket and all(name == "ticket.query" for name, _ in plan):
-        if not ticket_reply and results:
-            ticket_reply = "\n\n".join(ticket_answer.render(params, result)
-                                      for (_, params), result in zip(plan, results))
-        if ticket_reply:
-            response["direct_answer"] = ticket_reply
-            response["sources"] = list(dict.fromkeys(sources + [source for result in results for source in result.sources]))
-    if direct_fare and all(name == "ticket.price" for name, _ in plan):
-        receipts = [ticket_reply] if ticket_reply else []
-        for result in results:
-            receipts.append(result.text if result.ok else f"未取得票价结果：{result.error or '接口未提供结果'}")
-            if result.note:
-                receipts.append(result.note)
-            if result.sources:
-                receipts.append("来源：" + "、".join(result.sources))
-        if receipts:
-            response["direct_answer"] = "\n\n".join(receipts)
-            response["sources"] = list(dict.fromkeys(sources + [source for result in results for source in result.sources]))
+    if (direct_ticket or direct_fare) and plan and all(name in {"ticket.query", "ticket.price"} for name, _ in plan):
+        from app.pipeline.ticket_delivery import fragment
+        fragments = []
+        for (name, params), result in zip(plan, results):
+            if name == "ticket.query":
+                text = ticket_answer.render(params, result)
+            else:
+                text = result.text if result.ok else f"未取得票价结果：{result.error or '接口未提供结果'}"
+                extra = [result.note]
+                if result.sources:
+                    extra.append("来源：" + "、".join(result.sources))
+                text += "\n" + "\n".join(t for t in extra if t)
+            fragments.append(fragment(name, params, result, text))
+        response["direct_fragments"] = fragments
+        response["direct_answer"] = "\n\n".join(f["text"] for f in fragments if f["text"])
+        response["sources"] = list(dict.fromkeys(sources + [source for result in results for source in result.sources]))
+    elif (direct_ticket or direct_fare) and ticket_reply:
+        response["direct_answer"] = ticket_reply
     routing_target = (str(display_action.get("query") or "")
                       if isinstance(display_action, dict) and display_action.get("kind") == "emu_routing" else tgt)
     explicit_routing = intent == "emu_routing" or (isinstance(display_action, dict) and display_action.get("kind") == "emu_routing")

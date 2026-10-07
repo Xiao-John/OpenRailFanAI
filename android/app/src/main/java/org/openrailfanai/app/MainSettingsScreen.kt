@@ -133,7 +133,7 @@ fun MainSettingsScreen(
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            SettingsCard("云端模型", "选择提供商，填写密钥与模型，即可开始对话。") {
+            SettingsCard("云端模型", "选择提供商，填写 API Key 和模型，保存后即可开始对话。") {
                 configs.forEach { provider ->
                     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp)
                         .border(1.dp, SettingsBorder, RoundedCornerShape(16.dp)).testTag("provider-card-${provider.id}")
@@ -169,14 +169,14 @@ fun MainSettingsScreen(
                                 runCatching { withContext(Dispatchers.IO) { client.models(selected) } }
                                     .onSuccess { response ->
                                         if (response.has("ok") && !response.optBoolean("ok")) {
-                                            feedback = "获取失败，请检查接口地址和密钥后重试。"; feedbackError = true
+                                            feedback = providerFailureCopy(response.optString("error")); feedbackError = true
                                         } else {
                                             val array = response.optJSONArray("chat_models") ?: response.optJSONArray("models") ?: JSONArray()
                                             models = (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
                                             feedback = if (models.isEmpty()) "没有发现模型，请手动填写模型名称。" else "已获取 ${models.size} 个模型，请选择。"
                                             showModels = models.isNotEmpty()
                                         }
-                                    }.onFailure { feedback = "获取失败，请检查接口地址和密钥后重试。"; feedbackError = true }
+                                    }.onFailure { feedback = providerFailureCopy(it.message.orEmpty()); feedbackError = true }
                                 busy = ""
                             }
                         }
@@ -189,9 +189,9 @@ fun MainSettingsScreen(
                                     runCatching { withContext(Dispatchers.IO) { client.test(selected) } }
                                         .onSuccess { response ->
                                             val ok = response.optBoolean("ok", false)
-                                            feedback = if (ok) "连接成功，可以使用当前模型。" else "连接失败，请检查密钥、模型和接口地址。"
+                                            feedback = if (ok) "连接成功，可以使用当前模型。" else providerFailureCopy(response.optString("error"))
                                             feedbackError = !ok
-                                        }.onFailure { feedback = "连接失败，请检查网络、密钥及接口地址后重试。"; feedbackError = true }
+                                        }.onFailure { feedback = providerFailureCopy(it.message.orEmpty()); feedbackError = true }
                                     busy = ""
                                 }
                             }

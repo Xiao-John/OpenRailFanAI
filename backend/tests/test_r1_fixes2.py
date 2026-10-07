@@ -291,7 +291,9 @@ def test_low_count_second_verification():
     assert res.ok, res.error
     assert calls["n"] >= 2, f"低余量应触发二次采样，实际调用 {calls['n']} 次"
     assert "两次采样间发生变化" in res.note, res.note
-    assert "first_class: 1→无" in res.note, res.note
+    # 变动提示是用户可见文案：席别必须是中文名，不能漏上游英文键（R1 修复后回归点）
+    assert "一等座: 1→无" in res.note, res.note
+    assert "first_class" not in res.note, res.note
     print(f"[PASS] P2-8 低余量二次校验 -> {res.note[-80:]}")
 
     # 无低余量时不应多查

@@ -4,6 +4,9 @@
 
 | 文档 | 内容 |
 |---|---|
+| [`dictionary-progress-integration-20261006.md`](dictionary-progress-integration-20261006.md) | **词典实时进度**：SSE阶段、真实下载字节/百分比和导入计数，未打包 |
+| [`main-fare-availability-integration-20261006.md`](main-fare-availability-integration-20261006.md) | **票价与余票合并卡片**：席别并集、独立状态/来源/采样时刻及旧历史兼容，未打包 |
+| [`main-ticket-delivery-dedup-integration-20261006.md`](main-ticket-delivery-dedup-integration-20261006.md) | **单渠道交付接入**：探测后端能力并声明合并卡片能力，兼容旧后端，未打包 |
 | [`release-0.1.19.md`](release-0.1.19.md) | **发布记录**：执行价卡片、更新入口、随包词典和新安装图标 |
 | [`main-frontend-changes-0.1.17.md`](main-frontend-changes-0.1.17.md) | **前端更改与交接**：回复区、Token、会话隔离及票价卡片；现有APK未包含10月5日后续修复 |
 | [`backend-fare-card-handoff-20261005.md`](backend-fare-card-handoff-20261005.md) | **票价卡片交接**：当前纯客户端展示及后续结构化票价候选契约，不干预正在进行的后端修改 |
