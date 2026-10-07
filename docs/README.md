@@ -16,6 +16,7 @@
 | [`datasources.md`](datasources.md) | **实现**：各数据源的接入方式、接口形态、关键约束与踩坑记录 |
 | [`run.md`](run.md) | **部署与运行**：安装、启动、配置密钥、接口示例、测试与数据准备 |
 | [`local-model.md`](local-model.md) | **部署**：本地小模型（8G 内存 / 零 API 成本）—— 选型对比、内存预算、必做设置、实测数据与已知的坑 |
+| [`backend-photo-spot-handoff.md`](backend-photo-spot-handoff.md) | **实现**：机位本地库的交接（为什么不实时查、怎么建库、闸门规则与踩过的坑） |
 | [`android.md`](android.md) | **部署**：Android 一体化版本（Python 随包分发 + 系统 WebView）的构建、签名、体积与限制 |
 | [`ui-design-boundaries.md`](ui-design-boundaries.md) | **实现约束**：应用 UI 与设备示意/设计标注的边界，以及 Edge CSS 诊断和视觉验收流程 |
 | [`native-acceptance-evidence.md`](native-acceptance-evidence.md) | **验收协议**：原生运行归档、同批测试证据与逐场景采集基准 |
