@@ -92,6 +92,7 @@ internal fun MainChatScreen(
     autoScrollToLatest: Boolean = true,
     onBack: () -> Unit = {},
     conversationTokens: Long? = null,
+    photoBackendUrl: String? = null,
 ) {
     val listState = rememberLazyListState()
     val tokenTotal = conversationTokens ?: messages.filter { it.role == "assistant" }.sumOf { replyTokenUsage(it.meta) ?: 0L }
@@ -283,6 +284,18 @@ internal fun MainChatScreen(
                                 }
 
                         }
+                        metadata?.optJSONObject("photoSpots")?.let { snapshot ->
+                            Row(Modifier.fillMaxWidth()) {
+                                Box(Modifier.width(50.appDp)) {
+                                    if (presentationBody.isBlank() && storedResults.isEmpty()) {
+                                        Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape).testTag("main-assistant-avatar"), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                            RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue)
+                                        }
+                                    }
+                                }
+                                PhotoSpotResults(snapshot, photoBackendUrl, Modifier.weight(1f))
+                            }
+                        }
                         metadata?.optString("error")?.takeIf { it.isNotBlank() && storedResults.none { result -> result is ErrorDisplay } }?.let { errorMessage ->
                             Row(Modifier.fillMaxWidth()) {
                                 Box(Modifier.width(50.appDp)) {
@@ -303,6 +316,7 @@ internal fun MainChatScreen(
                         }
                         val replyText = listOf(presentationBody.takeIf(String::isNotBlank),
                             storedResults.joinToString("\n\n") { replyClipboardText(it) }.takeIf(String::isNotBlank),
+                            photoClipboardText(metadata?.optJSONObject("photoSpots")).takeIf(String::isNotBlank),
                             metadata?.optString("error")?.takeIf(String::isNotBlank)).filterNotNull().distinct().joinToString("\n\n")
                         val originalQuery = metadata?.optString("query")?.takeIf(String::isNotBlank)
                             ?: messages.take(index).lastOrNull { it.role == "user" }?.content.orEmpty()

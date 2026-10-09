@@ -15,6 +15,7 @@ import zipfile
 
 from app.updates import github
 from app.data import photo_spots as photos
+from app.data import photo_annotations
 from app.updates.dictionary_schema import SCHEMA
 
 LOCK=threading.Lock()
@@ -164,6 +165,16 @@ def merge(snapshot: Path, target: Path, *, bundled=False) -> dict:
                         if 'photo_spot_doc' not in present or (new_meta.get(photos.VERSION_KEY) and not set(photos.TABLES)<=present):
                             raise github.UpdateError('schema','机位词典缺少必要数据表')
                         tables.extend(t for t in photos.TABLES if t in present)
+                        optional=set(photo_annotations.TABLES)&present
+                        if optional and optional!=set(photo_annotations.TABLES):
+                            raise github.UpdateError('schema','机位标注索引数据表不完整')
+                        has_annotations=bool(optional and source.execute('SELECT COUNT(*) FROM photo_annotation_doc').fetchone()[0])
+                        if has_annotations:
+                            tables.extend(photo_annotations.TABLES)
+                        else:
+                            # A newer legacy bundle invalidates annotations rather than retaining stale facts.
+                            for table in photo_annotations.TABLES:
+                                conn.execute(f'DELETE FROM {table}')
                         meta.extend([(photos.VERSION_KEY,incoming.isoformat()),(photos.SCHEMA_KEY,'1')])
                 if not tables:return {'status':'unchanged','current':local(target)}
                 backup=target.with_name(target.stem+'.update-backup.db')

@@ -4,6 +4,10 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+if [ "${1:-}" = "--photo-cards" ]; then
+  exec backend/.venv/bin/python scripts/android/accept-photo-cards.py "${@:2}"
+fi
+
 if [ "${1:-}" = "--ergonomics-walkthrough" ]; then
   exec backend/.venv/bin/python scripts/android/review-live-ergonomics.py
 fi

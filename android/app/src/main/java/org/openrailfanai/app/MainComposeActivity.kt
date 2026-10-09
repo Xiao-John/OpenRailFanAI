@@ -140,6 +140,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 key(conversationId) { MainChatScreen(
                 status = status,
                 connected = connectedPort > 0,
+                photoBackendUrl = if (connectedPort > 0) "http://127.0.0.1:$connectedPort" else null,
                 chatState = chatState,
                 messages = conversationStore.all().firstOrNull { it.id == conversationId }?.messages.orEmpty(),
                 conversationTokens = conversationStore.all().firstOrNull { it.id == conversationId }?.totalTokens ?: 0L,
@@ -348,6 +349,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                             .put("processLogs", org.json.JSONArray(outcome.processLogs))
                             .put("usage", outcome.usage)
                             .put("latencyMs", outcome.latencyMs)
+                        outcome.photoSpotJson?.let { meta.put("photoSpots", org.json.JSONObject(it)) }
                         if (outcome.error != null) meta.put("error", outcome.error).put("errorCategory", mainErrorCategory(outcome.error))
                         conversationStore.addAssistant(requestConversationId, outcome.answer, meta)
                         conversationRevision++

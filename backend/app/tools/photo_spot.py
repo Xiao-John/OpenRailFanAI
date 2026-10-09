@@ -24,6 +24,7 @@ import sqlite3
 from pathlib import Path
 
 from app.tools.base import Tool, ToolResult
+from app.data import photo_annotations as annotations
 
 _log = logging.getLogger("railfan.photo_spot")
 
@@ -112,9 +113,14 @@ class PhotoSpotTool(Tool):
         # 排序按**相关度**，不能按正文长度：实测查"上海"时，一篇只顺带提到上海的
         # 《追车记--新成都西环线》因为正文更长而排在南翔编组站机位小结**前面**。
         # 故：scope 精确 > 标题命中 > scope 包含 > 正文命中，最后才比长度。
+        annotation_priority = (
+            "CASE WHEN EXISTS (SELECT 1 FROM photo_annotation_doc a "
+            "WHERE a.url=photo_spot_doc.url AND a.reviewed=1) THEN 0 ELSE 1 END, "
+            if annotations.exists(conn) else ""
+        )
         rows = conn.execute(
             f"SELECT * FROM photo_spot_doc WHERE {where}"
-            " ORDER BY CASE WHEN scope = ? THEN 0"
+            f" ORDER BY {annotation_priority}CASE WHEN scope = ? THEN 0"
             "               WHEN title LIKE ? THEN 1"
             "               WHEN scope LIKE ? THEN 2"
             "               ELSE 3 END,"
@@ -139,11 +145,13 @@ class PhotoSpotTool(Tool):
 
         lines, sources = [], []
         for i, r in enumerate(rows, 1):
-            body = (r["page_text"] or "")[:PAGE_CHARS]
+            reviewed = annotations.reviewed_text(conn, r['url'])
+            body = reviewed if reviewed is not None else (r["page_text"] or "")[:PAGE_CHARS]
             src = r["url"] or ""
             head = f"{i}. {r['title'] or '(无标题)'}"
-            block = [head, f"   地点：{r['scope']}（{r['scope_kind']}）｜来源：{src}"]
-            if r["entities"]:
+            scope_label = '原文归类（不代表站位所属）' if reviewed is not None else '地点'
+            block = [head, f"   {scope_label}：{r['scope']}（{r['scope_kind']}）｜来源：{src}"]
+            if r["entities"] and reviewed is None:
                 try:
                     ent = json.loads(r["entities"])
                     # 防御：字段只该是 JSON 数组；若是历史脏数据/裸字符串，
@@ -169,7 +177,8 @@ class PhotoSpotTool(Tool):
                 "spot_docs": [
                     {"url": r["url"], "title": r["title"], "scope": r["scope"],
                      "source": r["source"], "char_count": r["char_count"],
-                     "entities": r["entities"], "fetched_at": r["fetched_at"]}
+                     "entities": r["entities"] if annotations.load(conn,r['url']) is None else '[]', "fetched_at": r["fetched_at"],
+                     "annotation_index": annotations.document_index(conn, r['url'])}
                     for r in rows
                 ],
             },

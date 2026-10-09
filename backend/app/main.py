@@ -130,8 +130,10 @@ def _include_routes() -> None:
     if os.environ.get("APP_VARIANT", "main").lower() != "lm":
         from app.api.software_updates import router as software_updates_router
         from app.api.dictionary_updates import router as dictionary_updates_router
+        from app.api.photo_spots import router as photo_spots_router
         app.include_router(software_updates_router, prefix="/api")
         app.include_router(dictionary_updates_router, prefix="/api")
+        app.include_router(photo_spots_router, prefix="/api")
     if os.environ.get("APP_VARIANT", "main").lower() == "lm":
         from app.api.local_model import router as local_model_router
 

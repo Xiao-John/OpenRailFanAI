@@ -36,6 +36,7 @@ class ChatRepository(private val baseUrl: String) {
         var usage = JSONObject()
         var latency: Double? = null
         var processLogs: List<String> = emptyList()
+        var slots: JSONArray? = null
         try {
             val capabilities = if (ensureCapabilities()) listOf("ticket_fare_availability_v1") else emptyList()
             val effectiveRequest = request.copy(clientCapabilities = capabilities)
@@ -50,6 +51,7 @@ class ChatRepository(private val baseUrl: String) {
                         "error" -> error = event.optString("message").takeIf(String::isNotBlank)
                         "done" -> {
                             intent = event.string("intent")
+                            slots = event.optJSONArray("slots")
                             sources = stringArray(event.optJSONArray("sources"))
                             results = DisplayResultParser.parseArray(event.optJSONArray("display_results"))
                             displayResultsJson = event.optJSONArray("display_results")?.toString() ?: "[]"
@@ -62,7 +64,10 @@ class ChatRepository(private val baseUrl: String) {
                     onEvent(event)
                 }
             }
-            return ChatStreamOutcome(answer.toString(), error, intent, sources, results, usage, latency, processLogs, displayResultsJson)
+            val photoSpotJson = if (intent == "photo_spot" && error == null && !Thread.currentThread().isInterrupted) {
+                PhotoSpotRepository(baseUrl).snapshot(photoScope(slots), sources).toString()
+            } else null
+            return ChatStreamOutcome(answer.toString(), error, intent, sources, results, usage, latency, processLogs, displayResultsJson, photoSpotJson)
         } catch (e: ChatHttpException) {
             throw e
         } catch (e: Exception) {

@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS photo_spot_seed (
 );
 """
 SCHEMA += "CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);"
+from app.data.photo_annotations import SCHEMA as ANNOTATION_SCHEMA
+SCHEMA += '\n' + ANNOTATION_SCHEMA
 
 
 def migrate(conn):

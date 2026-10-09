@@ -93,6 +93,7 @@ data class ChatStreamOutcome(
     val latencyMs: Double?,
     val processLogs: List<String>,
     val displayResultsJson: String,
+    val photoSpotJson: String? = null,
 )
 
 object DisplayResultParser {

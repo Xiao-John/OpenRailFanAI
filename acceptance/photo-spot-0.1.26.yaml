@@ -1,0 +1,18 @@
+acc_id: ACC-PHOTO-01
+module: 机位卡片
+design_ref: frontend/tests/visual/designs/photo-spot-card.html
+impl_ref: acceptance/runs/photo-20261009T212722/captures/photo-spot-default.png
+viewport:
+  width: 390
+  height: 844
+diff_px: null
+status: passed
+file: ACC-PHOTO-01__photo-spot__20261009.png
+generated_at: '2026-10-09T21:27:22.464274+08:00'
+script_version: photo-1.0.0
+verification:
+  tests: 5
+  failed: 0
+  skipped: 0
+  scope: 初步功能及默认卡片协调性通过；不表示完整真机验收或像素测量通过
+visual_review: acceptance/runs/photo-20261009T212722/visual-review.yaml

@@ -1,0 +1,22 @@
+{
+  "version": "0.1.26",
+  "date": "2026-10-09",
+  "device": "Android 15 emulator",
+  "tests": [
+    "pendingIsLazyAndClosingKeepsDraft",
+    "oldDictionaryAndStaleSourcesDoNotClaimNoSpots",
+    "realBackendSearchAndLazyDetails",
+    "detailFailureIsLocalAndCanRetry",
+    "persistedReplyShowsCardAndCopiesItsFacts"
+  ],
+  "passed": 5,
+  "failed": 0,
+  "skipped": 0,
+  "real_backend": "local current FastAPI + actual dictionary; no cloud-model end-to-end assertion",
+  "run": "acceptance/runs/photo-20261009T212722",
+  "visual_scope": "default card harmony and functional preliminary review",
+  "limitations": [
+    "未做真机完整安装与长文本/大字体全状态视觉验收",
+    "前三个聊天来源索引之外仍可阅读原回复来源；卡片自身按需读取说明"
+  ]
+}
