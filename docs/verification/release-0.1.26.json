@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/Xiao-John/OpenRailFanAI/releases/tag/v0.1.26",
+  "id": 407954458,
+  "tag": "v0.1.26",
+  "latest": "v0.1.26",
+  "assets": [
+    {
+      "name": "OpenRailFanAI-0.1.26-arm64-release.apk",
+      "size": 41422428,
+      "digest": "sha256:edcaa2276393eea0c70aee90b2d86132e7a52b49467b0223568b6f54bc3e5191",
+      "url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/v0.1.26/OpenRailFanAI-0.1.26-arm64-release.apk"
+    },
+    {
+      "name": "OpenRailFanAI-0.1.26-arm64-release.apk.sha256",
+      "size": 105,
+      "digest": "sha256:c08b6e2cfd4dad4cdd162b0663d3fc39ffa38c751381e9e1ba7277a22254e151",
+      "url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/v0.1.26/OpenRailFanAI-0.1.26-arm64-release.apk.sha256"
+    }
+  ]
+}

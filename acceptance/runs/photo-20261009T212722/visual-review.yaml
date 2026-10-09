@@ -1,0 +1,11 @@
+reviewer: H
+comparison_sha256: 43138a3c7d61ce032381b546d37f9c7c514c87eb13082f8a7d8b0bf0f9f467fe
+checks:
+  hierarchy: true
+  readability: true
+  consistent_palette_and_rounding: true
+  no_clipping_or_overlap_in_default_card: true
+notes:
+- 默认机位卡片与现有结果卡片风格一致，字段标签、主体值和待确认入口层级清晰。
+- 对照包含完整390×844画面，无缩放或裁切；纵向位置及功能图标细节不作为逐像素门槛。
+- 原生截图下方草稿为关闭保留测试输入，不属于卡片模块。

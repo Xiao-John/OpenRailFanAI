@@ -18,5 +18,15 @@
   "limitations": [
     "未做真机完整安装与长文本/大字体全状态视觉验收",
     "前三个聊天来源索引之外仍可阅读原回复来源；卡片自身按需读取说明"
-  ]
+  ],
+  "release_install": {
+    "package": "org.openrailfanai.app",
+    "version_name": "0.1.26",
+    "version_code": 126,
+    "adb_install": "Success",
+    "startup": "backend ready",
+    "real_embedded_search": "笋岗桥，1条结果，2个标记",
+    "real_embedded_detail": "铁路实体待确认，current，1条原文依据",
+    "apk_sha256": "edcaa2276393eea0c70aee90b2d86132e7a52b49467b0223568b6f54bc3e5191"
+  }
 }

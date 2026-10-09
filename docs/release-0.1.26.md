@@ -21,4 +21,15 @@ Android 15 模拟器5项专项检查通过：默认卡片及按需加载、关�
 
 ## 发布产物
 
-构建及发布后补充安装包大小、摘要、签名和地址。
+- APK：`dist/android/OpenRailFanAI-0.1.26-arm64-release.apk`，41,422,428字节（约39.5MiB）。
+- SHA-256：`edcaa2276393eea0c70aee90b2d86132e7a52b49467b0223568b6f54bc3e5191`。
+- 签名证书 SHA-256：`e644691a89343cc83ee596340fd3a4648ca792b569e9744f3d9326b5e70244ec`，与0.1.25一致。
+- 完整词典19,898,368字节，810篇攻略；60篇标注文档、130项说明索引；完整性检查通过。
+- 正式APK在Android 15模拟器覆盖安装并启动成功；设备内真实机位检索和争议详情均返回成功。
+- 构建来源提交：`25e23c6a23b09cc2c40ee44c9587869bd1a4ee45`；工作区保留其他未提交验收与后端测试材料，构建标记如实带dirty。
+
+## 发布地址
+
+https://github.com/Xiao-John/OpenRailFanAI/releases/tag/v0.1.26
+
+GitHub Release已公开发布并确认为latest；APK及校验文件的远端大小、SHA-256与本地一致。源码及标签均已推送。远端记录见 `verification/release-0.1.26.json`。
