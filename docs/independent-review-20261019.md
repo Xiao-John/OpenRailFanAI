@@ -1,137 +1,130 @@
-# OpenRailFanAI 独立评审
+# OpenRailFanAI 独立评审（复核版）
 
-日期：2026-10-19。评审方式：**只读**（未修改任何源码、配置、词典、客户端或发布产物；本文件是唯一新增文件）。
-评审时工作区正被另一个进程写入（19:36 仍有构建与文档落盘），因此所有结论都绑定下面的快照。
+日期：2026-10-19。评审方式：**产品代码只读**（未修改 `backend/app`、`frontend/src`、`android/`、配置、词典或发布产物；`backend/app/fuck_cr/parser.py` 按指示未动）。为了让结论可复核，本轮更新了 4 个测试文件与 `run_all.sh` 清单，见 §9。本文件与这些测试改动是仅有的写入。
+
+复核原因：上一版评审完成时工作区尚未提交；约 19:46–19:52，发布方已把 0.1.29 提交、打 tag、发布到 GitHub，并同步了 `main`。因此 §2 的"发布源与产物脱节"已被解决，本版以 **`40e47f5` / `v0.1.29`** 为基线重写了结论与测试数据。
 
 ## 0. 结论
 
-1. **产品方向与工程底子是本项目最强的资产**：工具契约、数据完整性、降级语义、更新校验、SSRF/XXE 防护、语料回归，这些不是"看起来做了"，而是有测试和注释支撑的。
-2. **但当前仓库处于"不可发布"状态**：0.1.26 之后的所有工作在本地未提交，0.1.29 的 APK 已在 `dist/android/` 生成，构建标记是 `47dafbb-dirty`；0.1.27–0.1.29 没有发布记录、没有 verification、没有 tag。发布产物与可追溯源码已经脱节。
-3. **车次改革的风险不在"不知道"，而在"还没动手"**：最危险的现存缺陷（`X1次列车` 被解析成 `1`，即静默变成另一趟车）在 10-17 就已被自己记录，但生产解析器一行未改；语义层、交路闸门、过渡期去重也全部未动。影子解析器和 409 按钮证明设计想清楚了，但不改变 11 月下旬之后的用户结果。
-4. **测试闸门目前不是可靠闸门**：本机 59 套中 52 套通过；7 个失败里 5 个是环境/网络，2 个是测试自身的缺陷；另有 3 个新增离线套件根本没有接进 `run_all.sh`。因此"全绿"既不能由当前环境证明，也不能由当前清单保证。
-5. **文档的"深度"很好，"索引与口径"在漂移**：最新的 13 份交接/审计文档没有进索引；`docs/README.md` 甚至链接到一个未提交的 `FUCK_CR/`；`EXPL.md` 的"无网络套件"清单已明显过期。
+1. **0.1.29 的发布链路已经闭环**：`83794ad` 是干净构建提交，`40e47f5` 是发布核验提交，`main` 与 `origin/main` 都已指向 `40e47f5`；APK 内 `build.json` 为 `83794ad`（无 `-dirty`），GitHub Release、SHA-256、verification JSON 与 tag 一致。上一版的阻断项不再成立。
+2. **测试闸门从"不可信"回到"基本可信"**：修正 3 个过期/脆弱的测试断言、补登记 4 个离线套件后，63 套中 **60 套通过**；剩余 3 个失败全部是环境问题（本机 DNS 拦截 `example.com`、本机 Node 动态库损坏），不是产品代码失败。
+3. **但本轮发现了一个 0.1.29 新引入的产品回归**：请求内共享售票行后，**空区间**（12306 正常返回 0 条）被报成"12306 余票查询失败"，并丢掉 `availability_status=empty`。单测与 UI 卡片都把"无车次"和"查询失败"当作两种语义，这是明确的行为退化。
+4. **车次改革仍是最大的时间风险**：生产解析器仍会把 `X1次列车` 解析成 `1`、`V6001次` 解析成 `6001`、`DH1次` 解析成 `1`、`AB123次` 解析成 `B123`；语义层、交路闸门、过渡期去重全部未动。影子解析器与 409 按钮只是"准备好了开关"，不改变 11 月下旬之后的用户结果。
+5. **工作区需要一次"分层清理"，而不是 `git clean`**：`dist/android` 有 76 个 APK / 2.5 GB（其中绝大部分是历史版本），`.android-build` 18 GB，`acceptance` 488 MB，`.ai` 293 MB；`.git` 本身 252 MB（历史里有两枚约 29 MB 的 APK）。这些都不在 Git 工作区里，清理不影响已发布版本，但需要先区分"可删、可归档、不能碰"。
+6. **文档与安全面整体仍好于同类项目**：更新包的哈希+签名+URL 锁定、SSRF 共享守卫、DOCX/XXE 防护、Key 脱敏、降级契约都有实现与测试支撑；需要补的是索引口径、匿名面说明和几处边界收敛。
 
 ## 1. 评审快照与方法
 
 | 项 | 值 |
 |---|---|
-| HEAD | `47dafbb00c49d8990b1d4c75dd39e8ad7e277061`（2026-10-09，0.1.26 发布记录） |
-| `VERSION` | `0.1.29`（工作区改动；HEAD 内为 `0.1.26`） |
-| 工作区 | 218 项：173 个未跟踪条目 + 45 个已修改文件；代码/文档类未提交约 5.8k 行（不含二进制与 acceptance 索引） |
-| 最新产物 | `dist/android/OpenRailFanAI-0.1.29-arm64-release.apk`，56,351,225 B，2026-10-19 19:36 |
-| APK 构建标记 | `{"version":"0.1.29","commit":"47dafbb-dirty","builtAt":"2026-10-19T19:34:44+08:00"}` |
-| 已发布 | GitHub tag 最新为 `v0.1.26`；0.1.27/0.1.28/0.1.29 无 tag、无 Release 记录、无 verification JSON |
-| 测试 | `backend/tests/run_all.sh`：59 套，52 通过 / 7 失败（逐项分类见附录 B） |
-| 并发写入 | 评审期间另一进程在 19:36 生成 `docs/frontend-inputs-fuck-cr-integration-20261019.md` 与 0.1.29 APK；本评审不据此判断该进程的正确性 |
+| HEAD | `40e47f5`（docs: verify 0.1.29 release, clean build and signed runtime checks） |
+| 发布提交 / tag | `83794ad` / `v0.1.29` |
+| 分支 | `codex/main-0.1.19` = `main` = `origin/main` = `40e47f5`；工作区干净 |
+| `VERSION` | `0.1.29` |
+| 0.1.29 APK | `dist/android/OpenRailFanAI-0.1.29-arm64-release.apk`，56,351,221 B；SHA-256 `762ea071ff94a2def490b7e376f4235388541b1d3e8aa7c65fe2132465a75283` |
+| APK 构建标记 | `{"version":"0.1.29","commit":"83794ad","builtAt":"2026-10-19T19:46:09+08:00"}`（无 `-dirty`） |
+| verification | `docs/verification/release-0.1.29.json`：`source_commit=83794ad`、GitHub 资产摘要一致、模拟器 API 35 安装启动与 health 通过 |
+| 测试 | 更新后 63 套：**60 通过 / 3 失败**（失败均为环境，见 §9） |
 
-实际执行的检查（全部只读或使用临时目录）：
+实际执行：
 
-- `git status/log/tag/branch --contains`、`git diff --check`；
-- `python -m compileall backend/app`；
-- 全量 `bash backend/tests/run_all.sh`（59 套）；
-- 单独补跑 3 个未接入的新套件；
-- 离线调用 `parse_od`、`extract_train_code`、`fuck_cr.parser.parse`、`service_dispatch.train_codes`、`retrieve.retrieve` 做边界探针；
-- 用 `TestClient` 复现 gzip/`content-length` 行为；
+- `git status/log/tag/branch --contains`、`git diff --check`、`unzip -p` 读取 APK 内 `build.json`；
+- 全量 `bash backend/tests/run_all.sh` 两次（改动前 59 套、改动后 63 套）；
+- 单独运行全部新增/受影响套件；
+- 离线探针：`extract_train_code`、`retrieve._train_code_from_message`、`ticket_snapshot.availability`、`fastpath._station_in_text`（跨 `PYTHONHASHSEED`）、`fuck_cr.parser.parse`；
 - `FUCK_CR/check.py`；
-- 读取 APK 内的 `assets/webapp/build.json` 与 native 库清单。
+- 用 `TestClient` 复现 gzip 响应头与 HTTP 字节数；
+- 统计仓库/构建目录体积与历史大对象。
 
----
+## 2. 上一版阻断项：发布链路（已闭环）
 
-## 2. 阻断级
+上一版评审时 `HEAD=47dafbb`、`VERSION=0.1.29`、218 项未提交、0.1.29 APK 为 `-dirty`、`main` 落后。现在逐项复核：
 
-### B-1 发布源与发布产物脱节，0.1.29 不可复现
+| 上一版问题 | 当前状态 |
+|---|---|
+| 0.1.27–0.1.29 无提交、无 tag、无发布记录 | 已解决：`83794ad` + `v0.1.29` + `release-0.1.29.md` + `verification/release-0.1.29.json` |
+| 0.1.29 APK 由 dirty 树构建 | 已解决：`build.json` 为 `83794ad`，与 tag 一致 |
+| `main`/`origin/main` 不含发布提交 | 已解决：两者均为 `40e47f5`，且包含 `83794ad` |
+| `docs/README.md` 链接未跟踪的 `FUCK_CR/` | 已解决：`FUCK_CR/` 已随 0.1.29 提交，链接有效 |
+| `.gitignore` 未忽略 `.ai/`、`acceptance/runs/` | 已解决：发布提交已加入 `/.ai/`、`/acceptance/runs/` 等排除 |
+| 0.1.29 无 `.sha256` 伴随文件 | 已解决：`dist/android/...0.1.29...apk.sha256` 存在，内容与 GitHub 资产一致 |
 
-**证据**
+**剩余（不阻断发布）**：`dist/android` 仍保留 76 个历史 APK（含 `_副本`），`.git` 历史里仍有两枚约 29 MB 的 APK 与基线压缩包；这属于本地清理与仓库体积问题，见 §6。
 
-- `HEAD` 仍是 0.1.26 的发布记录（`47dafbb`），`VERSION` 已是 0.1.29；`git status` 218 项，核心新功能全部未提交：
-  - 后端：`backend/app/agent.py`、`agent_documents.py`、`agent_images.py`、`api/agent.py`、`api/fuck_cr.py`、`fuck_cr/`、`pipeline/decision_tree.py`、`tools/ticket_snapshot.py`；
-  - Android：`AppAgent.kt`、`ImageTextRecognizer.kt`、`FuckCrSettings.kt`、`ProviderSetupWizard.kt` 等 8 个主代码文件（另有 2 个 androidTest）；
-  - 前端：`agent.js`、`switch.js` 与 `agent.test.mjs`；
-  - 测试：`test_agent_*`、`test_fuck_cr*`、`test_ticket_snapshot.py` 等。
-- 0.1.29 APK 的 `build.json` 自己写着 `47dafbb-dirty`。项目自己的规则要求"只在工作区干净时构建待发布的包"（`docs/android.md:139`）。
-- 0.1.27/0.1.28/0.1.29 均无 `docs/release-*.md`、无 `docs/verification/*.json`、无 `.sha256` 伴随文件（0.1.29 目录下只有 APK）。
-- 发布 tag `v0.1.24`/`v0.1.25`/`v0.1.26` **只存在于 `codex/main-0.1.19` 分支**（含其远端），`main` / `origin/main` 不包含这些提交；`origin/main` 停在 `f4bec3e`，落后 HEAD **29 个提交**，不含 0.1.19 起的任何发布提交。
-- `docs/README.md:26` 链接 `../FUCK_CR/README.md`，但 `FUCK_CR/` 整个目录未跟踪 → 在 GitHub 上该链接 404。
-- `.gitignore` 没有忽略 `.ai/`（293 MB）与 `acceptance/runs/`（488 MB），导致 `git status` 长期被 200+ 条噪声淹没，进一步降低了"提交干净"的可操作性。
+## 3. 阻断级（当前唯一）
 
-**影响**
+### B-1 生产解析仍会把未知字头静默改成另一趟车
 
-- 任何"这个 APK 对应哪份源码"的问题都无法回答；回滚、复现 bug、对照测试都失去基准。
-- 一旦机器故障或误执行 `git clean -fdx`，约 5.8k 行源代码、`FUCK_CR/` 研究资料和整套证据目录会一起消失。
-- 更新器从 GitHub Releases 取包，但 Release 所对应的源码不在默认分支；外部贡献者/审计者 clone 下来看到的是旧代码。
-- 继续在这个树上升版本，会把"dirty 构建"变成惯例，而项目已经在文档里明确禁止这一点。
+这是当前**最确定、也最容易被用户看到**的"现在就会给出错误答案"缺陷。
 
-**建议**
+**实测（2026-10-19，离线）**
 
-1. 立刻冻结写操作，把现有工作按可回滚的边界提交（建议 6 个提交：`agent/file tools`、`image/document input`、`provider wizard`、`fuck_cr` 预备层、`metrics/prompt-cache`、`ticket snapshot`，最后单独一个 `Release 0.1.29`）。
-2. 在干净树上重新构建 0.1.29，核对 `build.json` 不含 `-dirty`，补 `.sha256`、`release-0.1.29.md`、`verification/release-0.1.29.json`，再打 tag、发 Release。
-3. 把 `codex/main-0.1.19` 合回 `main` 并推送，保证默认分支能复现所有已发布 tag。
-4. 将 `.ai/`、`acceptance/runs/` 加入 `.gitignore`（或明确纳入版本管理，二选一，但不能继续悬空）。
-5. 在完成 1–3 之前，**不要发布** 当前 `dist/android/OpenRailFanAI-0.1.29-arm64-release.apk`。
-
-### B-2 车次迁移：生产解析仍会把未知字头静默改成另一趟车
-
-这是当前**最确定、也最容易被用户看到**的"现在就会给出错误答案"缺陷，是改革前必须先修的那一个。
-
-**实测（2026-10-19，离线，`PYTHONPATH=backend`）**
-
-| 输入 | 生产 `extract_train_code` | 新解析器 `fuck_cr.parser` | 后果 |
+| 输入 | `extract_train_code` / `retrieve._train_code_from_message` | 新解析器 `fuck_cr.parser` | 后果 |
 |---|---|---|---|
-| `X1` | `None` | `X1` | 生产不识别 |
-| `X1次列车` | **`1`** | `X1` | **查成 1 次车** |
-| `V6001` | `None` | `V6001` | 生产不识别 |
-| `V6001次` | **`6001`** | `V6001` | **查成 6001** |
-| `DH1次` | **`1`** | `DH1` | 查成 1 次车 |
-| `AB123次` | **`B123`** | 未知字头，不产出 | 截掉首字母后当成 B123 |
-| `B2001` | `B2001` | `B2001`（货运候选） | 语义上仍会被当客运 |
-| `71001次` | `None` | `71001`（货运候选） | 生产不识别 |
+| `X1次列车今天几点开` | **`1`** | `X1` | 查成 1 次车 |
+| `V6001次列车经过哪些站` | **`6001`** | `V6001` | 查成 6001 |
+| `DH1次今天有吗` | **`1`** | `DH1` | 查成 1 次车 |
+| `AB123次列车` | **`B123`** | 未知字头，不产出 | 截掉首字母后当成 B123 |
+| `G1次列车` / `1461次列车` / `T109` | `G1` / `1461` / `T109` | 一致 | 正常 |
 
 **根因**
 
-- `_TRAIN_CODE_IN_TEXT_RE`（`backend/app/tools/_rt12306.py:232`）只匹配旧字头集合，且没有"左侧不能紧邻字母/数字"的边界；`_PURE_DIGIT_TRAIN_RE`（同文件 236 行）会把 `X1次` 里的 `1` 当成纯数字车次。
+- `_TRAIN_CODE_IN_TEXT_RE`（`backend/app/tools/_rt12306.py:232`）只匹配旧字头集合，且左侧没有"不能紧邻字母/数字"的边界；`_PURE_DIGIT_TRAIN_RE`（同文件 236 行）会把 `X1次` 里的 `1` 当成纯数字车次。
 - `extract_train_code` 在整串不匹配后依次降级到这两个正则（`_rt12306.py:249-254`），于是"字母开头但前缀未知"的 token 被截成一段**看起来合法**的数字。
-- 这条结果会进入 `retrieve` 的车次归一化（`backend/app/pipeline/retrieve.py:402`），并参与 `_is_train_code`/槽位兜底；`service_dispatch.train_codes` 虽然返回空（不会批量误发），但单车路径仍会带着错误号码去查。
+- `retrieve._train_code_from_message` 直接把该结果当作车次补位，进入 `train.schedule` / 余票等工具。
 
-**严重性**
+**严重性**：它不报错，而是查询另一趟车；答案可能"看起来正常"（有车次、有时刻），用户无从发现。改革后 `X/V/DH` 会变成真实输入，11 月下旬之后这类错误将从边缘输入变成常用输入。
 
-- 它不报错，而是查询另一趟车；答案可能"看起来正常"（有车次、有时刻），用户无从发现。
-- 改革后 `X/V/DH` 会变成真实输入；11 月下旬之后这类错误将从"边缘输入"变成"常用输入"。
-- `FUCK_CR/04` §2 和 `docs/backend-train-code-reform-preparation-20261017.md` 已经完整记录了它，并明确说"解析加固可以独立上线（纯增益）"。**但至今没有修**，同期落地的是更大的新功能。
+**建议（最小修复，不依赖新规则）**
 
-**建议（不要求等新版规则）**
+1. 给 `_TRAIN_CODE_IN_TEXT_RE`、`_PURE_DIGIT_TRAIN_RE` 加左边界 `(?<![A-Za-z0-9])`；
+2. `extract_train_code` 在"字符串以 ASCII 字母开头且整串不匹配已知字头"时直接返回 `None`，不降级到纯数字。
 
-最小修复只需两步，且不改变任何现行合法车次的解析：
+回归钉住：`X1次列车 → None`、`V6001次 → None`、`DH1次 → None`、`AB123次 → None`、`G1次列车 → G1`、`1461次列车 → 1461`、`T109 → T109`。修 shadow 之前先修 legacy；两者不要捆在一个提交里。
 
-1. 在 `_TRAIN_CODE_IN_TEXT_RE` 与 `_PURE_DIGIT_TRAIN_RE` 前加左边界约束：前面不能是 `[A-Za-z0-9]`；
-2. `extract_train_code` 在"字符串以 ASCII 字母开头"且整串不匹配已知字头时，直接返回 `None`，不要降级到纯数字。
+## 4. 高优先级
 
-回归必须钉住：`X1次列车 → None`（不是 `1`）、`V6001次 → None`、`DH1次 → None`、`AB123次 → None`、`G1次列车 → G1`、`1461次列车 → 1461`、`T109 → T109`。这条修复应当**先于**语义迁移单独发版（0.1.30），不要和新规则启用捆在一起。
+### H-1 【新】售票行共享把"无车次"降级成"查询失败"
 
----
+0.1.29 的 `ticket_snapshot` 在请求内共享原始售票行，但空结果的处理改变了对外语义。
 
-## 3. 高优先级
+**复现（离线，`TicketQueryTool`，空 rows）**
 
-### H-1 语义层、交路闸门、过渡期全部未动，距第一批约 5 周
+```
+snapshot ON  | ok=False | error=12306 余票查询失败：未找到该线路的余票 | data=None
+snapshot OFF | ok=False | error=北京南→上海虹桥（2026-10-25）未查询到余票数据
+             | data={'availability_status': 'empty', 'from_station': '北京南', ...}
+```
 
-**现状（工作区 2026-10-19）**
+**根因**
+
+- `ticket_snapshot.availability` 在 `trains` 为空时直接 `raise Realtime12306Error('未找到该线路的余票')`（`app/tools/ticket_snapshot.py:156`）。
+- `ticket_query` 的 `except Realtime12306Error` 分支（`app/tools/ticket_query.py:227-235`）把它转成"12306 余票查询失败"，并**丢掉**下方空结果分支（`:259-287`）才有的 `data={"availability_status":"empty",...}` 与 `sampled_at`。
+- 批量路径（`service_batch`）同样把这一项写成"查询失败：12306 余票查询失败：未找到…"，而不是"未查询到余票数据"。
+
+**影响**：违反项目自己反复强调的"空结果三义"契约（正常空 / 筛选后空 / 接口失败）。单查询卡片、票价/余票合并卡和生成层都会把"该区间无车次"读成"查询失败"，用户得到不同的提示与不同的可信度判断。数据本身没有错，但**语义错了**。
+
+**建议**：`availability` 对空 rows 返回空 `SnapshotTrains`（带 `fetched_at`），把"是否有车"的判断留给 `ticket_query` 的空结果分支；或抛一个专用 sentinel 由 `ticket_query` 转成 `availability_status=empty`。补一条测试：snapshot 激活 + 空 rows → `data.availability_status == 'empty'`。这条应在 0.1.30 修掉。
+
+### H-2 语义层、交路闸门、过渡期全部未动，距第一批约 5 周
 
 | 触点 | 状态 |
 |---|---|
 | `_TYPE_KEYWORDS`（`retrieve.py:133`） | 仍是 `高铁→G`、`动车→D`、`特快→T`、`快速→K`、`普速→K,T,Z` |
 | `_EMU_TYPE_RE`（`_rt12306.py:196`） | 只认 `G/D/C`；新 `X/T/K` 会被交路闸门拒绝（`retrieve.py:852`、`service_batch.py`、`ticket_pair.py`） |
-| 服务准入 | `B/DH/DJ/5 位数字` 没有被区分"可识别"与"可查客运"；新解析器已给出候选域，但没有接入分流 |
-| 有效期/历史 | 没有"按乘车日期解释字头"的结构；`effective_date` 只存在于文档，不在代码 |
-| 过渡期双表达 | 没有跨日期的"同车不同号"归一化；现存去重按 train_no，不能处理新旧号并存 |
-| 启用路径 | `/api/fuck-cr/activation` 固定 409；`FUCK_CR_MODE=reform_2026` 启动即拒绝；`shadow` 只观察 `service_dispatch.train_codes` 一处 |
+| 服务准入 | `B/DH/DJ/5 位数字` 未区分"可识别"与"可查客运"；新解析器的候选域没有接入分流 |
+| 有效期/历史 | `effective_date` 只在文档里，不在代码 |
+| 过渡期双表达 | 没有跨日期的"同车不同号"归一化；现存去重按 train_no |
+| 启用路径 | `/api/fuck-cr/activation` 固定 409；`reform_2026` 启动即拒绝；`shadow` 只观察 `service_dispatch.train_codes` 一处 |
 
-**改革后的具体错法**（不是推测，是按现行代码直接推演）
+**改革后的具体错法**（按现行代码推演）：
 
-- 用户说"普速"→ 仍筛 `K,T,Z`；新体系普速是 `Z,N,V`，旧 `K/T` 已改挂 `V/N` → **漏掉大部分普速车**。
-- 用户说"高铁"→ 仍只给 `G`；新 `X/T/K` 也是高速旅客列车 → **漏车**。
-- 用户说"动车"→ 仍只给 `D`；新 `D` 只剩动集，200–250 的动车已改 `K` → **语义反了**。
-- 用户说"特快/快速"→ 旧 T→N、旧 K→V，而新 T=300、新 K=200–250；同一个词在 11/25 前后指向不同字母 → **必须带日期解释**，不能无条件映射。
-- 新 `X/T/K` 车次查担当 → `is_emu_train_code` 为假 → 回答"rail.re 不收录"；实际是新规则未接入，**把能力缺口说成数据不存在**。
-- 查询跨 11/24–11/25 的历史/未来日期 → 同一列车两个号，可能被当成两趟；现有"同车不同号"逻辑只处理已知别名，不处理行政改号。
+- "普速"→ 仍筛 `K,T,Z`；新体系普速是 `Z,N,V`，旧 `K/T` 已改挂 `V/N` → 漏掉大部分普速车。
+- "高铁"→ 仍只给 `G`；新 `X/T/K` 也是高速旅客列车 → 漏车。
+- "动车"→ 仍只给 `D`；新 `D` 只剩动集，200–250 的动车已改 `K` → 语义反了。
+- "特快/快速"→ 旧 T→N、旧 K→V，而新 T=300、新 K=200–250；同一个词在 11/25 前后指向不同字母。
+- 新 `X/T/K` 查担当 → `is_emu_train_code` 为假 → 回答"rail.re 不收录"；实际是能力未接入。
+- 跨 11/24–11/25 的历史/未来日期 → 同一列车两个号，可能被当成两趟。
 
 **时间表**
 
@@ -140,213 +133,226 @@
 | 第一批 | 2026 年 11 月下旬 | 货运 11-24 18:00 / 客运 11-25 00:00（《上海铁道》转述） | 解析加固、语义分层、准入分流、日期口径 |
 | 第二批 | 2026 年 12 月下旬 | 未公布 | 高速字头切换、双表达去重、文案 |
 
-**建议**
+**建议**：不要把"11/25"写成自动开关；用 `FUCK_CR_MODE` + 显式规则版本控制，默认 `legacy`；先做"识别 → 类别解释 → 数据源准入"三层拆分；缓存键加规则版本/业务日期；先修 B-1，再谈语义。
 
-- 不要把"11/25"写成代码里的自动开关；用 `FUCK_CR_MODE` 与显式规则版本控制，默认 `legacy`，`shadow` 先跑对照。
-- 先做"识别 → 类别解释 → 数据源准入"三层拆分；`is_emu_train_code` 改成"类别解释 + 供应商能力"两个判断，不要在交路闸门里直接放宽。
-- 缓存键加"规则版本/业务日期"；新旧号关联只用于解释，不能跨日期合并结果。
-- 先修 B-2，再谈语义；两者分开交付、分开回滚。
+### H-3 机读资料的置信度字段与自身注释矛盾
 
-### H-2 机读资料的置信度字段与自身注释矛盾
+- `FUCK_CR/data/train-code-2026.json` 的 `effective.confidence` 是 **`"A"`**，但同一对象的 `note` 明说两个精确时点来自 C 级转述；`docs/backend-train-code-reform-preparation-20261017.md` §5 已经指出。
+- `check.py` 通过（`客运 11 个，映射 17 条，来源 16 条`），但它只校验结构/引用/覆盖，不校验字段与注释是否自洽。
+- 目前没有生产代码读这个 `confidence`，所以不是现行 bug；一旦未来用 `confidence == "A"` 做启用门控，就会把转述日期当成官方日期。
+- 建议拆成 `window_confidence`（"11 月下旬"=A）与 `exact_time_confidence`（C），并让 `check.py` 断言"精确时点不得为 A"。
 
-- `FUCK_CR/data/train-code-2026.json` 的 `effective.confidence` 是 **`"A"`**，但同一对象的 `note` 明说两个精确时点来自 C 级转述；`docs/backend-train-code-reform-preparation-20261017.md` §5 已经指出这一点。
-- `check.py` 仍然通过（`OK: ... 客运 11 个，映射 17 条，来源 16 条`），因为它只校验结构/引用/覆盖，不校验"字段与注释是否自洽"。
-- 目前没有生产代码读这个 `confidence`，所以不是现行 bug；但一旦未来用 `confidence == "A"` 做启用门控，就会**把转述日期当成官方日期**。
-- 建议拆成 `window_confidence`（"11 月下旬"=A）与 `exact_time_confidence`（C），并在 `check.py` 增加"精确时点不得为 A"的断言。这是低成本、高杠杆的修正。
+### H-4 测试闸门：60/63，剩余失败全部是环境；但仍有结构性缺口
 
-### H-3 测试闸门：52/59，且"绿"不代表覆盖
+**本次结果（更新后，63 套）**
 
-**本次全量结果**
+- 通过 **60**；失败 3：`test_tools`（本机 DNS 把 `example.com` 解析到 `198.18.1.22`，SSRF 守卫正确拒绝）、`test_frontend_store` / `test_frontend_render`（本机 Homebrew Node 缺 `libsimdjson.33.dylib`）。
+- 上一版被误归因为"rail.re 网络"的 `test_api`，复核确认是**测试假设过期**：它用「那明天呢」要求 `emu.routing: ok`，而产品规则明确"未来日期不查交路"（`retrieve.py:856-866`）。把追问改为「那今天呢」后通过。
+- `test_static_assets` 是测试假设错误：Starlette 0.50 的流式 gzip 会移除 `content-length`；改用 `r.num_bytes_downloaded` 后通过（实测 237,519 B → 77,371 B，3.07x）。
+- `test_android` 有三处过期断言：`rglob("*.apk")` 把 `app-debug-androidTest.apk` 当成应用包；`providerRow` 签名已扩展；manifest 图标已从 `@drawable` 改为 `@mipmap`。均已按"检查意图"而非"精确文本"修正。
+- 仍存在网络/环境耦合：8 个套件未接入（`test_github_updates`、`test_photo_annotations`、`test_dates_without_tzdata`、`test_structured_sse_visibility` 等）；网络失败与代码失败在同一份汇总里无法区分。
+- 本轮已登记 4 个此前未接入的离线套件（见 §9），`test_hardening` 现在报告 63 套。
 
-- 通过 52 / 59；失败 7 个，分类如下（详见附录 B）：
-  - 环境/网络 5 个：`test_tools`（`example.com` 被本机 DNS 解析到 `198.18.1.22`，被 SSRF 守卫正确拒绝）、`test_api`（rail.re 瞬时不可达）、`test_dict_mileage`（jprailfan `ConnectError`）、`test_frontend_store` / `test_frontend_render`（本机 Homebrew Node 缺 `libsimdjson.33.dylib`）。
-  - 测试自身缺陷 2 个：
-    - `test_static_assets.py:57` 对 gzip 后的 `FileResponse` 断言 `content-length`；Starlette 0.50 对流式 gzip 会移除该头（我用 `TestClient` 复现：`/` 有，`/v/.../src/main.js` 无）。这是测试假设错误，不是缓存失效。
-    - `test_android.py:548` 用 `rglob("*.apk")` 遍历所有 APK，把新出现的 `app-debug-androidTest.apk` 也要求带 `assets/webapp/build.json`；androidTest APK 本来就不该有。应只检查 `app-*.apk` 或按 package 过滤。
-- **3 个新增离线套件没接进 `run_all.sh`**：`test_closed_knowledge_tree`（4 项）、`test_prompt_cache_metrics`（5 项）、`test_decision_station_matching`（2 项）。我单独跑均通过——也就是说它们有价值，但电池不会替你跑。
-- 共 71 个 `test_*.py`，只接 59 个；未接入的 12 个里还有 `test_github_updates`、`test_photo_annotations`、`test_future_routing_guard` 等。
-- 网络套件与离线套件混在同一个清单里，失败时无法从汇总判断"是代码坏了还是网络坏了"；本次 5 个环境失败就是例子。
-- `test_dict_mileage` 的失败还暴露一个**代码健壮性**问题：`rail_mileage._station_profile` 对不存在的站名仍去请求 jprailfan，`dict._polite_get` 不捕获 `httpx.ConnectError`，异常直接冒出（`app/data/dict.py:198-215`、`app/tools/rail_mileage.py:202`）。编排层会兜住（trace 记为 failed），但工具契约要求 `ToolResult(ok=False)`，离线部署下这条路径不应以异常收场。
+**建议**：把 `run_all.sh` 拆成 `--offline` 与 `--live`；发现不到可用 Node 时输出明确 `SKIP`；网络失败显式 `SKIP` 并计入汇总。
 
-**建议**
+### H-5 文档索引与口径（已比上一版改善）
 
-- 先把 3 个新套件接进清单，并修掉上面 2 个测试缺陷；
-- 把 `run_all.sh` 拆成 `--offline`（CI/断网可跑）与 `--live`（需境内网络/模型），网络失败显式 `SKIP` 并计入汇总；
-- 前端套件发现不到可用 Node 时，输出明确 `SKIP` 而不是让整批红；
-- 给 `rail_mileage` 的抓取路径加传输错误 → `ok=False` 的收敛。
-
-### H-4 文档索引与口径漂移
-
-- `docs/README.md` 只维护了约 20 条精选；2026-10-13 之后的 **13 份**交接/审计文档全部不在索引里：`backend-decision-speed`、`backend-prompt-cache-measurement`、`backend-provider-wizard-handoff`、`backend-retrieval-audit`、`backend-ticket-shared-rows`、`frontend-provider-setup-wizard-design`、`frontend-siliconflow-wizard-implementation`、`backend-train-code-reform-preparation`、`backend-agent-tools-handoff`、`backend-image-document-input-handoff`、`backend-fuck-cr-button-handoff`、`frontend-inputs-fuck-cr-integration`、`frontend-multi-provider-wizard` 等。
-- `docs/EXPL.md:131-132` 的"无网络套件"清单只有 15 个左右，并声称"其余依赖真实 LLM 或境内数据源"；实际上 `test_metrics`、`test_photo_spots`、`test_backend_performance`、`test_pipeline_performance`、`test_local_inference`、`test_static_assets`、`test_llm_providers`、`test_android`、`test_corpus`、`test_phrasings`、`test_fuck_cr*` 都是离线可跑的。这会误导"断网时该跑哪些"。
-- `FUCK_CR/INDEX.md:6` 的 front matter 是 `revision: 4`，`:21` 的表格仍写 `revision 3 · 2026-10-17`（CHANGELOG 已记 10-18 rev 3/4）。
+- 0.1.29 已把 13 份最新交接/审计文档补进 `docs/README.md`，`FUCK_CR/` 链接也不再悬空；此前"最新 13 份全缺"的问题已解决。
+- 仍有 62 份更早的文档不在索引里。索引本身是"精选"而非全集，这可以接受，但应在页首写明"精选，不是全量清单"，否则读者会以为 `docs/` 只有这些。
+- `docs/EXPL.md:131-132` 的"无网络套件"清单仍只列约 16 个，并称"其余依赖真实 LLM 或境内数据源"；实际 `test_metrics`、`test_photo_spots`、`test_backend_performance`、`test_pipeline_performance`、`test_local_inference`、`test_static_assets`、`test_llm_providers`、`test_android`、`test_corpus`、`test_phrasings`、`test_fuck_cr*` 都是离线可跑的。这会误导"断网时该跑哪些"。
+- `FUCK_CR/INDEX.md:6` front matter 是 `revision: 4`，`:21` 表格仍写 `revision 3 · 2026-10-17`。
 - `backend/app/main.py:60` 的 FastAPI `version="0.1.0"` 与 `VERSION=0.1.29` 不一致（仅 OpenAPI 元数据，但会出现在 `/docs`/客户端生成物里）。
-- 根 `README.md` 的功能表还没有图片/文档导入、文件草稿导出、主题操作这些已经落地的能力。
 
-这些都不影响运行，但会直接影响"独立评审/外部贡献/故障排查"的可信度；修复成本以分钟计。
-
----
-
-## 4. 中低优先级
+## 5. 中低优先级
 
 ### M-1 匿名面与开放指标
 
-- 服务默认绑定 `127.0.0.1`（`config.py:82`），这对本机/Android 内嵌是合理的；但代码同时允许 `CORS *`（`main.py:73`）且**没有任何认证**。`/api/metrics`（`main.py:118`）公开暴露进程级计数、工具名、供应商 id、缓存名（不含用户文本/密钥）。
-- 若用 `HOST=0.0.0.0` 放到局域网，任何同网段设备都能使用服务器上配置的 LLM Key 发起对话，并读取指标。当前配置面里没有认证/共享令牌开关。
-- 建议二选一：恢复一个可选的共享令牌/反代鉴权，或在文档与启动日志里明确"仅限回环"，并让非回环绑定必须显式确认。指标端点至少应可选关闭或加同一道门。
+- 默认绑定 `127.0.0.1`（`config.py:82`），对本机/Android 内嵌合理；但 `CORS *`（`main.py:73`）且**没有任何认证**。`/api/metrics`（`main.py:118`）公开暴露进程计数、工具名、供应商 id、缓存名（不含用户文本/密钥）。
+- 若 `HOST=0.0.0.0` 放到局域网，同网段设备可以使用服务器上配置的 LLM Key 发起对话，并读取指标。当前配置面里没有认证/共享令牌开关。
+- 建议：恢复可选共享令牌/反代鉴权，或在文档与启动日志明确"仅限回环"，并让非回环绑定必须显式确认；指标端点至少可关闭或加同一道门。
 
 ### M-2 体积与生成式设计资产
 
-- 0.1.29 release APK **56,351,225 B**，0.1.26 为 41,422,428 B，**+36%**；其中 `lib/arm64-v8a/libmlkit_google_ocr_pipeline.so` 单项 11,064,544 B。离线中文 OCR 是明确需求，这个代价可能是值得的，但应作为产品决策记录，而不是构建时顺带发生。
-- release 仍是 `isMinifyEnabled = false` / `isShrinkResources = false`（`android/app/build.gradle.kts:148-149`），R8 未启用。
-- `NativeDesignPaths.kt` 1,511 行、**1,465 个 `DesignInkLayer`**，是从 `desi1.png`/`desi2.png`（2.6 MB）逐像素描出来的 Compose 路径。UI 约束文档已在 10-03 放宽"逐像素接近"，这批生成物现在更像历史投资而非必要资产；至少应评估维护成本、启动/滚动开销，并考虑换回矢量图标。
+- 0.1.29 release APK **56,351,221 B**，0.1.26 为 41,422,428 B，**+36%**；其中 `lib/arm64-v8a/libmlkit_google_ocr_pipeline.so` 单项 11,064,544 B。离线中文 OCR 是明确需求，但应作为产品决策记录。
+- release 仍是 `isMinifyEnabled=false` / `isShrinkResources=false`（`build.gradle.kts:148-149`），R8 未启用。
+- `NativeDesignPaths.kt` 1,511 行、**1,465 个 `DesignInkLayer`**，从 `desi1.png`/`desi2.png`（2.6 MB）逐像素描出。UI 约束已在 10-03 放宽"逐像素接近"，这批生成物更像历史投资；应评估维护/启动成本，考虑换回矢量图标。
 
-### M-3 隐性开关与仓库噪声
+### M-3 隐性开关
 
-- `MAIN_TICKET_SHARED_ROWS_ENABLED` 由 `os.environ` 直接读取（`app/tools/ticket_snapshot.py:30`），不在 `Settings`、不在 `.env.example`，因此 `test_config_docs` 的 67 项覆盖检查看不到它；`RAILFAN_TESSERACT` 同样只在交接文档里出现。它们有文档，但没有进入"配置真相"。
-- `.gitignore` 未覆盖 `.ai/` 与 `acceptance/runs/`，与 B-1 的 status 噪声同源。
-- LM 轨把 ML Kit 设为 `compileOnly`，但 `ChatRepository.kt:98` 无条件引用 `ImageTextRecognizer`；只要 LM 路径调用到 `ChatRepository`，就会在无 ML Kit 的 APK 上触发 `NoClassDefFoundError`。当前 LM 走 WebView，未必触发，但这是一条没有编译期保护的耦合。
+- `MAIN_TICKET_SHARED_ROWS_ENABLED` 由 `os.environ` 直接读取（`ticket_snapshot.py:33-35`），不在 `Settings`、不在 `.env.example`，`test_config_docs` 的 67 项覆盖看不到它；`RAILFAN_TESSERACT` 同样只在交接文档出现。它们有文档，但没进入"配置真相"。
+- LM 轨把 ML Kit 设为 `compileOnly`，而 `ChatRepository.kt:98` 无条件引用 `ImageTextRecognizer`；只要 LM 路径调用到 `ChatRepository`，就会在无 ML Kit 的 APK 上触发 `NoClassDefFoundError`。当前 LM 走 WebView，未必触发，但这是一条没有编译期保护的耦合。
 
 ### M-4 确定性与边界
 
-- `fastpath._station_hits` 在"两个同长度站名"时，回退到 `sorted((n for n in names if n in kept), key=len)`，而 `names` 是 `set`（`fastpath.py:336`）。`set` 的迭代顺序受 `PYTHONHASHSEED` 影响，因此 `hits[0]` 可能随进程变化。当前多站场景会被 `_merge_od` 的歧义门挡住（`len(hits) > 1 → 交回模型`），但 `rule_slots`/`_station_in_text` 仍可能拿到不确定的第一个站。建议显式按"出现位置、再按长度"排序。
-- `fuck_cr.parser.parse("0X1")` 返回 `codes=('0X1',)` 且 `status=candidate`，尽管 `_domain()` 对 `zero=True` 返回 `UNKNOWN`。`leading_zero` 被记录了，但状态与 `codes` 没跟上；这类输入应进入 `ambiguous/rejected`，否则影子统计会把 `0X1` 当候选。
-- `ticket_snapshot` 的 `RequestStore` 依赖 `ContextVar` 与 `retain_scope` 的借用计数，测试覆盖了取消/并发（12 项），但这是全项目最复杂的生命周期之一；建议在真实高并发下再看一次 `store.finish()` 与工具工厂的时序（本次未做压测）。
+- `fastpath._station_hits` 在"两个同长度站名"时回退到 `sorted((n for n in names ...), key=len)`，而 `names` 是 `set`（`fastpath.py:336`）。`set` 迭代顺序受 `PYTHONHASHSEED` 影响：实测同一句「北京南和上海南哪个近」在 seed 1/2/4 取 `北京南`、seed 3 取 `上海南`。当前多站场景多数被 `_merge_od` 的歧义门挡住，但 `rule_slots`/`_station_in_text` 仍可能拿到不确定的第一个站。建议按"出现位置、再按长度"显式排序。
+- `fuck_cr.parser.parse("0X1")` 返回 `codes=('0X1',)` 且 `status=candidate`，尽管 `_domain()` 对 `zero=True` 返回 `UNKNOWN`。按指示未改影子解析器；建议后续把这类输入归入 `ambiguous/rejected`，否则影子统计会把 `0X1` 当候选。
+- `app/data/dict.py:_polite_get` 不捕获 `httpx.ConnectError`；`rail_mileage._station_profile` 对不存在的站名仍去请求 jprailfan，离线时异常直接冒出（本次 `test_dict_mileage` 第一次运行即失败于此，网络恢复后通过）。编排层会兜住，但工具契约要求 `ToolResult(ok=False)`。建议在抓取层收敛传输错误。
 
----
+### M-5 其他可优化点
 
-## 5. 车次改革专项：现在到底缺什么
+- `web_search._fetch_top_pages` 在注入预算为 0 时仍按 `max(400, budget // top_n)` 抓取每页至少 400 字，并在保留 `top_n` 条成功正文的同时最多并发抓 `top_n + 2` 条；全部成功时后两条被丢弃（`web_search.py:300-317`）。这是审计已记录过的过量抓取，仍未收敛。
+- `registry.query_scope()` 每次工具调用都对全部 67 项设置做 `dict() + json.dumps + sha256`；请求内可缓存一次。
+- `updates/software.check` 只挑"版本号最大"的 release；若该 release 缺 arm64 资产，会报有更新但没有可下载资产，而不会回退到"最新一个带资产的版本"。
+- `frontend/src/main.js` 的 `schedule-source` 链接直接 `link.href = sourceUrl`，未像 `renderSources` 那样过滤 `http(s)` 协议；当前 sources 由工具硬编码，风险低，但可统一。
 
-### 5.1 已具备
+## 6. 工作区是否需要清理
 
-- 资料层：`FUCK_CR/` 的 01–06、JSON/CSV、`check.py` 自洽（11 个客运字头、17 条映射、16 个来源，本次实跑通过）。
-- 独立解析器：`backend/app/fuck_cr/parser.py` 能保留完整 token、原文字符偏移、未知字头、候选域、歧义尾链；单测 10 项通过。
-- 影子观察：`shadow.observe` 在 `service_dispatch.train_codes` 上只记计数，不改路由；`test_fuck_cr` 7 项通过。
-- 预备接口：`/api/fuck-cr/status` 与 `/api/fuck-cr/activation` 的 409/200/idempotent 语义有 5 项 API 测试；客户端对 404/409/网络失败的处理有 Kotlin 实现。
+结论：**需要，但应分层处理；不要跑 `git clean -fdx`**。当前工作区是干净的（`git status` 0 项），需要清理的是本地构建/证据/发布产物。
 
-### 5.2 未具备（按改革后的用户可见顺序）
+| 目录/文件 | 体积 | 性质 | 建议 |
+|---|---:|---|---|
+| `.android-build/` | 18 GB | SDK 6.0G + android-home 7.0G + gradle 1.6G + llama 构建 3.2G + jdk 0.3G | **保留** SDK/gradle/jdk（重建成本高）；llama 构建目录若近期不编 LM 轨，可归档后删除 |
+| `dist/android/` | 2.5 GB / 76 个 APK | 0.1.4–0.1.29 的历史 debug/release/lm 包，含 `_副本` | **保留** 0.1.29 与 0.1.26（回滚）；其余可归档到外部盘后删除，约释放 2.4 GB |
+| `acceptance/` | 488 MB | 101 个 `runs/` 目录 + 正式对照 PNG | `runs/` 已在 `.gitignore`；旧 run 可打包归档；正式 PNG 与 `index.yaml` 不要动 |
+| `.ai/` | 293 MB | 审计/基准证据，10 个脚本已跟踪 | 未跟踪部分打包归档；已跟踪的 10 个文件保留 |
+| `android/app/build/` | 793 MB | 可重建的 Gradle 产物 | 可删，下次构建重建 |
+| `backend/data/dict.db.bak-20261007` | 14 MB | 旧词典备份 | 确认当前 `dict.db` 正常后可删 |
+| `.git/` | 252 MB | 历史里有两枚约 29 MB 的 APK、两份 5.6 MB 基线 tar | `git gc` 只能清 12.7 MB garbage，收不回可达对象；不建议为体积改写历史 |
+| 根目录 `test-baseline-*.log`、`.setup-uvicorn.log`、`.DS_Store` | <200 KB | 一次性日志/系统文件 | 可直接删 |
+| `dist/RailFanAI-export-20260915_副本.tar.gz`、`*.apk_副本` | 数 MB | 手工副本 | 可直接删 |
+| `desi1.png` / `desi2.png` | 2.6 MB | **已跟踪的设计原稿** | 保留（UI 边界文档要求原图不变） |
 
-1. **生产解析不再截号**（B-2）——最小、最急、可独立上线。
-2. **字符头 → 类别 → 日期**的解释层；`普速/高铁/动车/特快/快速/城际` 需要按 `effective_date` 返回不同字母集。
-3. **服务准入**：`B/DH/DJ/5 位数字` 不能进客运余票/时刻；`X/T/K` 必须能进交路（否则把"未接入"说成"无数据"）。
-4. **过渡期双表达**：同一列车跨 11/24–11/25 的两个号，不能重复计数、不能静默替换用户输入；历史日期按旧语义。
-5. **文案与来源**：至少一处能解释"车次变了、车没变"；不能把字头级映射写成逐趟对照。
-6. **缓存与词典**：随包词典、GTFS、公布票价保留快照日期；新号缺失时如实缺失，不能拿旧号填补。
+建议先做无损动作：删日志/`.DS_Store`/`_副本`、清 `android/app/build`、归档旧 APK 到外部盘；再做 `.android-build` 与 `.ai`/`acceptance/runs` 的归档。任何删除前先确认 0.1.29 与 0.1.26 的 APK/SHA-256 已另存。
 
-### 5.3 建议的门槛（不是日期开关）
+## 7. 车次改革专项：现在到底缺什么
 
-- `shadow` 至少覆盖 `train.schedule`、`ticket.query`、`emu.routing`、`service_batch` 四个入口，并能在 `/api/metrics` 看到新旧候选差异；当前只有 `service_dispatch`。
-- `reform_2026` 的启用必须同时满足：官方全文或可验证的接口样本 + 逐字段置信度整理 + 回滚演练。
-- 先在 **11/24 之前**用真实 12306 返回验证"旧号在新日期是否仍可查""新号在旧日期是否误报"，再决定默认值。
-- 明确一条红线：**发布日不是开关**；没有数据源证据就不切默认。
+**已具备**：`FUCK_CR/` 资料自洽（`check.py` 通过：11 个客运字头、17 条映射、16 个来源）；独立解析器（10 项单测）；影子观察（7 项）；409/200 预备接口（5 项 API 测试）。
 
----
+**未具备**（按改革后的用户可见顺序）：
 
-## 6. 核实为真的项目声明（正面）
+1. 生产解析不再截号（§3 B-1）——最小、最急、可独立上线。
+2. 字头 → 类别 → 日期的解释层；`普速/高铁/动车/特快/快速/城际` 要按 `effective_date` 返回不同字母集。
+3. 服务准入：`B/DH/DJ/5 位数字` 不进客运余票/时刻；`X/T/K` 能进交路。
+4. 过渡期双表达：跨 11/24–11/25 的两个号不重复、不静默替换；历史日期按旧语义。
+5. 文案与来源：至少一处解释"车次变了、车没变"；不能把字头级映射写成逐趟对照。
+6. 缓存与词典：随包词典、GTFS、公布票价保留快照日期；新号缺失如实缺失。
 
-独立评审不能只列问题。以下是我实际核对后确认成立的：
+**门槛（不是日期开关）**：`shadow` 至少覆盖 `train.schedule`、`ticket.query`、`emu.routing`、`service_batch` 四个入口；`reform_2026` 启用需官方全文/可验证接口样本 + 逐字段置信度 + 回滚演练；先修 B-1，再谈默认值。
+
+## 8. 核实为真的项目声明（正面）
 
 | 声明 | 核对结果 |
 |---|---|
-| 更新包有 SHA-256 + 签名 + URL 锁定 | 成立：`UpdateClient.kt:88-100` 校验 release/asset/URL/大小/哈希；`SoftwareInstaller.kt:16-27` 校验 package、versionCode、signingCertificateHistory |
-| SSRF 守卫覆盖请求级与配置级 | 成立：`providers.guard_request_base_url` 共用；`test_regressions` 10 类目标 + 真实抓取链路 + `test_llm_providers` 均通过 |
-| DOCX/DOC 解析有边界与 XXE 防护 | 成立：`agent_documents.py` 限制 zip 条目/解压总量/单文件，禁 `DOCTYPE/ENTITY`，OLE 链与 mini-FAT 有上限 |
-| 不泄露 Key | 成立：`/api/providers` 只回 `has_key`；错误文案脱敏；日志无 Key；`test_llm_providers` 有专项断言 |
-| 降级不伪装成成功 | 成立：`degraded=True` + `answer_done=False` + `error` 同时可见；`test_mock_render` 17 项 |
+| 0.1.29 从干净提交构建并发布 | 成立：`build.json`=`83794ad` 无 dirty；tag/Release/verification/SHA 一致 |
+| 更新包有 SHA-256 + 签名 + URL 锁定 | 成立：`github.asset_info` 校验文件名/大小/摘要/URL；客户端下载后再校验；`SoftwareInstaller` 验包名/versionCode/签名历史 |
+| SSRF 守卫覆盖请求级与配置级 | 成立：`providers.guard_request_base_url` 共用；`test_regressions` 10 类目标 + 真实抓取链路 + `test_llm_providers` |
+| DOCX/DOC 解析有边界与 XXE 防护 | 成立：zip 条目/解压总量/单文件上限、禁 `DOCTYPE/ENTITY`、OLE 链与 mini-FAT 有上限 |
+| 不泄露 Key | 成立：`/api/providers` 只回 `has_key`；错误文案脱敏；日志无 Key |
+| 降级不伪装成成功 | 成立：`degraded=True` + `answer_done=False` + `error` 同时可见 |
 | 检索事实/来源/截断契约 | 成立：`test_r1_fixes`、`test_output_guard`、549 项语料断言 |
-| 请求内共享售票行 | 成立：`test_ticket_snapshot` 12 项覆盖并发、取消、跨请求隔离、低余量二次校验 |
-| 文件/图片工具链边界 | 成立：25 项 agent 测试、9 项文档解析、10 项图片/传输；1 MiB 输出、8 MiB 输入、60000 字符、CSV 公式前缀、ICS 校验 |
-| `FUCK_CR` 资料自洽 | 成立：`check.py` 通过；三条硬规矩（不编逐趟表、不把转述当公告、不把 X 当现有车）在文中一致 |
-| 0.1.26 的发布记录质量 | 成立：SHA-256、签名证书、词典大小、构建提交、模拟器 5 项、限制说明齐全——这正是 0.1.27–29 缺失的模板 |
+| 请求内共享售票行 | 机制成立且有 12 项并发/取消/隔离测试；但空结果语义见 H-1 |
+| 文件/图片工具链边界 | 成立：25 项 agent 测试、9 项文档解析、10 项图片/12 项输入路由/9 项传输 |
+| `FUCK_CR` 资料自洽 | 成立：`check.py` 通过；三条硬规矩在文中一致 |
+| 0.1.26/0.1.29 发布记录质量 | 成立：SHA、签名证书、词典、构建提交、模拟器检查、限制说明齐全 |
 
----
+## 9. 本轮"更新测试"的具体改动
 
-## 7. 未能验证
+只改了测试，没有改产品代码。`git diff --stat`：4 files, +27/−7。
 
-- **真机**：本次没有连接设备，也没有安装 0.1.29；文档中的"模拟器 17 项/5 项"不能替代真机。相册/文件选择器、字体缩放、键盘、系统分享、安装器交互均未复测。
+| 文件 | 改动 | 原因 |
+|---|---|---|
+| `backend/tests/run_all.sh` | 59 → 63 套 | 登记 `test_closed_knowledge_tree`、`test_decision_station_matching`、`test_future_routing_guard`、`test_prompt_cache_metrics` |
+| `backend/tests/test_api.py` | `那明天呢` → `那今天呢`，补 docstring | 原断言要求未来日期 `emu.routing: ok`，与 `retrieve.py:856` 的未来交路红线冲突；这是测试假设过期，不是网络 |
+| `backend/tests/test_static_assets.py` | `content-length` → `r.num_bytes_downloaded` | Starlette 0.50 流式 gzip 不提供 `content-length`；用传输层字节数才能同时测两种响应 |
+| `backend/tests/test_android.py` | 过滤 `androidTest` APK；`providerRow` 签名只断言前缀；icon 接受 `mipmap/drawable` | 三处都是过期/过窄的静态断言，不是产品缺陷 |
+
+更新后全量：**60/63 通过**；失败 `test_tools`（本机 DNS）与两个前端套件（本机 Node 动态库）。受影响套件单独复跑均通过：`test_api`、`test_static_assets`、`test_android`、4 个新登记套件。
+
+## 10. 未能验证
+
+- **真机**：本轮没有连接设备；0.1.29 的模拟器安装/health 取自 `docs/verification/release-0.1.29.json` 的记录，不是我的独立复测。相册/文件选择器、字体缩放、键盘、系统分享、安装器交互未复测。
 - **云端文件/图片端到端**：没有用真实模型跑"上传 → 整理 → 导出"的语义正确率；只验证了离线契约与固定替身。
-- **供应商注册/付款/密钥连接**：没有逐家实测；本轮只读代码与测试。
-- **改革后的 12306/rail.re 行为**：新规则尚未实施，无法验证新号的真实返回、双表达、历史查询。
-- **`FUCK_CR` 的外部信源**：我核对了库内自洽与代码影响，没有重新逐条核验新华社/《人民铁道》原文；资料里的 A/B/C 分级沿用作者判断。
-- **全量 Kotlin/Compose 与前端逐行**：本次是抽样审计（Manifest、更新、OCR、设置、WebView、agent.js、store/theme 契约），未覆盖每一个 Composable 和每一条 CSS。
-- **前端测试**：本机 Node 动态库损坏，`test_frontend_store`/`test_frontend_render` 无法执行；这是环境限制，不是代码结论。
+- **供应商注册/付款/密钥连接**：没有逐家实测。
+- **改革后的 12306/rail.re 行为**：新规则尚未实施，无法验证新号真实返回、双表达、历史查询。
+- **`FUCK_CR` 外部信源**：核对了库内自洽与代码影响，没有重新逐条核验新华社/《人民铁道》原文。
+- **全量 Kotlin/Compose 与前端逐行**：抽样审计（Manifest、更新、OCR、设置、WebView、agent.js、store/theme 契约）。
+- **前端测试**：本机 Node 动态库损坏，`test_frontend_store`/`test_frontend_render` 无法执行。
 
----
-
-## 8. 建议的执行顺序
+## 11. 建议顺序
 
 | 时间 | 动作 | 完成判据 |
 |---|---|---|
-| 10/19–10/20 | 冻结写入；按 6 个边界提交；合并回 `main`；干净树重建 0.1.29 | `git status` 干净；`build.json` 无 `-dirty`；tag/Release/verification 齐全 |
-| 10/20–10/24 | 解析加固单独发 0.1.30；补回归；修 2 个测试缺陷；接 3 个新套件 | `X1次列车` 不再产出 `1`；`run_all.sh` 52→59 的失败可解释 |
-| 10/24–11/07 | 三层拆分（识别/解释/准入）；`effective_date`；`shadow` 扩到 4 个入口；缓存加规则版本 | 新旧对照可观测；旧语料零回退；新号不误进客运 |
-| 11/07–11/17 | 过渡期双表达、跨日期、历史查询；真实 12306 样本回填 | 跨 11/24–25 不重复、不替换；文案可解释 |
-| 11/17–11/24 | 冻结默认 `legacy`；在测试实例开 `shadow`；回滚演练；准备发布说明 | 回滚 5 分钟内完成；无自动按日期切换 |
+| 立即 | 修 H-1（空车次语义）+ 补回归 | snapshot 激活时空 rows → `availability_status=empty` |
+| 立即 | 修 B-1（解析截号）单独发 0.1.30 | `X1次列车` 不再产出 `1`；旧语料零回退 |
+| 本周 | 测试拆分 `--offline` / `--live`；Node 缺失显式 SKIP | 断网环境仍能得到可解释汇总 |
+| 本周 | 清理旧 APK/日志/`_副本`；归档旧 run | 保留 0.1.29/0.1.26 校验材料 |
+| 10/24–11/07 | 三层拆分（识别/解释/准入）；`effective_date`；`shadow` 扩到 4 入口；缓存加规则版本 | 新旧对照可观测；新号不误进客运 |
+| 11/07–11/17 | 过渡期双表达、跨日期、历史查询；真实 12306 样本回填 | 跨 11/24–25 不重复、不替换 |
+| 11/17–11/24 | 冻结默认 `legacy`；测试实例开 `shadow`；回滚演练 | 回滚 5 分钟内完成；无自动按日期切换 |
 | 改革后 | 依据官方全文/逐趟表/接口证据再启用 `reform_2026` | 不以发布日期、按钮或解析器能力作为启用依据 |
 
-**需要拍板的三件事**
+**需要拍板**：
 
-1. 是否允许从当前 dirty 树发布 0.1.29（我的建议：不允许；先提交再重建）。
-2. 11/25 是否要让新语义默认生效（我的建议：不；默认 `legacy`，按业务日期与证据逐段启用）。
-3. 是否接受 +36% APK 体积换离线中文 OCR（如果接受，在发布说明里写明；如果不接受，改成按需下载/Play Services 方案）。
+1. 0.1.30 是否只包含 H-1 + B-1 两个修复（建议：是，单独发版，不夹带语义迁移）。
+2. 11/25 是否让新语义默认生效（建议：不；默认 `legacy`，按业务日期与证据逐段启用）。
+3. 是否接受 +36% APK 体积换离线中文 OCR（若接受，发布说明写明；若不接受，改按需下载/Play Services）。
 
 ---
 
 ## 附录 A：关键复现
 
 ```bash
-# 快照
+# 快照与发布
+cd /Users/xylo/Documents/OpenRailFanAI
 git rev-parse HEAD; cat VERSION; git status --porcelain | wc -l
 unzip -p dist/android/OpenRailFanAI-0.1.29-arm64-release.apk assets/webapp/build.json
 
-# 解析缺陷
+# B-1 解析截号
 cd backend && PYTHONPATH=. .venv/bin/python - <<'EOF'
+from app.pipeline import retrieve
 from app.tools._rt12306 import extract_train_code
 for s in ["X1次列车","V6001次","DH1次","AB123次","G1次列车","1461次列车"]:
-    print(s, "->", extract_train_code(s))
+    print(s, "->", extract_train_code(s), "|", retrieve._train_code_from_message(s+"今天几点"))
 EOF
 # 实测：1 / 6001 / 1 / B123 / G1 / 1461
 
-# 新解析器
-PYTHONPATH=. .venv/bin/python -c "from app.fuck_cr.parser import parse; print(parse('X1次、V6001次、DH1次').codes)"
+# H-1 空车次语义
+cd backend && PYTHONPATH=. .venv/bin/python - <<'EOF'
+import asyncio, os
+from unittest.mock import patch, AsyncMock
+from app.tools import ticket_snapshot as snap, _rt12306 as rt
+from app.tools.ticket_query import TicketQueryTool
+
+@snap.request_scope
+async def active():
+    with patch.object(rt,'resolve_station_code',AsyncMock(side_effect=[('VNP','北京南'),('AOH','上海虹桥')])), \
+         patch.object(snap,'query_rows',AsyncMock(return_value={'rows':[],'fetched_at':'x'})):
+        return await TicketQueryTool().invoke({'from_station':'北京南','to_station':'上海虹桥','date':'2026-10-25'})
+
+async def inactive():
+    with patch.dict(os.environ,{'MAIN_TICKET_SHARED_ROWS_ENABLED':'false'}), \
+         patch.object(rt,'resolve_station_code',AsyncMock(side_effect=[('VNP','北京南'),('AOH','上海虹桥')])), \
+         patch.object(rt,'query_tickets',AsyncMock(return_value=[])):
+        return await TicketQueryTool().invoke({'from_station':'北京南','to_station':'上海虹桥','date':'2026-10-25'})
+
+for label,coro in [('snapshot ON',active()),('snapshot OFF',inactive())]:
+    r=asyncio.run(coro); print(label,'ok=',r.ok,'error=',r.error,'data=',r.data)
+EOF
+
+# 站名同长度排序随 PYTHONHASHSEED 变化
+cd backend && for s in 1 3; do PYTHONHASHSEED=$s PYTHONPATH=. .venv/bin/python -c \
+ "import asyncio;from app.tools import _rt12306 as rt;from app.pipeline import fastpath;asyncio.run(rt.ensure_loaded());print(fastpath._station_in_text('北京南和上海南哪个近'))"; done
 
 # FUCK_CR 自洽
 cd FUCK_CR && python3 check.py
-# OK: ... 客运 11 个，映射 17 条，来源 16 条
 
-# 静态 gzip 头（测试假设错误的最小复现）
-cd backend && PYTHONPATH=. .venv/bin/python - <<'EOF'
-from fastapi.testclient import TestClient
-from app.main import app, _frontend_stamp
-with TestClient(app) as c:
-    for u in ["/", f"/v/{_frontend_stamp()}/src/main.js"]:
-        print(u, dict(c.get(u, headers={"Accept-Encoding":"gzip"}).headers))
-EOF
+# 测试
+cd backend && bash tests/run_all.sh
 ```
 
-## 附录 B：测试结果逐项
+## 附录 B：测试结果（更新后，63 套）
 
 | 套件 | 结果 | 归因 |
 |---|---|---|
 | `test_fuck_cr_api` / `test_fuck_cr` / `test_fuck_cr_parser` | 通过（5 / 7 / 10） | — |
 | `test_agent_tools` / `test_agent_documents` / `test_agent_images` / `test_agent_input_routes` / `test_llm_image_transport` | 通过（25 / 9 / 10 / 12 / 9） | — |
-| `test_dates` `test_od` `test_context` `test_policy` `test_pipeline` | 通过 | — |
-| `test_tools` | 失败 | 本机 DNS 把 `example.com` 解析到 `198.18.1.22`，SSRF 守卫正确拒绝；网络环境 |
-| `test_emu_routing` / `test_integration_fullchain` | 通过 | — |
-| `test_api` | 失败 | rail.re 瞬时不可达，`emu.routing: failed`，语义断言要求 `ok`；网络 |
-| `test_regressions` `test_routing` `test_orchestrator_semantics` `test_cost_governance` | 通过 | — |
-| `test_metrics` `test_photo_spots` `test_backend_performance` `test_rt_performance` | 通过 | — |
-| `test_llm_pool` `test_pipeline_performance` `test_local_inference` `test_output_guard` `test_hardening` | 通过 | — |
-| `test_config_docs` | 通过（67 项） | — |
-| `test_product_fixes` `test_r1_fixes` `test_r1_fixes2` `test_station_quality` | 通过 | — |
-| `test_rail_line_stations` `test_train_stops` `test_station_screen` | 通过 | — |
-| `test_dict_mileage` | 失败 | 无网络时 `jprailfan` `ConnectError` 从工具冒出；同时暴露 `_polite_get` 未收敛传输错误 |
-| `test_perf_fastpath` | 通过 | — |
-| `test_static_assets` | 失败 | 测试对 gzip `FileResponse` 断言 `content-length`（Starlette 0.50 不提供）；测试缺陷 |
-| `test_llm_providers` | 通过 | — |
-| `test_android` | 失败 | `rglob("*.apk")` 把 `app-debug-androidTest.apk` 当成应用包；测试缺陷 |
+| `test_tools` | 失败 | 本机 DNS 把 `example.com` 解析到 `198.18.1.22`，SSRF 守卫正确拒绝；环境 |
+| `test_api` | **通过（已修）** | 原断言要求未来日期查交路；改为今天后通过 |
+| `test_static_assets` | **通过（已修）** | 用 `num_bytes_downloaded`；实测 3.07x |
+| `test_android` | **通过（已修）** | 过滤 androidTest；签名/图标断言放宽到意图 |
+| `test_dict_mileage` | 通过 | 本轮 jprailfan 可达；但 `_polite_get` 的传输错误仍未收敛 |
 | `test_frontend_store` / `test_frontend_render` | 失败 | 本机 Node 缺 `libsimdjson.33.dylib`；环境 |
-| `test_phrasings` `test_corpus` `test_mock_render` `test_multiturn_slots` `test_slm_hardening` | 通过（549 / 68 等） | — |
-| `test_ticket_*` `test_fare_*` `test_executed_fare` `test_ticket_snapshot` `test_multidate_services` | 通过 | — |
+| `test_closed_knowledge_tree` / `test_decision_station_matching` / `test_future_routing_guard` / `test_prompt_cache_metrics` | 通过（4 / 2 / 通过 / 5） | 本轮新登记 |
+| 其余 44 套 | 通过 | 含 `test_corpus` 549 项、`test_slm_hardening` 68 项、`test_ticket_snapshot` 12 项等 |
 
-未接入 `run_all.sh` 但单独通过：`test_closed_knowledge_tree`（4）、`test_prompt_cache_metrics`（5）、`test_decision_station_matching`（2）。
+未接入的其余套件（未改动）：`test_dates_without_tzdata`（需无 tzdata 环境）、`test_github_updates`、`test_photo_annotations`、`test_photo_dictionary_updates`、`test_structured_sse_visibility`、`test_routing_projection_coupling`、`test_service_batch`、`test_incident_service_delivery`。其中 `test_routing_projection_coupling`、`test_service_batch`、`test_incident_service_delivery` 本轮单独跑过并通过；其余未跑。
