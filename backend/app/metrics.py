@@ -20,6 +20,17 @@ _REQUESTS = {"completed": 0, "failed": 0, "cancelled": 0}
 _OUTCOMES = {"successful": 0, "partial": 0, "degraded": 0, "failed": 0, "cancelled": 0}
 _CACHE: dict[str, dict[str, int]] = {}
 _OPERATIONS: dict[str, dict[str, int]] = {}
+_RULE_COMPARISONS: dict[str, dict[str, int]] = {}
+
+
+def record_rule_comparison(name: str, *, same: bool) -> None:
+    """Fixed rule labels and counts only; no input, train identifiers or payloads."""
+    if name != 'fuck_cr.syntax':
+        return
+    with _LOCK:
+        row = _RULE_COMPARISONS.setdefault(name, {'calls': 0, 'same': 0, 'different': 0})
+        row['calls'] += 1
+        row['same' if same else 'different'] += 1
 
 
 def _summary(samples: deque[float]) -> dict[str, int | float]:
@@ -77,7 +88,8 @@ def record_tool(name: str, ok: bool, elapsed_ms: float) -> None:
 
 
 def record_llm(provider: str, elapsed_ms: float, prompt_tokens: int = 0,
-               completion_tokens: int = 0, failed: bool = False, cancelled: bool = False) -> None:
+               completion_tokens: int = 0, failed: bool = False, cancelled: bool = False,
+               *, prompt_cache: tuple[int, int, int] | None = None) -> None:
     # provider 必须是内部目录 id 或清理后的短标签；调用方不得传 URL/Key。
     key = str(provider or "unknown")[:40]
     with _LOCK:
@@ -90,6 +102,18 @@ def record_llm(provider: str, elapsed_ms: float, prompt_tokens: int = 0,
         row["prompt_tokens"] += max(0, int(prompt_tokens or 0))
         row["completion_tokens"] += max(0, int(completion_tokens or 0))
         row["latencies_ms"].append(max(0.0, float(elapsed_ms)))
+        cache = row.setdefault('prompt_cache', dict(
+            reported_calls=0, unreported_calls=0, hit_calls=0,
+            hit_tokens=0, miss_tokens=0, reported_prompt_tokens=0))
+        if prompt_cache is None:
+            cache['unreported_calls'] += 1
+        else:
+            hit, miss, total = prompt_cache
+            cache['reported_calls'] += 1
+            cache['hit_calls'] += int(hit > 0)
+            cache['hit_tokens'] += hit
+            cache['miss_tokens'] += miss
+            cache['reported_prompt_tokens'] += total
 
 
 def record_llm_failure(provider: str, elapsed_ms: float) -> None:
@@ -106,7 +130,15 @@ def snapshot() -> dict[str, Any]:
                    "prompt_tokens": v["prompt_tokens"],
                    "completion_tokens": v["completion_tokens"],
                    **_summary(v["latencies_ms"])} for k, v in _LLM.items()}
+        for k, v in _LLM.items():
+            cache = dict(v['prompt_cache'])
+            cache['token_hit_rate'] = (cache['hit_tokens'] / cache['reported_prompt_tokens']
+                                       if cache['reported_prompt_tokens'] else None)
+            cache['request_hit_rate'] = (cache['hit_calls'] / cache['reported_calls']
+                                         if cache['reported_calls'] else None)
+            llm[k]['prompt_cache'] = cache
         return {"scope": "process", "window": _WINDOW, "requests": dict(_REQUESTS),
+                "rule_comparisons": {k: dict(v) for k, v in _RULE_COMPARISONS.items()},
                 "outcomes": dict(_OUTCOMES), "caches": {k: dict(v) for k, v in _CACHE.items()},
                 "operations": {k: dict(v) for k, v in _OPERATIONS.items()},
                 "stages": stages, "tools": tools, "llm": llm}

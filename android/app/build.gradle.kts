@@ -206,6 +206,10 @@ dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.08.00")
     implementation(composeBom)
     implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.browser:browser:1.8.0")
+    // Bundled Chinese model: OCR works offline from the first launch, without Play Services downloads.
+    if (lmLabel == null) implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+    else compileOnly("com.google.mlkit:text-recognition-chinese:16.0.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("org.commonmark:commonmark:0.24.0")

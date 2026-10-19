@@ -223,6 +223,7 @@ class TicketQueryTool(Tool):
             from_code, from_name = from_res
             to_code, to_name = to_res
             trains = await rt.query_tickets(from_code, to_code, date_str)
+            sampled_at = getattr(trains, 'fetched_at', '') or _now_iso()
         except Realtime12306Error as e:
             presale = _presale_hint(date_str)
             return ToolResult(
@@ -258,7 +259,7 @@ class TicketQueryTool(Tool):
         if not trains:
             empty_meta = dict(data={"availability_status": "empty", "from_station": from_name,
                                    "to_station": to_name, "train_date": date_str},
-                              sources=["https://kyfw.12306.cn/otn/leftTicket/queryI"], fetched_at=_now_iso()) if os.environ.get("APP_VARIANT", "main").lower() != "lm" else {}
+                              sources=["https://kyfw.12306.cn/otn/leftTicket/queryI"], fetched_at=sampled_at) if os.environ.get("APP_VARIANT", "main").lower() != "lm" else {}
             presale = _presale_hint(date_str)
             if applied:
                 return ToolResult(
@@ -296,7 +297,9 @@ class TicketQueryTool(Tool):
         low_hits = _low_seat_hits(shown)
         if low_hits:
             try:
-                again = await rt.query_tickets(from_code, to_code, date_str)
+                from app.tools.ticket_snapshot import force_refresh
+                with force_refresh():
+                    again = await rt.query_tickets(from_code, to_code, date_str)
                 index = {str(t.get("train_no", "")).upper(): t for t in again}
                 changes = []
                 for t in shown:
@@ -363,5 +366,5 @@ class TicketQueryTool(Tool):
             sources=["https://kyfw.12306.cn/otn/leftTicket/queryI"],
             note=_availability_note(date_str, date_warn, verify_note),
             total=matched, shown=len(shown), truncated=truncated,
-            filters=applied, fetched_at=_now_iso(),
+            filters=applied, fetched_at=sampled_at,
         )

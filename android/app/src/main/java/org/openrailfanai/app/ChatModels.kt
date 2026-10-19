@@ -14,6 +14,7 @@ data class ChatStreamRequest(
     val displayAction: JSONObject? = null,
     val llmSpec: JSONObject? = null,
     val clientCapabilities: List<String> = emptyList(),
+    val agentFiles: JSONArray? = null,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("message", message)

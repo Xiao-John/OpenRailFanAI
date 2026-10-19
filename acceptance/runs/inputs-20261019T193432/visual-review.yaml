@@ -1,0 +1,11 @@
+reviewer: H
+scope: 默认390×844组件布局与控制状态审阅；系统选择器和云端模型效果另行验证
+checks:
+  readable: true
+  consistent_style: true
+  no_content_occlusion: true
+  no_device_illustration: true
+  disabled_status_truthful: true
+comparison_sha256:
+  ACC-INPUT-01: 796a5d3ec567053e0a358c29323c62e720dbe9ef4408338cd15a4862c681fb2f
+  ACC-INPUT-02: 1b1b21901a6897e1e9c9ca5fe15d0874a5330c4ce3cad815b32be4b5edbece46

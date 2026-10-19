@@ -13,8 +13,9 @@ M11.1 补强（对应 审计报告（历史） P1-6）
 """
 from __future__ import annotations
 
+from unittest.mock import patch
 from app.pipeline.extract import Slots
-from app.pipeline.generate import answer_policy, build_prompt
+from app.pipeline.generate import answer_policy, build_prompt, _MAIN_KNOWLEDGE_POLICY, _MAIN_KNOWLEDGE_REQUIREMENTS
 
 
 def _retrieval_stub() -> dict:
@@ -74,6 +75,7 @@ def test_default_is_realtime():
 
 # ---------- 策略必须真的进入 prompt（真实产物断言） ----------
 
+@patch.dict('os.environ', APP_VARIANT='lm')
 def test_policy_actually_injected_into_prompt():
     """从 build_prompt 的真实产物断言：策略文本、检索事实、来源都在 prompt 里。"""
     slots = Slots(target="G1", time="今天")
@@ -104,12 +106,25 @@ def test_policy_actually_injected_into_prompt():
     print("[PASS] 策略/检索事实/来源确实注入 prompt（真实产物断言）")
 
 
+@patch.dict('os.environ', APP_VARIANT='main')
+def test_main_knowledge_policy_and_actions_are_injected():
+    # Main 已采用简答策略；不能再用 LM 的长免责声明作为 Main 的预期值。
+    prompt = build_prompt('你能做什么？', Slots(), _retrieval_stub(), question_type='knowledge')
+    assert _MAIN_KNOWLEDGE_POLICY in prompt
+    assert _MAIN_KNOWLEDGE_REQUIREMENTS in prompt
+    assert 'CR400BFA-5159' in prompt
+    assert 'https://api.rail.re/train/G1' in prompt
+    assert '没有执行结果不得声称已完成操作' in prompt
+    print('[PASS] Main 简答策略、应用操作边界、检索事实和来源已注入')
+
+
 def main():
     test_realtime_is_strict()
     test_knowledge_allows_model_knowledge()
     test_mixed_splits()
     test_default_is_realtime()
     test_policy_actually_injected_into_prompt()
+    test_main_knowledge_policy_and_actions_are_injected()
     print("\n作答策略测试全部通过 ✔")
 
 

@@ -53,6 +53,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 import kotlinx.coroutines.flow.collect
@@ -93,7 +95,11 @@ internal fun MainChatScreen(
     onBack: () -> Unit = {},
     conversationTokens: Long? = null,
     photoBackendUrl: String? = null,
+    pendingAttachment: PendingAttachment? = null,
+    onImportAttachment: ((Boolean) -> Unit)? = null,
+    onRemoveAttachment: () -> Unit = {},
 ) {
+    var showImport by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val tokenTotal = conversationTokens ?: messages.filter { it.role == "assistant" }.sumOf { replyTokenUsage(it.meta) ?: 0L }
     val persistedResults = messages.filter { it.role == "assistant" }.flatMap {
@@ -419,6 +425,21 @@ internal fun MainChatScreen(
             BasicText("本对话累计 ${formatTokenCount(tokenTotal)} Token", Modifier.testTag("conversation-token-total"),
                 style = TextStyle(color = NativeColors.muted, fontSize = 16.appSp))
         }
+        pendingAttachment?.let { attachment ->
+            Row(Modifier.fillMaxWidth().background(NativeColors.panel, RoundedCornerShape(12.dp)).padding(start = 12.dp)
+                .testTag("pending-attachment"), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RailIcon("file", Modifier.size(20.dp), NativeColors.blue)
+                Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                    BasicText(attachment.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(color = NativeColors.ink, fontSize = 14.appSp))
+                    BasicText("${if (attachment.image) "图片" else "文档"} · ${attachment.sizeLabel} · 发送后处理", style = TextStyle(color = NativeColors.muted, fontSize = 13.appSp))
+                }
+                Box(Modifier.size(48.dp).clickable(enabled = !chatState.busy, role = Role.Button, onClick = onRemoveAttachment)
+                    .semantics { contentDescription = "移除附件" }.testTag("remove-attachment"), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    RailIcon("close", Modifier.size(20.dp), NativeColors.muted)
+                }
+            }
+        }
         val composerShape = RoundedCornerShape(30.appDp)
         Row(
             Modifier.fillMaxWidth()
@@ -429,6 +450,11 @@ internal fun MainChatScreen(
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.appDp),
         ) {
+            if (onImportAttachment != null) Box(Modifier.padding(start = 4.dp).size(44.dp)
+                .clickable(enabled = !chatState.busy, role = Role.Button) { showImport = true }
+                .semantics { contentDescription = "导入附件" }.testTag("import-attachment"), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                RailIcon("plus", Modifier.size(22.dp), NativeColors.muted)
+            }
             BasicTextField(
                 value = input,
                 onValueChange = onInputChange,
@@ -467,6 +493,15 @@ internal fun MainChatScreen(
                 style = TextStyle(color = NativeColors.muted, fontSize = 13.25.appSp, letterSpacing = .25.appSp))
         }
       }
+    }
+    if (showImport && onImportAttachment != null) Dialog(onDismissRequest = { showImport = false }) {
+        SettingsCard("导入资料", "每次一份，最大 8 MiB。选好后可以编辑问题，发送后才会处理。") {
+            SettingsButton("导入图片", Modifier.fillMaxWidth(), primary = true) { showImport = false; onImportAttachment(true) }
+            SettingsButton("导入文档", Modifier.fillMaxWidth()) { showImport = false; onImportAttachment(false) }
+            BasicText("文档支持 TXT、MD、TEX、CSV、JSON、DOC、DOCX、RTF；图片支持 PNG、JPEG、WebP、GIF。", style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
+            BasicText("图片是否发给模型取决于设置中的“图片”开关；关闭时先在设备上识别文字。", style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
+            SettingsButton("取消", Modifier.fillMaxWidth()) { showImport = false }
+        }
     }
 }
 

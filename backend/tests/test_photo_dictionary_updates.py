@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from app.data import photo_spots as P
+from app.data import photo_annotations as A
 from app.updates import dictionary as D, github as G
 from test_github_updates import database, OLD
 
@@ -31,6 +32,24 @@ class PhotoUpdates(unittest.TestCase):
     def rows(self):
         with sqlite3.connect(self.target) as c:
             return list(c.execute('SELECT url,page_text FROM photo_spot_doc'))
+
+    def test_bundle_copies_annotation_index_and_legacy_refresh_clears_it(self):
+        photo(self.bundle,'2026-10-08T10:00:00Z')
+        with sqlite3.connect(self.bundle) as c:
+            c.execute('INSERT INTO photo_annotation_doc VALUES(?,?,?,?,?,?,?)',
+                      ('https://example.org/spot','doc_test','hash',1,'{}','[]','photo-spot-v3'))
+            c.execute('INSERT INTO photo_annotation_issue VALUES(?,?,?,?,?,?)',
+                      ('psi_test','https://example.org/spot',None,None,'unclear_binding','{}'))
+        result=D.merge(self.bundle,self.target,bundled=True)
+        self.assertTrue(set(A.TABLES)<=set(result['updated_tables']))
+        with sqlite3.connect(self.target) as c:
+            self.assertEqual(c.execute('SELECT COUNT(*) FROM photo_annotation_issue').fetchone()[0],1)
+        with sqlite3.connect(self.bundle) as c:
+            for t in A.TABLES: c.execute('DROP TABLE '+t)
+            c.execute('UPDATE meta SET value=? WHERE key=?',('2026-10-08T11:00:00Z',P.VERSION_KEY))
+        D.merge(self.bundle,self.target,bundled=True)
+        with sqlite3.connect(self.target) as c:
+            self.assertEqual(c.execute('SELECT COUNT(*) FROM photo_annotation_issue').fetchone()[0],0)
 
     def test_old_install_adds_photo_without_changing_gtfs_or_caches(self):
         with sqlite3.connect(self.target) as c:

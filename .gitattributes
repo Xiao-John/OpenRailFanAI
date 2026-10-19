@@ -7,6 +7,8 @@
 *.pdf binary
 *.sqlite3 binary
 *.db binary
+# Evidence hashes must retain the exact captured bytes, including XML line endings.
+acceptance/runs/**/test-results.xml binary
 
 # 迁移与锁文件不参与 diff 统计（噪音大）
 docs/review/*.md linguist-documentation

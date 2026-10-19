@@ -81,7 +81,9 @@ async def invoke_by_name(name: str, params: dict):
     cache = _QUERIES.setdefault(name, QueryCache("query." + name))
     ttl = {"ticket.query": 15, "train.schedule": 30}.get(name, 0)
     async def fetch():
-        result = await tool.invoke(deepcopy(params))
+        from app.tools.ticket_snapshot import retain_scope
+        async with retain_scope():
+            result = await tool.invoke(deepcopy(params))
         if ttl and result.ok:
             from datetime import datetime, timezone
             result.fetched_at = result.fetched_at or datetime.now(timezone.utc).isoformat()

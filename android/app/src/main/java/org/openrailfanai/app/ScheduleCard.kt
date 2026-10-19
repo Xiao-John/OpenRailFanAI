@@ -1,8 +1,6 @@
 package org.openrailfanai.app
 
 import android.app.DatePickerDialog
-import android.content.Intent
-import android.net.Uri
 import org.json.JSONArray
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -488,7 +486,7 @@ private fun SourceLink(url: String?, label: String, tag: String? = null, modifie
     if (url.isNullOrBlank()) return
     val context = LocalContext.current
     Row(modifier.fillMaxWidth().clickable {
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        runCatching { AppLinkBrowser.open(context, url) }
     }.then(if (tag == null) Modifier else Modifier.testTag(tag)).padding(vertical = if (expanded) 4.appDp else 8.appDp), verticalAlignment = Alignment.CenterVertically) {
         if (expanded) {
             Box(Modifier.size(34.appDp).background(NativeColors.selected, CircleShape), contentAlignment = Alignment.Center) {

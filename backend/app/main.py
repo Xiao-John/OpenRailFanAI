@@ -128,6 +128,10 @@ def _include_routes() -> None:
     app.include_router(chat_router, prefix="/api")
     app.include_router(providers_router, prefix="/api")
     if os.environ.get("APP_VARIANT", "main").lower() != "lm":
+        from app.api.fuck_cr import router as fuck_cr_router
+        app.include_router(fuck_cr_router, prefix="/api")
+        from app.api.agent import router as agent_router
+        app.include_router(agent_router, prefix="/api")
         from app.api.software_updates import router as software_updates_router
         from app.api.dictionary_updates import router as dictionary_updates_router
         from app.api.photo_spots import router as photo_spots_router

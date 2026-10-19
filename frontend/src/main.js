@@ -14,6 +14,9 @@
 //   5) 三端自适应：移动优先（抽屉侧栏），≥1024px 侧栏常驻
 //   6) 无需登录：对话匿名可用，不存任何凭据
 import { store } from "./store.js";
+import { themeCommand, fileCommand, fileHistory, inputTypes, pickTextFile, downloadArtifact } from "./agent.js";
+const agentFiles = new Map();
+let previousAgentTheme = null;
 import { renderMarkdown } from "./markdown.js";
 import { rafThrottle } from "./throttle.js";
 import { native } from "./native.js";
@@ -768,7 +771,7 @@ function syncStructuredPresentation(refs, meta) {
   const isEmptyResult = results.some((result) => result.kind === "empty");
   const isBatchResult = results.some((result) => result.kind === "train_schedule_batch");
   const hasConnectionError = !!meta.error || !!refs.bubble.querySelector(".connection-error");
-  const isLoading = !!meta.streaming && !hasConnectionError && !hasStructured;
+  const isLoading = !!meta.streaming && !hasConnectionError && !hasStructured && meta.intent !== "file_tool";
   const isWideResult = !!refs.structuredBox.querySelector(".batch-card, .empty-routing-card");
   refs.row.classList.toggle("has-structured", hasStructured);
   refs.row.classList.toggle("has-schedule-result", isScheduleResult);
@@ -1102,6 +1105,8 @@ function followupQuestions(meta, legacyTable = false) {
 
 function intentLabel(raw) {
   const value = String(raw || "");
+  if (value === "file_tool") return "资料处理";
+  if (value === "app_action") return "应用设置";
   const translated = value.match(/^[a-z_]+（(.+)）$/);
   return translated ? translated[1] : value;
 }
@@ -1238,6 +1243,42 @@ async function send(messageOverride = null, displayAction = null) {
   const text = String(messageOverride == null ? inputEl.value : messageOverride).trim();
   if (!text) return;
 
+  if (!displayAction) {
+    const theme = themeCommand(text);
+    if (theme) {
+      let answer;
+      if (theme === "undo" && previousAgentTheme == null) answer = "没有可撤销的主题切换。";
+      else {
+        const target = theme === "undo" ? previousAgentTheme : theme;
+        const previous = store.theme();
+        store.setTheme(target);
+        previousAgentTheme = theme === "undo" ? null : previous;
+        answer = theme === "undo" ? "已撤销主题切换。" : `已切换为${{ dark: "深色", light: "浅色", auto: "跟随系统" }[target]}模式。`;
+      }
+      const conv = store.current();
+      store.addMessage(conv.id, { role: "user", content: text });
+      store.addMessage(conv.id, { role: "assistant", content: answer });
+      inputEl.value = ""; autoGrow(); renderChat(); updateHeaderTitle(); renderConvList(); return;
+    }
+    if (/^(请|帮我)?(导入|打开|选择|上传)(文件|图片)[。！!]?$/u.test(text)) {
+      const convId = store.current().id;
+      try {
+        const file = await pickTextFile(text.includes("图片"));
+        if (file) {
+          agentFiles.set(convId, [file]);
+          if (store.current().id === convId) {
+            inputEl.value = /\.(png|jpe?g|webp|gif)$/i.test(file.name)
+              ? "请阅读这张图片，提取主要信息" : "请阅读已导入的文档，提取主要信息";
+            autoGrow();
+          }
+          toast("已导入 " + file.name + "，发送问题后处理；输入“移除附件”可清除。");
+        }
+      } catch (error) { toast(error.message); }
+      return;
+    }
+    if (text === "移除附件") { agentFiles.delete(store.current().id); inputEl.value = ""; autoGrow(); toast("附件已移除"); return; }
+  }
+
   // 用户主动关掉了引导条、却仍未配置任何 Key：不要在对话里默默失败，
   // 直接给一条可操作的错误（并保留「去配置」入口）。
   if (!llmConfigured()) {
@@ -1275,7 +1316,8 @@ async function runAssistant(convId, userIndex, displayAction = null) {
   // streaming 这个标记是"这条回答还没写完"的落盘证据：应用在生成途中被系统回收时，
   // 进程里涨到一半的正文会丢，本地留下的就是这个标记 + 已经落盘的那部分内容。
   // 下次打开据此如实提示"被打断了"，而不是让用户对着一个空气泡猜发生了什么。
-  const assistant = { role: "assistant", content: "", meta: { streaming: true } };
+  const assistant = { role: "assistant", content: "", meta: { streaming: true,
+    ...(agentFiles.has(convId) && !displayAction ? {attachmentInput: true} : {}) } };
   store.addMessage(convId, assistant);
   const aIndex = conv.messages.length - 1;
   // 登记"这一条正在生成"。渲染时靠它区分"活着"与"上次被打断"——
@@ -1327,6 +1369,39 @@ async function runAssistant(convId, userIndex, displayAction = null) {
   }, 50);
 
   try {
+    if (!displayAction && (fileCommand(userText) || agentFiles.has(convId))) {
+      const fileStarted = performance.now();
+      assistant.meta.intent = "file_tool";
+      syncStructuredPresentation(refs, assistant.meta);
+      refs.loadingCard.hidden = true;
+      refs.progress.textContent = "正在读取资料…";
+      refs.progress.hidden = false;
+      refs.stats.hidden = true;
+      const response = await fetch(API_BASE + "/api/agent/run", {
+        method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+        body: JSON.stringify({ message: userText, history: fileHistory(conv.messages, userIndex), actions: ["files"],
+          files: agentFiles.get(convId) || [], input_types: inputTypes(activeCloudEntry()), ...llmSpec() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "文件处理失败");
+      if (result.needs_local_ocr) throw new Error(result.answer || "本地 OCR 不可用，请安装识别组件后重试");
+      if (!result.handled) throw new Error("未识别出文件操作");
+      if (controller.signal.aborted) throw new DOMException("已取消", "AbortError");
+      for (const file of result.files || []) downloadArtifact(file);
+      agentFiles.delete(convId);
+      answerRaw = result.answer || "处理完成。";
+      assistant.content = answerRaw;
+      assistant.meta = { ...assistant.meta, intent: "file_tool", usage: result.usage || {},
+        inputProcessing: result.input_processing || [], latencyMs: Math.round(performance.now()-fileStarted) };
+      delete assistant.meta.streaming;
+      refs.progress.textContent = "";
+      refs.loadingCard.hidden = true;
+      refs.stats.textContent = formatStats(assistant.meta);
+      renderIntentLine(refs, assistant.meta);
+      syncStructuredPresentation(refs, assistant.meta);
+      finished = true; renderAnswer();
+      return;
+    }
     const resp = await fetch(API_BASE + "/api/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1607,6 +1682,10 @@ async function regenerate(index) {
   const conv = store.get(state.convId);
   const msg = conv && conv.messages[index];
   if (!msg || msg.role !== "assistant") return;
+  if (msg.meta?.attachmentInput) {
+    toast("这条回复使用了附件，请重新导入原附件后发送问题。", 3500);
+    return;
+  }
   let userIdx = index - 1;
   while (userIdx >= 0 && conv.messages[userIdx].role !== "user") userIdx--;
   if (userIdx < 0) { toast("找不到对应的提问"); return; }

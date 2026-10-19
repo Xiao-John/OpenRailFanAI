@@ -32,6 +32,7 @@ async def _decide(*args, **kwargs):
 
 
 def test_prefetch_overlaps_decision_and_cleanup():
+    # Future routing is deliberately not prefetched; use today to test overlap.
     async def check():
         started = asyncio.Event()
         cancelled = asyncio.Event()
@@ -47,17 +48,17 @@ def test_prefetch_overlaps_decision_and_cleanup():
             # A deterministic dependency check: the tool must already run before
             # the planner returns, rather than merely start alongside retrieval.
             await asyncio.wait_for(started.wait(), 1)
-            return {"intent": "emu_routing", "question_type": "realtime", "target": "G1", "time": "明天"}
+            return {"intent": "emu_routing", "question_type": "realtime", "target": "G1", "time": "今天"}
 
         with patch.dict(os.environ, APP_VARIANT="main"), \
                 patch.object(planner.rt, "ensure_loaded", _nothing), \
                 patch.object(planner.fastpath, "plan_with_reason", return_value=(None, None)), \
                 patch.object(planner, "chat_structured", merged), \
                 patch("app.tools.registry.invoke_by_name", invoke):
-            decision, pf = await orchestrator._decide_with_prefetch("G1明天几点到达？", None)
+            decision, pf = await orchestrator._decide_with_prefetch("G1今天几点到达？", None)
             assert decision[3] == "llm-merged" and pf is not None
-            assert pf.take("emu.routing", {"train": "G1", "date": "明天"}) is not None
-            assert pf.take("emu.routing", {"train": "G1", "date": "后天"}) is None
+            assert pf.take("emu.routing", {"train": "G1", "date": "今天"}) is not None
+            assert pf.take("emu.routing", {"train": "G1", "date": "明天"}) is None
             await pf.cancel()
             assert cancelled.is_set() and all(task.done() for task in pf._tasks.values())
 
@@ -70,7 +71,7 @@ def test_prefetch_overlaps_decision_and_cleanup():
 
             with patch.object(planner, "chat_structured", unavailable):
                 try:
-                    await orchestrator._decide_with_prefetch("G1明天几点到达？", None)
+                    await orchestrator._decide_with_prefetch("G1今天几点到达？", None)
                 except LLMUnavailable:
                     pass
                 else:
@@ -85,7 +86,7 @@ def test_prefetch_overlaps_decision_and_cleanup():
                 await asyncio.Event().wait()
 
             with patch.object(planner, "chat_structured", blocked):
-                task = asyncio.create_task(orchestrator._decide_with_prefetch("G1明天几点到达？", None))
+                task = asyncio.create_task(orchestrator._decide_with_prefetch("G1今天几点到达？", None))
                 await asyncio.wait_for(started.wait(), 1)
                 task.cancel()
                 try:
@@ -162,7 +163,7 @@ def test_actual_retrieval_consumes_prefetch_once():
 
         async def merged(*args, **kwargs):
             await asyncio.wait_for(started.wait(), 1)
-            return {"intent": "emu_routing", "question_type": "realtime", "target": "G1", "time": "明天"}
+            return {"intent": "emu_routing", "question_type": "realtime", "target": "G1", "time": "今天"}
 
         async def completion(*args, **kwargs):
             yield "text", "请参考查询结果。"
@@ -173,7 +174,7 @@ def test_actual_retrieval_consumes_prefetch_once():
                 patch.object(planner, "chat_structured", merged), \
                 patch("app.tools.registry.invoke_by_name", invoke), \
                 patch.object(client, "stream_completion", completion):
-            events = [event async for event in orchestrator.run_stream("G1明天几点到达？")]
+            events = [event async for event in orchestrator.run_stream("G1今天几点到达？")]
         assert calls.count("emu.routing") == 1, calls
         assert calls.count("train.schedule") == 1, calls
         assert metrics.snapshot()["caches"]["prefetch"]["used"] == before + 1

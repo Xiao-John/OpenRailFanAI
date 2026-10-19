@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import BaseSettings
+from pydantic import BaseSettings, validator
 
 # 占位 Key（见 .env.example）：这些值不算"已配置 LLM"
 _PLACEHOLDER_API_KEYS = {
@@ -115,6 +115,16 @@ class Settings(BaseSettings):
     # 确定性快路径：正则+本地站点库直接给出意图与槽位，**不打 LLM**（实测覆盖 ~56–68% 问法，
     # 预筛选 3.8–11.6s → <0.3s）。出问题时置 false 一键回退到纯 LLM 决策。
     fastpath_enabled: bool = True
+    # Main-only closed technical questions; FASTPATH_ENABLED=false also disables it.
+    closed_knowledge_tree_enabled: bool = True
+    # Main-only migration boundary. Shadow observes syntax without changing routing.
+    fuck_cr_mode: str = 'legacy'
+
+    @validator('fuck_cr_mode')
+    def _validate_fuck_cr_mode(cls, value):
+        from app.fuck_cr import validate_mode
+        return validate_mode(value)
+
     # 结构化调用（意图/槽位）关闭"思考"：这类任务里思考 token 纯属延迟（实测 3.3s → 1.1s）
     llm_structured_no_think: bool = True
     # 结构化调用时把**完整 JSON Schema** 下发给上游（response_format=json_schema /

@@ -6,6 +6,8 @@
 import { store } from "./store.js";
 import { UI_COPY } from "./ui-copy.js";
 import { native } from "./native.js";
+import { inputTypes } from "./agent.js";
+import { switchControl } from "./switch.js";
 
 const API_BASE = window.__API_BASE__ || "";
 const FILE_PREVIEW = window.location.protocol === "file:" && !API_BASE;
@@ -480,13 +482,12 @@ export function renderSettingsPage(deps) {
     c.appendChild(addRow);
 
     // 记住 Key：全局开关（属于设备偏好，不属于某一家）
-    const rk = el("input");
-    rk.type = "checkbox";
-    rk.checked = !!s.rememberKey;
+    const rk = switchControl(!!s.rememberKey, "记住 API Key");
     rk.addEventListener("change", () => store.setLlmRemember(rk.checked));
     const rkRow = el("div", "form-row");
     rkRow.appendChild(rk);
-    const rkLabel = el("label", null, "记住 API Key（存本机浏览器；不勾选则刷新后需重填）");
+    const rkLabel = el("label", null, "记住 API Key（存本机浏览器；关闭则刷新后需重填）");
+    rkLabel.addEventListener("click", () => rk.click());
     rkLabel.style.minWidth = "0";
     rkRow.appendChild(rkLabel);
     c.appendChild(rkRow);
@@ -642,6 +643,18 @@ export function renderSettingsPage(deps) {
     modelCol.appendChild(manualInp);
     modelWrap.appendChild(modelCol);
     c.appendChild(modelWrap);
+    const textInput = switchControl(true, "文字（必需）", true);
+    const imageInput = switchControl(inputTypes(e).includes("image"), "图片");
+    const inputChoices = el("div");
+    Object.assign(inputChoices.style, {display: "flex", gap: "16px", flexWrap: "wrap"});
+    for (const [control, title] of [[textInput, "文字（必需）"], [imageInput, "图片"]]) {
+      const label = el("label");
+      label.style.minHeight = "44px"; label.style.display = "inline-flex"; label.style.alignItems = "center";
+      label.append(control, document.createTextNode(title));
+      inputChoices.appendChild(label);
+    }
+    c.appendChild(formRow("输入类型", inputChoices));
+    c.appendChild(el("p", "sub", "图片仅在模型支持时开启；关闭或模型明确不支持时，先用本地 OCR 提取文字。文档先提取正文；OCR 无法代替场景或图表理解。"));
     const advanced = document.createElement("details");
     advanced.className = "advanced-settings";
     advanced.appendChild(el("summary", null, "高级设置"));
@@ -659,6 +672,7 @@ export function renderSettingsPage(deps) {
     c.appendChild(advanced);
 
     modelSel.addEventListener("change", () => {
+      imageInput.checked = false;
       if (modelSel.value === "__manual__") {
         manualInp.style.display = "";
         manualInp.focus();
@@ -666,6 +680,8 @@ export function renderSettingsPage(deps) {
         manualInp.style.display = "none";
       }
     });
+    manualInp.addEventListener("input", () => { imageInput.checked = false; });
+    baseInp.addEventListener("input", () => { imageInput.checked = false; });
 
     function currentModel() {
       return modelSel.value === "__manual__" ? manualInp.value.trim() : modelSel.value;
@@ -729,6 +745,7 @@ export function renderSettingsPage(deps) {
         label: (isCustom ? nameInp.value.trim() : e.label) || id,
         base_url: baseInp.value.trim(),
         model: currentModel(),
+        input_types: imageInput.checked ? ["text", "image"] : ["text"],
         api: e.api || "",
         key: keyInp.value.trim(),
         custom: isCustom,

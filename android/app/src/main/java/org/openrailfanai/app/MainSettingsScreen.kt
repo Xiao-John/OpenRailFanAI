@@ -64,6 +64,7 @@ fun MainSettingsScreen(
     onOpenUrl: (String) -> Unit,
     onThemeChanged: (String) -> Unit,
     onSaved: () -> Unit = onBack,
+    onOpenSetupUrl: (String) -> Unit = onOpenUrl,
 ) {
     val scope = rememberCoroutineScope()
     var configs by remember { mutableStateOf(repository.entries()) }
@@ -78,6 +79,9 @@ fun MainSettingsScreen(
     var catalogLoading by remember { mutableStateOf(false) }
     var catalogError by remember { mutableStateOf("") }
     var showProviders by remember { mutableStateOf(false) }
+    var setupProviderId by remember { mutableStateOf<String?>(null) }
+    var showSetupProviders by remember { mutableStateOf(false) }
+    var setupRevision by remember { mutableStateOf(0) }
     var showModels by remember { mutableStateOf(false) }
     var showAdvanced by remember { mutableStateOf(false) }
     var showEditor by remember { mutableStateOf(false) }
@@ -93,7 +97,7 @@ fun MainSettingsScreen(
                     presets = (0 until rows.length()).mapNotNull { index -> rows.optJSONObject(index)?.let { row ->
                         ProviderConfig(row.optString("id"), row.optString("label", row.optString("id")),
                             row.optString("base_url"), row.optString("model"), row.optString("api", "auto"))
-                            .takeIf { it.id.isNotBlank() }
+                            .takeIf { it.id.isNotBlank() && it.id !in setOf("ollama", "lmstudio", "vllm") }
                     } }
                 }
                 .onFailure { catalogError = "提供商列表暂时无法加载，请重试或添加自定义提供商。" }
@@ -103,6 +107,7 @@ fun MainSettingsScreen(
     LaunchedEffect(Unit) { loadCatalog() }
     fun selectProvider(config: ProviderConfig) {
         showEditor = true
+        showAdvanced = config.custom
         if (configs.none { it.id == config.id }) configs = configs + config
         selectedId = config.id
         activeId = config.id
@@ -133,27 +138,33 @@ fun MainSettingsScreen(
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            SettingsCard("云端模型", "选择提供商，填写 API Key 和模型，保存后即可开始对话。") {
+            SettingsCard("云端模型", "选择服务商并粘贴密钥；预设会替你填写连接信息。") {
                 configs.forEach { provider ->
                     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp)
                         .border(1.dp, SettingsBorder, RoundedCornerShape(16.dp)).testTag("provider-card-${provider.id}")
                         .clickable(enabled = busy.isEmpty(), role = Role.Button) {
-                            activeId = provider.id; selectedId = provider.id; feedback = ""; models = emptyList(); showEditor = false; showAdvanced = false; onKeyEdited()
+                            activeId = provider.id; selectedId = provider.id; rememberKey = repository.rememberKeyForProvider(provider.id); feedback = ""; models = emptyList(); showEditor = false; showAdvanced = false; onKeyEdited()
                         }.padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         BasicText(provider.label, Modifier.weight(1f), style = TextStyle(color = SettingsInk, fontSize = 17.sp, fontWeight = FontWeight.Medium))
                         if (provider.id == activeId) ProviderActiveDot()
                         Spacer(Modifier.width(12.dp))
                         SettingsButton("编辑", Modifier.widthIn(min = 64.dp).testTag("provider-edit-${provider.id}"), enabled = busy.isEmpty()) {
-                            selectedId = provider.id; showEditor = true
+                            selectedId = provider.id; showEditor = true; showAdvanced = provider.custom
                         }
                     }
                 }
+                SettingsButton("配置向导", Modifier.fillMaxWidth(), primary = configs.isEmpty(), enabled = busy.isEmpty()) { showSetupProviders = true }
                 SettingsButton("＋ 添加模型提供商", Modifier.fillMaxWidth(), enabled = busy.isEmpty()) { showProviders = true }
                 RailReveal(selected != null && showEditor, spacing = 12.dp) {
                 if (selected != null) {
                     if (configs.size > 1) BasicText("已添加 ${configs.size} 个提供商；当前使用 ${configs.firstOrNull { it.id == activeId }?.label.orEmpty()}", style = TextStyle(color = SettingsMuted, fontSize = 14.sp))
                     if (selected.custom) Field("名称", selected.label, enabled = busy.isEmpty()) { value -> edit { it.copy(label = value) } }
-                    Field("接口地址", selected.baseUrl, enabled = busy.isEmpty()) { value -> edit { it.copy(baseUrl = value.trim()) } }
+                    providerPresetHelp(selected)?.let { help ->
+                        BasicText(help.description, style = TextStyle(color = SettingsMuted, fontSize = 14.sp))
+                        SettingsAction("打开配置向导", Modifier.fillMaxWidth(), enabled = busy.isEmpty()) {
+                            if (providerSetupGuide(selected.id) != null) setupProviderId = selected.id else onOpenUrl(help.guideUrl)
+                        }
+                    }
                     Field("API Key", selected.key, password = true, enabled = busy.isEmpty(), trailingAction = "粘贴", onTrailingAction = {
                         val pasted = onPaste().trim().lineSequence().firstOrNull().orEmpty()
                         if (pasted.isNotBlank()) { onKeyEdited(); edit { it.copy(key = pasted) } }
@@ -161,9 +172,11 @@ fun MainSettingsScreen(
                         feedbackError = pasted.isBlank()
                     }) { value -> onKeyEdited(); edit { it.copy(key = value.trim()) } }
                     if (keyError) BasicText("密钥无效，请检查后重试", style = TextStyle(color = Color(0xFFF0524F), fontSize = 14.sp))
-                    Field("模型", selected.model, enabled = busy.isEmpty()) { value -> edit { it.copy(model = value.trim()) } }
+                    if (!selected.custom) BasicText(
+                        if (selected.model.isBlank()) "模型将在连接时从账户可用列表中选择。" else "当前模型：${selected.model}",
+                        style = TextStyle(color = SettingsMuted, fontSize = 14.sp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SettingsAction(if (busy == "models") "正在获取…" else "获取模型", Modifier.weight(1f), enabled = busy.isEmpty()) {
+                        SettingsAction(if (busy == "models") "正在获取…" else "更换模型", Modifier.weight(1f), enabled = busy.isEmpty()) {
                             busy = "models"; feedback = "正在获取模型列表…"; feedbackError = false
                             scope.launch {
                                 runCatching { withContext(Dispatchers.IO) { client.models(selected) } }
@@ -180,18 +193,44 @@ fun MainSettingsScreen(
                                 busy = ""
                             }
                         }
-                        SettingsButton(if (busy == "test") "正在测试…" else "测试连接", Modifier.weight(1f), primary = true, enabled = busy.isEmpty()) {
-                            if (selected.key.isBlank() || selected.model.isBlank() || selected.baseUrl.isBlank()) {
-                                feedback = "请先填写接口地址、API Key 和模型。"; feedbackError = true
+                        SettingsButton(if (busy == "test") "正在连接…" else "连接并使用", Modifier.weight(1f), primary = true, enabled = busy.isEmpty()) {
+                            if (selected.key.isBlank() || selected.baseUrl.isBlank() || (selected.custom && selected.model.isBlank())) {
+                                feedback = if (selected.custom) "请先填写接口地址、API Key 和模型。" else "请先粘贴服务商的 API Key。"; feedbackError = true
                             } else {
                                 busy = "test"; feedback = "正在连接 ${selected.label}，请稍候…"; feedbackError = false
                                 scope.launch {
-                                    runCatching { withContext(Dispatchers.IO) { client.test(selected) } }
+                                    runCatching { withContext(Dispatchers.IO) {
+                                        val ready = if (selected.model.isBlank()) {
+                                            val catalog = client.models(selected)
+                                            if (catalog.has("ok") && !catalog.optBoolean("ok")) error(providerFailureCopy(catalog.optString("error")))
+                                            val array = catalog.optJSONArray("chat_models") ?: catalog.optJSONArray("models") ?: JSONArray()
+                                            val available = (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
+                                            selected.withModel(pickPresetModel(selected, available)
+                                                ?: if (available.isNotEmpty()) throw PresetModelSelectionRequired(available)
+                                                else error("没有找到可用的对话模型，请选择其他模型或检查账户权限。"))
+                                        } else selected
+                                        ready to client.test(ready)
+                                    } }
                                         .onSuccess { response ->
-                                            val ok = response.optBoolean("ok", false)
-                                            feedback = if (ok) "连接成功，可以使用当前模型。" else providerFailureCopy(response.optString("error"))
-                                            feedbackError = !ok
-                                        }.onFailure { feedback = providerFailureCopy(it.message.orEmpty()); feedbackError = true }
+                                            val (ready, probe) = response
+                                            val ok = probe.optBoolean("ok", false)
+                                            if (ok) {
+                                                val updated = updateConfig(configs, ready.id) { ready }
+                                                runCatching { repository.save(updated, ready.id, rememberKey, theme) }
+                                                    .onSuccess {
+                                                        configs = updated; activeId = ready.id
+                                                        feedback = "连接成功，已保存配置。"; feedbackError = false
+                                                        onSaved()
+                                                    }.onFailure { feedback = "连接成功，但配置未保存，请重试。"; feedbackError = true }
+                                            } else {
+                                                feedback = providerFailureCopy(probe.optString("error")); feedbackError = true
+                                            }
+                                        }.onFailure {
+                                        if (it is PresetModelSelectionRequired) {
+                                            models = it.available; showModels = true
+                                            feedback = "请选择要使用的对话模型，然后连接。"; feedbackError = false
+                                        } else { feedback = providerFailureCopy(it.message.orEmpty()); feedbackError = true }
+                                    }
                                     busy = ""
                                 }
                             }
@@ -211,8 +250,22 @@ fun MainSettingsScreen(
                     SettingsSwitch(rememberKey, busy.isEmpty()) { rememberKey = it }
                 }
                 if (selected != null) {
+                    BasicText("模型输入类型", style = TextStyle(color = SettingsInk, fontSize = 16.sp))
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                        BasicText("文字（必需）", Modifier.weight(1f), style = TextStyle(color = SettingsMuted, fontSize = 16.sp))
+                        SettingsSwitch(true, false) {}
+                    }
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = "image" in selected.inputTypes, enabled = busy.isEmpty(), role = Role.Switch) { enabled -> edit { it.copy(inputTypes = if (enabled) setOf("text", "image") else setOf("text")) } }, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            BasicText("图片", style = TextStyle(color = SettingsInk, fontSize = 16.sp))
+                            BasicText("仅支持看图的模型开启；关闭时在设备上识别文字。", style = TextStyle(color = SettingsMuted, fontSize = 14.sp))
+                        }
+                        SettingsSwitch("image" in selected.inputTypes, busy.isEmpty()) { enabled -> edit { it.copy(inputTypes = if (enabled) setOf("text", "image") else setOf("text")) } }
+                    }
                     SettingsButton(if (showAdvanced) "收起高级设置" else "高级设置", Modifier.fillMaxWidth(), enabled = busy.isEmpty()) { showAdvanced = !showAdvanced }
                     RailReveal(showAdvanced, spacing = 12.dp) {
+                        Field("接口地址", selected.baseUrl, enabled = busy.isEmpty()) { value -> edit { it.withBaseUrl(value) } }
+                        Field("模型", selected.model, enabled = busy.isEmpty()) { value -> edit { it.withModel(value) } }
                         Field("最大输出（可选）", selected.maxTokens?.toString().orEmpty(), enabled = busy.isEmpty()) { value -> edit { it.copy(maxTokens = value.toIntOrNull()) } }
                         Field("上下文窗口（可选）", selected.contextTokens?.toString().orEmpty(), enabled = busy.isEmpty()) { value -> edit { it.copy(contextTokens = value.toIntOrNull()) } }
                         SettingsDropdown("API 方言", selected.api,
@@ -225,6 +278,7 @@ fun MainSettingsScreen(
                     }
                 }
             }
+            FuckCrSettingsSection(client.updateBaseUrl)
             UpdateSettingsSection(client, onOpenUrl)
             SettingsCard("外观", "") {
                 SettingsDropdown("主题", theme,
@@ -245,8 +299,45 @@ fun MainSettingsScreen(
             Spacer(Modifier.height(8.dp))
         }
     }
+    if (showSetupProviders) Dialog(onDismissRequest = { showSetupProviders = false }) {
+        SettingsCard("选择配置向导", "选择你希望使用的服务商；各平台的配置进度分别保存。") {
+            val guideRows = providerSetupGuides()
+            Column(Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                guideRows.forEach { provider ->
+                    val progress = remember(provider.id, setupRevision) { repository.providerSetupProgress(provider.id) }
+                    SettingsButton("${provider.name}${if (progress != null) " · 继续配置" else ""}", Modifier.fillMaxWidth()) {
+                        showSetupProviders = false
+                        setupProviderId = provider.id
+                    }
+                    providerPresetHelp(provider.id)?.let { BasicText(it.description, style = TextStyle(color = SettingsMuted, fontSize = 14.sp)) }
+                }
+                if (catalogLoading) BasicText("正在加载服务商…", style = TextStyle(color = SettingsMuted, fontSize = 14.sp))
+                if (guideRows.isEmpty() || catalogError.isNotBlank()) SettingsButton("重新加载服务商", Modifier.fillMaxWidth(), enabled = !catalogLoading) { loadCatalog() }
+            }
+            SettingsButton("取消", Modifier.fillMaxWidth()) { showSetupProviders = false }
+        }
+    }
+    setupProviderId?.let { providerId ->
+        val guide = providerSetupGuide(providerId)
+        val official = configs.firstOrNull { it.id == providerId && providerPresetHelp(it) != null }
+            ?: presets.firstOrNull { it.id == providerId && providerPresetHelp(it) != null }
+        if (guide != null) key(providerId) {
+            ProviderSetupWizard(repository, client, official, guide, repository.rememberKeyForProvider(providerId),
+                onPaste = onPaste, onCopy = onCopy, onOpenUrl = onOpenSetupUrl,
+                onDismiss = { setupProviderId = null; setupRevision++ },
+                onReloadCatalog = { loadCatalog() },
+                onConnectAndSave = { ready, remember ->
+                    val updated = if (configs.any { it.id == ready.id }) updateConfig(configs, ready.id) { ready } else configs + ready
+                    repository.saveProviderConfiguration(ready, remember, theme)
+                    configs = updated; activeId = ready.id; selectedId = ready.id; rememberKey = remember
+                    onKeyEdited()
+                },
+                onFinished = { setupProviderId = null; setupRevision++; onSaved() },
+            )
+        }
+    }
     if (showProviders) Dialog(onDismissRequest = { showProviders = false }) {
-        SettingsCard("选择提供商", "选择后填写密钥与模型；已有配置会保留。") {
+        SettingsCard("选择提供商", "选择你已有账户的服务商；预设会自动填写连接信息。") {
             val providerRows = (presets + configs).distinctBy { it.id }
             Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 providerRows.forEach { preset ->
@@ -255,7 +346,10 @@ fun MainSettingsScreen(
                         .background(if (isActive) SettingsBlue.copy(alpha = 0.08f) else Color.Transparent, RoundedCornerShape(10.dp))
                         .clickable(role = Role.Button) { selectProvider(configs.firstOrNull { it.id == preset.id } ?: preset) }
                         .padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        BasicText(preset.label, Modifier.weight(1f), style = TextStyle(color = SettingsInk, fontSize = 15.sp, fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            BasicText(preset.label, style = TextStyle(color = SettingsInk, fontSize = 16.sp, fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal))
+                            providerPresetHelp(preset)?.let { help -> BasicText(help.description, style = TextStyle(color = SettingsMuted, fontSize = 13.sp)) }
+                        }
                         if (isActive) ProviderActiveDot()
                     }
                 }
@@ -275,7 +369,7 @@ fun MainSettingsScreen(
     if (showModels) Dialog(onDismissRequest = { showModels = false }) {
         SettingsCard("选择模型", "") {
             Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                models.forEach { model -> SettingsButton(model, Modifier.fillMaxWidth()) { edit { it.copy(model = model) }; showModels = false } }
+                models.forEach { model -> SettingsButton(model, Modifier.fillMaxWidth()) { edit { it.withModel(model) }; showModels = false } }
             }
             SettingsButton("取消", Modifier.fillMaxWidth()) { showModels = false }
         }
@@ -292,7 +386,7 @@ internal fun SettingsCard(title: String, subtitle: String, modifier: Modifier = 
 }
 
 @Composable
-private fun Field(label: String, value: String, password: Boolean = false, enabled: Boolean = true, trailingAction: String? = null, onTrailingAction: (() -> Unit)? = null, onChange: (String) -> Unit) {
+internal fun Field(label: String, value: String, password: Boolean = false, enabled: Boolean = true, trailingAction: String? = null, onTrailingAction: (() -> Unit)? = null, onChange: (String) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             BasicText(label, Modifier.weight(1f), style = TextStyle(color = SettingsInk, fontSize = 14.sp, fontWeight = FontWeight.Medium))
@@ -350,7 +444,7 @@ private fun ProviderActiveDot() {
 
 /** 父行提供开关语义和点击；滑块接受拖动，禁用状态同时阻止两种操作。 */
 @Composable
-private fun SettingsSwitch(checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SettingsSwitch(checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
     val progress by animateFloatAsState(if (checked) 1f else 0f, tween(180, easing = FastOutSlowInEasing), label = "remember-key-switch")
     val trackColor by animateColorAsState(if (checked) SettingsBlue else SettingsBorder, tween(180), label = "switch-track")
     var drag by remember { mutableFloatStateOf(0f) }

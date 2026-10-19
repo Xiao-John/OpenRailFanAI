@@ -19,6 +19,12 @@ PYTHON="${PYTHON:-.venv/bin/python}"
 echo "解释器：$PYTHON ($("$PYTHON" -c 'import sys; print(sys.version.split()[0])'))"
 
 SUITES=(
+  test_fuck_cr_api
+  test_agent_tools
+  test_agent_documents
+  test_agent_images
+  test_agent_input_routes
+  test_llm_image_transport
   # 基础能力
   test_dates
   test_od
@@ -90,6 +96,9 @@ SUITES=(
   test_ticket_pair
   test_ticket_delivery_dedup
   test_executed_fare
+  test_ticket_snapshot
+  test_fuck_cr
+  test_fuck_cr_parser
   test_fare_contract
   test_multidate_services
 )

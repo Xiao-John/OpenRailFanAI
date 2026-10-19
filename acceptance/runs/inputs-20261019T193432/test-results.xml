@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="org.openrailfanai.app.ComposeInputsSettingsTest" tests="17" failures="0" errors="0" skipped="0" time="9.492" timestamp="2026-10-19T11:33:25" hostname="localhost">
+  <properties>
+    <property name="device" value="wordzhan_test(AVD) - 14" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="attachmentControlsPreserveDraftAndRequireExplicitSend" classname="org.openrailfanai.app.ComposeInputsSettingsTest" time="4.263" />
+  <testcase name="unavailableCompatibilityNeverPostsAndExplanationIsLazy" classname="org.openrailfanai.app.ComposeInputsSettingsTest" time="2.456" />
+  <testcase name="providerGuidesKeepDraftsSeparateAndNeverPersistSessionOnlyKeys" classname="org.openrailfanai.app.MainSettingsRepositoryTest" time="0.058" />
+  <testcase name="migratesLegacyProviderAndEncryptsItsSavedKey" classname="org.openrailfanai.app.MainSettingsRepositoryTest" time="0.055" />
+  <testcase name="guideSavePreservesOtherProviderAndEncryptedDraft" classname="org.openrailfanai.app.MainSettingsRepositoryTest" time="0.148" />
+  <testcase name="legacySiliconProgressMigratesWithoutAffectingAnotherGuide" classname="org.openrailfanai.app.MainSettingsRepositoryTest" time="0.031" />
+  <testcase name="savePreservesOldStateAndUsesExistingKeystoreContract" classname="org.openrailfanai.app.MainSettingsRepositoryTest" time="0.033" />
+  <testcase name="unsavedKeyRemainsAvailableAcrossRepositoriesWithoutDiskPersistence" classname="org.openrailfanai.app.MainSettingsRepositoryTest" time="0.033" />
+  <testcase name="cancellationBeforeOcrDoesNotStartAnUpload" classname="org.openrailfanai.app.AgentInputIntegrationTest" time="0.08" />
+  <testcase name="emptyOcrIsAnExplicitFailure" classname="org.openrailfanai.app.AgentInputIntegrationTest" time="0.523" />
+  <testcase name="bundledChineseOcrRecognizesTextWithoutModelApi" classname="org.openrailfanai.app.AgentInputIntegrationTest" time="0.223" />
+  <testcase name="providerInputTypesAreIsolatedAndSurviveReload" classname="org.openrailfanai.app.AgentInputIntegrationTest" time="0.05" />
+  <testcase name="authenticationFailureDoesNotBecomeAnOcrRetry" classname="org.openrailfanai.app.AgentInputIntegrationTest" time="0.085" />
+  <testcase name="textOnlyRequestNeverUploadsOriginalImage" classname="org.openrailfanai.app.AgentInputIntegrationTest" time="0.17" />
+  <testcase name="embeddedPythonReadsRealOfficeFilesWithoutDesktopConverters" classname="org.openrailfanai.app.AgentInputIntegrationTest" time="0.286" />
+  <testcase name="attachmentRoundGuardSurvivesHistoryReloadWithoutPersistingBytes" classname="org.openrailfanai.app.AgentInputIntegrationTest" time="0.004" />
+  <testcase name="visionRequestUsesOriginalAndExplicitCapabilityFallbackUsesOnlyText" classname="org.openrailfanai.app.AgentInputIntegrationTest" time="0.176" />
+</testsuite>

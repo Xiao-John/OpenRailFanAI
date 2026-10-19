@@ -4,10 +4,67 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 class MainSettingsRepositoryTest {
+    @Test fun providerGuidesKeepDraftsSeparateAndNeverPersistSessionOnlyKeys() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val dir = File(context.cacheDir, "wizard-isolation-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            val repo = MainSettingsRepository(dir, isolated = true)
+            repo.saveProviderSetup("deepseek", ProviderSetupProgress(ProviderSetupStep.KEY, false, "model-a"), "draft-a-secret")
+            repo.saveProviderSetup("gemini", ProviderSetupProgress(ProviderSetupStep.CREDIT, false, "model-b"), "draft-b-secret")
+            val restored = MainSettingsRepository(dir, isolated = true)
+            assertEquals("draft-a-secret", restored.providerSetupKey("deepseek"))
+            assertEquals("draft-b-secret", restored.providerSetupKey("gemini"))
+            assertEquals(ProviderSetupStep.KEY, restored.providerSetupProgress("deepseek")?.step)
+            assertEquals(ProviderSetupStep.CREDIT, restored.providerSetupProgress("gemini")?.step)
+            assertFalse(File(dir, "state.json").readText().contains("secret"))
+            assertFalse(File(dir, "secrets.json").readText().contains("draft-"))
+            repo.clearProviderSetup("deepseek")
+            assertEquals("", restored.providerSetupKey("deepseek"))
+            assertNull(restored.providerSetupProgress("deepseek"))
+            assertEquals("draft-b-secret", restored.providerSetupKey("gemini"))
+        } finally { dir.deleteRecursively() }
+    }
+
+    @Test fun guideSavePreservesOtherProviderAndEncryptedDraft() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val dir = File(context.cacheDir, "wizard-save-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            val repo = MainSettingsRepository(dir, isolated = true)
+            val original = ProviderConfig("deepseek", "DeepSeek", "https://api.deepseek.com", "fixture-a", key = "original-secret")
+            repo.save(listOf(original), original.id, true)
+            repo.saveProviderSetup("siliconflow", ProviderSetupProgress(ProviderSetupStep.KEY, true, "draft-model"), "draft-encrypted-secret")
+            val next = ProviderConfig("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", "fixture-b", key = "new-session-secret")
+            repo.saveProviderConfiguration(next, false, "auto")
+            repo.save(repo.entries(), next.id, false)
+            assertEquals("original-secret", repo.entries().first { it.id == original.id }.key)
+            assertTrue(repo.rememberKeyForProvider(original.id))
+            assertFalse(repo.rememberKeyForProvider(next.id))
+            assertEquals("new-session-secret", repo.requestLlmSpec()?.getString("api_key"))
+            assertEquals("draft-encrypted-secret", repo.providerSetupKey("siliconflow"))
+            val persisted = File(dir, "state.json").readText() + File(dir, "secrets.json").readText()
+            listOf("original-secret", "new-session-secret", "draft-encrypted-secret").forEach { assertFalse(persisted.contains(it)) }
+        } finally { dir.deleteRecursively() }
+    }
+
+    @Test fun legacySiliconProgressMigratesWithoutAffectingAnotherGuide() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val dir = File(context.cacheDir, "wizard-migration-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            File(dir, "state.json").writeText("""{"railfan_silicon_setup_v1":{"step":"KEY","rememberKey":false,"model":"old-model"}}""")
+            val repo = MainSettingsRepository(dir, isolated = true)
+            assertEquals("old-model", repo.providerSetupProgress("siliconflow")?.model)
+            assertNull(repo.providerSetupProgress("deepseek"))
+            repo.saveProviderSetup("siliconflow", repo.providerSetupProgress("siliconflow")!!, "")
+            assertFalse(JSONObject(File(dir, "state.json").readText()).has("railfan_silicon_setup_v1"))
+            assertEquals(ProviderSetupStep.KEY, repo.providerSetupProgress("siliconflow")?.step)
+        } finally { dir.deleteRecursively() }
+    }
     @Test fun savePreservesOldStateAndUsesExistingKeystoreContract() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val dir = File(context.cacheDir, "settings-fixture-${System.nanoTime()}").apply { mkdirs() }

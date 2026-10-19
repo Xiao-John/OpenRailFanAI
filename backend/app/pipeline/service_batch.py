@@ -14,6 +14,7 @@ from app.pipeline.fare_basis import select as select_fare_basis, CLARIFICATION a
 from app.tools import registry
 from app.tools._rt12306 import is_emu_train_code, is_train_code
 from app.tools.base import ToolResult
+from app.tools.ticket_snapshot import request_scope
 from app.ticket_copy import join_clauses
 
 MAX_TRAINS = 10
@@ -26,6 +27,7 @@ def _response(answer: str) -> dict:
             "note": "", "direct_answer": answer}
 
 
+@request_scope
 async def execute(trains: list[str], operations: list[str], *, date, od, message: str,
                   recent: bool = False, dates: list[str] | None = None) -> dict:
     """Run independent services, preserving each requested train and date on failure.

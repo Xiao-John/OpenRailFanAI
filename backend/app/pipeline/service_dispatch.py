@@ -43,6 +43,8 @@ def train_codes(text: str) -> list[str]:
                 continue
         if code not in codes:
             codes.append(code)
+    from app.fuck_cr.shadow import observe
+    observe(clean, codes, exclude_spans=models)
     return codes
 
 

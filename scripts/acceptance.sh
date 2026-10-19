@@ -8,6 +8,10 @@ if [ "${1:-}" = "--photo-cards" ]; then
   exec backend/.venv/bin/python scripts/android/accept-photo-cards.py "${@:2}"
 fi
 
+if [ "${1:-}" = "--inputs-settings" ]; then
+  exec backend/.venv/bin/python scripts/android/accept-inputs-settings.py "${@:2}"
+fi
+
 if [ "${1:-}" = "--ergonomics-walkthrough" ]; then
   exec backend/.venv/bin/python scripts/android/review-live-ergonomics.py
 fi

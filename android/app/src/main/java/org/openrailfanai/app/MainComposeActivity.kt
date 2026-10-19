@@ -41,8 +41,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
@@ -75,6 +79,10 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
     private var conversationRevision by mutableStateOf(0)
     private lateinit var settingsRepository: MainSettingsRepository
     private var pendingExport: String? = null
+    private var pendingAgentExport: ByteArray? = null
+    private var previousAgentTheme: String? = null
+    private var pendingImportConversationId: String? = null
+    private val agentFiles = mutableStateMapOf<String, org.json.JSONArray>()
     private val busy: Boolean get() = chatState.busy
     private val io = Executors.newSingleThreadExecutor()
     private var backendService: BackendService? = null
@@ -106,6 +114,12 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         conversationId = conversationStore.currentId()
         input = conversationStore.draft(conversationId)
         setContent {
+            CompositionLocalProvider(LocalUriHandler provides object : UriHandler {
+                override fun openUri(uri: String) {
+                    runCatching { AppLinkBrowser.open(this@MainComposeActivity, uri) }
+                        .onFailure { Toast.makeText(this@MainComposeActivity, "链接未能打开，请检查浏览器", Toast.LENGTH_SHORT).show() }
+                }
+            }) {
             BackHandler(enabled = pageNavigation.canGoBack) {
                 navigateBackOrDelegateToActivity()
             }
@@ -132,6 +146,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                         },
                         onExport = { text -> exportSettings(text) },
                         onOpenUrl = { url -> startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) },
+                        onOpenSetupUrl = { url -> ProviderGuideBrowser.open(this@MainComposeActivity, url) },
                         onThemeChanged = { NativeColors.preference = it },
                     ) else BasicText("正在连接设备内服务…")
                 }
@@ -146,6 +161,13 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 conversationTokens = conversationStore.all().firstOrNull { it.id == conversationId }?.totalTokens ?: 0L,
                 input = input,
                 onInputChange = { input = it },
+                pendingAttachment = agentFiles[conversationId]?.optJSONObject(0)?.let { file ->
+                    val encoded = file.optString("content_base64")
+                    val bytes = encoded.length.toLong() * 3 / 4 - encoded.takeLast(2).count { it == '=' }
+                    PendingAttachment(file.optString("name"), bytes, AppAgent.isImage(file.optString("name"), file.optString("mime")))
+                },
+                onImportAttachment = { imagesOnly -> openAgentImport(imagesOnly) },
+                onRemoveAttachment = { if (!busy) { agentFiles.remove(conversationId); status = "附件已移除" } },
                 onOpenHistory = { pageNavigation = pageNavigation.navigateTo(MainPage.HISTORY) },
                 onNewConversation = { openNewConversation() },
                 onBack = { navigateBackOrDelegateToActivity() },
@@ -211,6 +233,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 }
                 }
             }
+        }
         }
         val intent = Intent(this, BackendService::class.java)
         startService(intent)
@@ -299,6 +322,34 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
 
     private fun submitQuery(retryQuery: String? = null, displayAction: org.json.JSONObject? = null, preserveResults: Boolean = false) {
         val query = (retryQuery ?: input).trim()
+        if (query.isEmpty() || busy) return
+        if (retryQuery != null && displayAction == null && AppAgent.requiresReimport(conversationStore.all().firstOrNull { it.id == conversationId }?.messages.orEmpty(), query)) {
+            status = "该提问使用了附件，请重新导入后重新发送；不会改用当前附件。"
+            Toast.makeText(this, "请重新导入原附件，再发送这条问题。", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (displayAction == null) {
+            val theme = AppAgent.themeCommand(query)
+            if (theme != null) {
+                val target = if (theme == "undo") previousAgentTheme else theme
+                val answer = if (target == null) "没有可撤销的主题切换。" else {
+                    val old = settingsRepository.theme()
+                    settingsRepository.setTheme(target)
+                    NativeColors.preference = target
+                    previousAgentTheme = if (theme == "undo") null else old
+                    if (theme == "undo") "已撤销主题切换。" else "已切换为${when (target) { "dark" -> "深色"; "light" -> "浅色"; else -> "跟随系统" }}模式。"
+                }
+                conversationStore.addUser(conversationId, query)
+                conversationStore.addAssistant(conversationId, answer, org.json.JSONObject().put("intent", "app_action"))
+                input = ""; saveCurrentDraft(); stateMachine.reset(); chatState = stateMachine.state; conversationRevision++
+                return
+            }
+            if (AppAgent.importCommand(query)) {
+                openAgentImport(query.contains("图片"))
+                return
+            }
+            if (query == "移除附件") { agentFiles.remove(conversationId); input = ""; saveCurrentDraft(); status = "附件已移除"; return }
+        }
         val client = repository ?: return
         if (query.isEmpty() || busy) return
         if (retryQuery == null) {
@@ -306,11 +357,21 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             saveCurrentDraft()
         }
         val requestConversationId = conversationId
-        conversationStore.addUser(requestConversationId, query)
+        val requestAttachments = if (displayAction == null) agentFiles[requestConversationId] else null
+        conversationStore.addUser(requestConversationId, query, if (requestAttachments != null) org.json.JSONObject().put("attachment_input", true) else null)
         conversationRevision++
+        val fileOperation = displayAction == null && (AppAgent.fileCommand(query) || agentFiles.containsKey(requestConversationId))
         val priorMessages = conversationStore.all().firstOrNull { it.id == requestConversationId }?.messages.orEmpty()
             .filter { it.role == "user" || (it.role == "assistant" && it.meta?.has("error") != true && it.meta?.optBoolean("stopped") != true) }
-            .takeLast(20).map { ChatMessage(it.role, it.content) }
+            .takeLast(20).map {
+                val content = if (fileOperation && it.role == "assistant") {
+                    listOfNotNull(it.content,
+                        it.meta?.optJSONArray("displayResults")?.takeIf { data -> data.length() > 0 }?.let { data -> "[已展示的结构化结果]\n$data" },
+                        it.meta?.optJSONArray("sources")?.takeIf { data -> data.length() > 0 }?.let { data -> "[来源]\n$data" },
+                    ).joinToString("\n\n")
+                } else it.content
+                ChatMessage(it.role, content)
+            }
         status = "正在查询…"
         val requestId = stateMachine.begin(query, preserveResults = preserveResults)
         chatState = stateMachine.state
@@ -320,12 +381,29 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             sessionId = requestConversationId,
             displayAction = displayAction,
             llmSpec = settingsRepository.requestLlmSpec(),
+            agentFiles = requestAttachments,
         )
         io.execute {
             val response = runCatching {
                 client.stream(request) { event ->
                     runOnUiThread {
                         val type = event.optString("type")
+                        if (type == "agent_file" && chatState.requestId == requestId && chatState.busy) {
+                            event.optJSONObject("file")?.let { file ->
+                                runCatching {
+                                    val name = file.getString("name")
+                                    require(Regex("railfan-draft\\.(csv|md|json|ics)").matches(name))
+                                    val bytes = android.util.Base64.decode(file.getString("content_base64"), android.util.Base64.DEFAULT)
+                                    require(bytes.size <= 1024 * 1024)
+                                    pendingAgentExport = bytes
+                                    startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                                        addCategory(Intent.CATEGORY_OPENABLE)
+                                        this.type = file.getString("mime")
+                                        putExtra(Intent.EXTRA_TITLE, name)
+                                    }, REQUEST_AGENT_EXPORT)
+                                }.onFailure { status = "无法保存文件：${it.javaClass.simpleName}" }
+                            }
+                        }
                         if (stateMachine.onEvent(
                                 requestId, type, event.optString("delta"),
                                 event.optString("text"), event.optString("message"),
@@ -340,6 +418,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             runOnUiThread {
                 response.onSuccess { outcome ->
                     if (stateMachine.complete(requestId, outcome)) {
+                        if (outcome.intent == "file_tool") agentFiles.remove(requestConversationId)
                         chatState = stateMachine.state
                         val meta = org.json.JSONObject()
                             .put("query", query)
@@ -382,6 +461,19 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         }
     }
 
+    private fun openAgentImport(imagesOnly: Boolean) {
+        if (busy || pendingImportConversationId != null) return
+        pendingImportConversationId = conversationId
+        runCatching {
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = if (imagesOnly) "image/*" else "*/*"
+                putExtra(Intent.EXTRA_MIME_TYPES, if (imagesOnly) arrayOf("image/png", "image/jpeg", "image/webp", "image/gif")
+                    else arrayOf("text/*", "application/json", "application/x-tex", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/rtf"))
+            }, REQUEST_AGENT_IMPORT)
+        }.onFailure { pendingImportConversationId = null; status = "无法打开文件选择器" }
+    }
+
     private fun exportSettings(text: String) {
         pendingExport = text
         runCatching {
@@ -396,6 +488,62 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
     @Deprecated("Deprecated by Android, retained for the SAF result callback")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_AGENT_IMPORT) {
+            val targetConversation = pendingImportConversationId
+            pendingImportConversationId = null
+            val uri = data?.data
+            if (resultCode != RESULT_OK || uri == null || targetConversation == null) return
+            io.execute {
+                val result = runCatching {
+                    val name = contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                        if (it.moveToFirst()) it.getString(0) else null
+                    } ?: "import.txt"
+                    require(!name.contains('/') && !name.contains('\\')) { "文件名不能包含路径" }
+                    val mime = contentResolver.getType(uri).orEmpty()
+                    require(name.substringAfterLast('.', "").lowercase() in AppAgent.documentExtensions + AppAgent.imageExtensions) { "不支持的文件类型" }
+                    val bytes = contentResolver.openInputStream(uri)?.use { stream ->
+                        val output = java.io.ByteArrayOutputStream()
+                        val buffer = ByteArray(8192)
+                        while (true) {
+                            val n = stream.read(buffer); if (n < 0) break
+                            require(output.size() + n <= AppAgent.MAX_INPUT_BYTES) { "文件超过 8 MiB" }
+                            output.write(buffer, 0, n)
+                        }
+                        output.toByteArray()
+                    } ?: error("无法读取文件")
+                    org.json.JSONObject().put("name", name).put("mime", mime).put("content_base64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+                }
+                runOnUiThread {
+                    result.onSuccess {
+                        if (conversationStore.all().none { conversation -> conversation.id == targetConversation }) return@onSuccess
+                        agentFiles[targetConversation] = org.json.JSONArray().put(it)
+                        if (conversationId == targetConversation) {
+                            if (input.isBlank() || AppAgent.importCommand(input.trim())) {
+                                input = if (AppAgent.isImage(it.optString("name"), it.optString("mime"))) "请阅读已导入图片，提取并整理其中的信息" else "请阅读并整理已导入文件"
+                            }
+                            saveCurrentDraft()
+                        }
+                        status = "已导入 ${it.optString("name")}；发送问题后处理，输入“移除附件”可清除。"
+                        Toast.makeText(this, "附件已就绪，发送问题后处理。", Toast.LENGTH_SHORT).show()
+                    }.onFailure {
+                        status = "导入失败：请使用 8 MiB 内的 TXT/MD/TEX/CSV/JSON/DOC/DOCX/RTF 或 PNG/JPEG/WebP/GIF。"
+                        Toast.makeText(this, status, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            return
+        }
+        if (requestCode == REQUEST_AGENT_EXPORT) {
+            val bytes = pendingAgentExport; pendingAgentExport = null
+            val uri = data?.data
+            if (resultCode == RESULT_OK && bytes != null && uri != null) {
+                runCatching {
+                    val stream = contentResolver.openOutputStream(uri) ?: error("无法写入文件")
+                    stream.use { it.write(bytes) }
+                }.onSuccess { status = "文件已保存" }.onFailure { status = "文件保存失败" }
+            } else status = "已取消保存，原文件未改动"
+            return
+        }
         if (requestCode != REQUEST_EXPORT) return
         val contents = pendingExport
         pendingExport = null
@@ -417,6 +565,8 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
 
     companion object {
         private const val REQUEST_EXPORT = 8741
+        private const val REQUEST_AGENT_IMPORT = 8742
+        private const val REQUEST_AGENT_EXPORT = 8743
         private const val STATE_PAGE_STACK = "main_page_stack"
         private const val HELP_URL = "https://github.com/OpenRailFanAI/OpenRailFanAI"
     }

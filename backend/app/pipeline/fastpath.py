@@ -125,9 +125,8 @@ def _station_in_text(text: str) -> str:
     """本地站点库最长匹配取站名（与 retrieve._station_from_text 同策略，独立实现避免循环依赖）。"""
     if not text:
         return ""
-    names = [n for n in _station_names() if 2 <= len(n) <= 8]
-    hits = [n for n in names if n in text]
-    return max(hits, key=len) if hits else ""
+    hits = _station_hits(text)
+    return hits[0] if hits else ""
 
 
 def _line_in_text(text: str) -> str:
@@ -325,13 +324,17 @@ def _station_hits(text: str) -> list[str]:
     `max` 取到先出现的**深圳北**，于是把它当成"本次新给的终点"去替换上文区间，
     得到 **北京南→深圳北** —— 起点当成终点，方向直接错（"看起来正常的错答案"）。
     """
-    names = [n for n in _station_names() if 2 <= len(n) <= 8]
-    found = [n for n in names if n in (text or "")]
-    kept: list[str] = []
-    for n in sorted(found, key=len, reverse=True):
-        if not any(n in k for k in kept):     # 「北京」被「北京南」包含 → 丢掉
-            kept.append(n)
-    return kept
+    text = text or ""
+    names = _station_names()
+    # Input is short: enumerate its substrings rather than scanning all 3384 names.
+    found = {text[start:start + size] for start in range(len(text))
+             for size in range(2, min(8, len(text) - start) + 1)
+             if text[start:start + size] in names}
+    kept = {n for n in found if not any(len(k) > len(n) and n in k for k in found)}
+    if len({len(n) for n in kept}) == len(kept):
+        return sorted(kept, key=len, reverse=True)
+    # Equal-length ties retain the original station-set iteration order.
+    return sorted((n for n in names if n in kept), key=len, reverse=True)
 
 
 def _merge_od(
@@ -475,8 +478,8 @@ async def plan_with_reason(
     recent = turns[:_CTX_TURNS]
 
     own_target = _train_code(text) or _emu_model(text)
-    own_station = _station_in_text(text)
     own_hits = _station_hits(text)          # 本次到底提到了几个站（判区间歧义用）
+    own_station = own_hits[0] if own_hits else ""
     own_time = _time_phrase(text)
     own_line = _line_in_text(text)
     own_od = parse_od(text) or None

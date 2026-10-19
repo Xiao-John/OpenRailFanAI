@@ -12,12 +12,21 @@ import java.nio.charset.StandardCharsets
 /** Owns the HTTP/SSE contract with the existing FastAPI chat endpoint. */
 class ChatRepository(private val baseUrl: String) {
     @Volatile private var activeConnection: HttpURLConnection? = null
+    @Volatile private var activeWorker: Thread? = null
     @Volatile private var capabilitiesChecked = false
     @Volatile private var ticketFareAvailabilitySupported = false
 
-    fun cancel() { activeConnection?.disconnect() }
+    fun cancel() { activeWorker?.interrupt(); activeConnection?.disconnect() }
 
     fun stream(request: ChatStreamRequest, onEvent: (JSONObject) -> Unit): ChatStreamOutcome {
+        activeWorker = Thread.currentThread()
+        return try { streamRequest(request, onEvent) } finally { activeWorker = null }
+    }
+
+    private fun streamRequest(request: ChatStreamRequest, onEvent: (JSONObject) -> Unit): ChatStreamOutcome {
+        if (request.displayAction == null && (request.agentFiles != null || AppAgent.fileCommand(request.message))) {
+            return runFileAgent(request, onEvent)
+        }
         val connection = (URL("$baseUrl/api/chat/stream").openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 15_000
@@ -78,6 +87,48 @@ class ChatRepository(private val baseUrl: String) {
             activeConnection = null
             connection.disconnect()
         }
+    }
+
+    private fun runFileAgent(request: ChatStreamRequest, onEvent: (JSONObject) -> Unit): ChatStreamOutcome {
+        val declared = request.llmSpec?.optJSONArray("input_types") ?: JSONArray().put("text")
+        val imageEnabled = (0 until declared.length()).any { declared.optString(it) == "image" }
+        var files = request.agentFiles ?: JSONArray()
+        fun localOcr() {
+            onEvent(JSONObject().put("type", "stage").put("stage", "local_ocr").put("msg", "正在设备上识别图片文字…"))
+            files = ImageTextRecognizer.convert(files)
+        }
+        val hasImages = (0 until files.length()).any { i -> files.optJSONObject(i)?.let { AppAgent.isImage(it.optString("name"), it.optString("mime")) } == true }
+        if (!imageEnabled && hasImages) localOcr()
+        val body = request.toJson().put("actions", JSONArray().put("files"))
+            .put("files", files).put("input_types", if (imageEnabled) JSONArray().put("text").put("image") else JSONArray().put("text"))
+        var payload = agentResponse(body)
+        if (payload.optBoolean("needs_local_ocr")) {
+            if (!imageEnabled) error("本地识别后仍无法处理附件，请重新导入。")
+            localOcr()
+            payload = agentResponse(body.put("files", files).put("input_types", JSONArray().put("text")))
+            if (payload.optBoolean("needs_local_ocr")) error("无法处理图片，请换清晰图片后重试。")
+        }
+        if (!payload.optBoolean("handled")) throw IllegalStateException("未识别出文件操作")
+        if (Thread.currentThread().isInterrupted) throw InterruptedException("Request cancelled")
+        val outputs = payload.optJSONArray("files") ?: JSONArray()
+        for (i in 0 until outputs.length()) onEvent(JSONObject().put("type", "agent_file").put("file", outputs.getJSONObject(i)))
+        val answer = payload.optString("answer", "文件草稿已生成，请选择保存位置。")
+        onEvent(JSONObject().put("type", "answer").put("delta", answer))
+        return ChatStreamOutcome(answer, null, "file_tool", emptyList(), emptyList(), payload.optJSONObject("usage") ?: JSONObject(), null, emptyList(), "[]")
+    }
+
+    private fun agentResponse(body: JSONObject): JSONObject {
+        if (Thread.currentThread().isInterrupted) throw InterruptedException("Request cancelled")
+        val connection = (URL("$baseUrl/api/agent/run").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"; connectTimeout = 15_000; readTimeout = 120_000; doOutput = true
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        }
+        activeConnection = connection
+        try {
+            connection.outputStream.use { it.write(body.toString().toByteArray(StandardCharsets.UTF_8)) }
+            if (connection.responseCode !in 200..299) throw ChatHttpException(connection.responseCode)
+            return connection.inputStream.bufferedReader(StandardCharsets.UTF_8).use { JSONObject(it.readText()) }
+        } finally { connection.disconnect(); activeConnection = null }
     }
 
     /** Probe once per backend instance; unknown or failed probes keep legacy delivery safe. */

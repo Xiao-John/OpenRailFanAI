@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from contextvars import ContextVar
 from typing import Callable
@@ -23,6 +24,7 @@ from typing import Callable
 from app.config import get_settings
 from app.llm.client import LLMOutputInvalid, LLMUnavailable, chat_structured
 from app.pipeline import extract, fastpath, intent
+from app.pipeline.decision_tree import closed_knowledge
 from app.pipeline.extract import Slots
 from app.pipeline.intent import Intent
 from app.pipeline.schemas import COMBINED_JSON_SCHEMA, INTENT_JSON_SCHEMA, SLOTS_JSON_SCHEMA
@@ -141,7 +143,7 @@ def _merged_user_tail(message: str, history: list[dict] | None) -> str:
     挪到最后之后，可缓存前缀是"指令 + 判定要点 + （schema 或模板）"，
     每次真正要算的只剩几十个 token。
 
-    云端模型不受影响（它不按前缀计费），但也没有理由把顺序写坏。
+    云端供应商也可能提供输入前缀缓存；具体命中与计费以 usage 和供应商规则为准。
     """
     from app.context import format_history
 
@@ -174,6 +176,14 @@ async def decide(message: str, history: list[dict] | None = None
     settings = get_settings()
     t0 = time.perf_counter()
     defer = None
+    # Closed technical forms need neither station loading nor historical extraction.
+    if (getattr(settings,'fastpath_enabled',True)
+            and os.environ.get('APP_VARIANT','main').lower()!='lm'
+            and getattr(settings,'closed_knowledge_tree_enabled',True)):
+        leaf=closed_knowledge(message,history)
+        if leaf is not None:
+            _log.debug('决策树命中：%s',leaf.reason)
+            return Intent(leaf.intent),leaf.question_type,leaf.slots,'deterministic',''
 
     # 站点库是包内静态资源（3384 站，实测 ~0ms，不联网）；必须先加载，
     # 否则快路径里的"站名最长匹配"会静默退回空串、白白丢掉快路径命中率。

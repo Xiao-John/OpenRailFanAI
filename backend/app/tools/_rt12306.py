@@ -139,6 +139,12 @@ def _shared_query(name: str):
             bound = signature.bind(*args, **kwargs)
             bound.apply_defaults()
             canonical = dict(bound.arguments)
+            if _main():
+                from app.tools.ticket_snapshot import scope_key
+                canonical['sale_scope'] = scope_key()
+            if name == 'tickets' and _main():
+                from app.tools.ticket_snapshot import refresh_key
+                canonical['refresh'] = refresh_key()
             if "train_date" in canonical:
                 canonical["train_date"] = normalize_date(canonical["train_date"])
             for field in ("train_code", "from_code", "to_code", "station_code"):
@@ -339,6 +345,10 @@ async def query_tickets(from_code: str, to_code: str, train_date: str) -> list[d
     """
     await ensure_loaded()
     date_str = normalize_date(train_date)
+    if _main():
+        from app.tools import ticket_snapshot
+        if ticket_snapshot.active():
+            return await ticket_snapshot.availability(from_code, to_code, date_str)
     async def fetch():
         return parse_mcp_result(await query_tickets_validated({
             "from_station": from_code,

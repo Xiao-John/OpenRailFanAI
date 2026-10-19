@@ -90,11 +90,11 @@ class ConversationStore private constructor(private val directory: File) {
         if (state.optString(CURRENT_KEY).isBlank()) create()
     }
 
-    @Synchronized fun addUser(id: String, text: String) {
+    @Synchronized fun addUser(id: String, text: String, meta: JSONObject? = null) {
         mutate(id) { conversation ->
             conversation.put("totalTokens", conversation.recordedTokenTotal())
             val messages = conversation.optJSONArray("messages") ?: JSONArray()
-            messages.put(JSONObject().put("role", "user").put("content", text))
+            messages.put(JSONObject().put("role", "user").put("content", text).also { if (meta != null) it.put("meta", meta) })
             conversation.put("messages", trimMessages(messages)).put("updatedAt", System.currentTimeMillis())
             if (conversation.optBoolean("titleAuto", true)) {
                 val title = text.replace(Regex("\\s+"), " ").trim().let { if (it.length > 18) it.take(18) + "…" else it }

@@ -27,14 +27,19 @@ async def query(from_station,to_station,day,train_code):
     a=await rt.resolve_station_code(from_station);b=await rt.resolve_station_code(to_station)
     if not a or not b:raise rt.Realtime12306Error('无法确认实际乘车区间的车站')
     client=await get_client();headers={**BROWSER_HEADERS,'Referer':INIT}
-    response=await rt._operation('fare.init',client.get(INIT,headers=headers,timeout=15),success=lambda r:r.status_code<400)
-    response.raise_for_status()
-    response=await rt._operation('fare.rows',client.get(ROWS,headers=headers,timeout=15,params={
-        'leftTicketDTO.train_date':day,'leftTicketDTO.from_station':a[0],
-        'leftTicketDTO.to_station':b[0],'purpose_codes':'ADULT'}),success=lambda r:r.status_code<400)
-    response.raise_for_status();payload=response.json();data=payload.get('data')
-    if payload.get('status') is not True or not isinstance(data,dict) or not isinstance(data.get('result'),list):
-        raise rt.Realtime12306Error('售票查询未返回有效车次记录，无法取得执行票价')
+    from app.tools import ticket_snapshot
+    if ticket_snapshot.active():
+        snapshot=await ticket_snapshot.query_rows(a[0],b[0],day)
+        data={'result':snapshot['rows']}
+    else:
+        response=await rt._operation('fare.init',client.get(INIT,headers=headers,timeout=15),success=lambda r:r.status_code<400)
+        response.raise_for_status()
+        response=await rt._operation('fare.rows',client.get(ROWS,headers=headers,timeout=15,params={
+            'leftTicketDTO.train_date':day,'leftTicketDTO.from_station':a[0],
+            'leftTicketDTO.to_station':b[0],'purpose_codes':'ADULT'}),success=lambda r:r.status_code<400)
+        response.raise_for_status();payload=response.json();data=payload.get('data')
+        if payload.get('status') is not True or not isinstance(data,dict) or not isinstance(data.get('result'),list):
+            raise rt.Realtime12306Error('售票查询未返回有效车次记录，无法取得执行票价')
     rows=[]
     for raw in data['result']:
         p=str(raw).split('|')

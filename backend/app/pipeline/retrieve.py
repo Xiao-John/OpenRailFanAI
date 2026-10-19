@@ -34,6 +34,7 @@ from app.tools import registry
 from app.tools import _rt12306 as rt
 from app.tools._rt12306 import extract_train_code, is_emu_train_code
 from app.tools.base import ToolResult
+from app.tools.ticket_snapshot import request_scope
 from app.ticket_copy import join_clauses
 
 _log = logging.getLogger("railfan.retrieve")
@@ -371,6 +372,7 @@ def _screen_direction(message: str | None) -> str | None:
     return None
 
 
+@request_scope
 async def retrieve(
     intent: str,
     slots: Slots,

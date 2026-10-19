@@ -148,6 +148,30 @@ class LLMUnavailable(RuntimeError):
     """LLM 未配置或调用失败。"""
 
 
+class ImageInputUnsupported(LLMUnavailable):
+    """上游明确拒绝图片输入；调用方可以改用本地 OCR 文本重试。"""
+
+
+def _image_input_unsupported(e: Exception) -> bool:
+    # Authentication, quota, server and malformed-image failures are not evidence
+    # that a model lacks vision. Never silently downgrade those to OCR.
+    if _status_of(e) not in (400, 422):
+        return False
+    text = _raw_message(e)
+    if any(term in text for term in ("image format", "image mime", "image size", "image too large")):
+        return False
+    patterns = (
+        r"(?:model|endpoint).{0,100}(?:does not support|doesn't support|cannot accept|can't accept|not support).{0,50}(?:image|vision|multimodal)",
+        r"(?:image|vision|multimodal)\s+(?:input[s]?\s+)?(?:is |are )?not supported",
+        r"unsupported\s+(?:content\s+)?(?:type|input(?:\s+type)?)\s*[:=]?\s*['\"]?(?:image_url|input_image|image)(?:['\"\s,.]|$)",
+        r"image_url.{0,20}only supported by certain models",
+        r"(?:model|endpoint).{0,60}only supports?\s+(?:plain\s+)?text(?:\s+input)?",
+        r"(?:仅支持|只支持)(?:纯)?文本(?:输入|模型)",
+        r"(?:模型|端点).{0,40}不支持.{0,20}(?:图片|图像|视觉|多模态)",
+    )
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
 class LLMOutputInvalid(LLMUnavailable):
     """**服务是通的，但这次输出不能当结构化结果用**（解析不出 JSON 对象）。
 
@@ -376,6 +400,7 @@ class _Call:
     pool: Any = None
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    prompt_cache: tuple[int, int, int] | None = None
     first_content: bool = False
     first_text: bool = False
     # SDK sends sequential retry attempts; references are local to this call.
@@ -479,7 +504,8 @@ async def _finish_call(call: _Call, failed: bool, cancelled: bool) -> None:
         from app.metrics import record_llm
         _finish_pending_http(call)
         record_llm(call.provider.id if call.provider else "unknown", elapsed,
-                   call.prompt_tokens, call.completion_tokens, failed=failed, cancelled=cancelled)
+                   call.prompt_tokens, call.completion_tokens, failed=failed, cancelled=cancelled,
+                   **({'prompt_cache':call.prompt_cache} if call.prompt_cache is not None else {}))
     except Exception:
         _log.debug("记录 LLM 指标失败")
     finally:
@@ -657,6 +683,28 @@ def _usage_tuple(usage, dialect: str) -> tuple[int, int, int]:
     return (p, c, total)
 
 
+def _prompt_cache_usage(usage, dialect: str) -> tuple[int, int, int] | None:
+    """Reported hit/miss/input tokens; missing or contradictory metadata is unknown."""
+    def get(obj, key):
+        return obj.get(key) if isinstance(obj, dict) else getattr(obj, key, None)
+
+    prompt = get(usage, 'input_tokens' if dialect == 'responses' else 'prompt_tokens')
+    details = get(usage, 'input_tokens_details' if dialect == 'responses' else 'prompt_tokens_details')
+    direct = get(usage, 'prompt_cache_hit_tokens')
+    nested = get(details, 'cached_tokens')
+    hit = direct if direct is not None else nested
+    if type(prompt) is not int or type(hit) is not int or not 0 <= hit <= prompt:
+        return None
+    if direct is not None and nested is not None and direct != nested:
+        return None
+    miss = get(usage, 'prompt_cache_miss_tokens')
+    if miss is None:
+        miss = prompt - hit
+    if type(miss) is not int or miss < 0 or hit + miss != prompt:
+        return None
+    return hit, miss, prompt
+
+
 def _record_usage(resp, latency_ms: float, dialect: str) -> None:
     usage = getattr(resp, "usage", None)
     if usage is None:
@@ -669,15 +717,18 @@ def _record_usage(resp, latency_ms: float, dialect: str) -> None:
     r["completion_tokens"] += c
     r["total_tokens"] += t
     call = _CALL.get()
+    cache = _prompt_cache_usage(usage,dialect)
     if call is not None:
         call.prompt_tokens += p
         call.completion_tokens += c
+        call.prompt_cache = cache
         return
     r["latency_ms"] += latency_ms
     try:
         from app.metrics import record_llm
 
-        record_llm(current_provider().id, latency_ms, p, c)
+        record_llm(current_provider().id, latency_ms, p, c,
+                   **({'prompt_cache':cache} if cache is not None else {}))
     except Exception:  # metrics must never affect model requests
         _log.debug("记录 LLM 指标失败", exc_info=True)
 
@@ -847,6 +898,15 @@ def _kwargs_for(
         system, rest = _split_system(messages)
         if system:
             kw["instructions"] = system
+        # Chat and Responses name multimodal content blocks differently. Keep
+        # plain strings byte-for-byte unchanged for existing text-only callers.
+        rest = [dict(m, content=[
+            {"type": "input_text", "text": block["text"]}
+            if block.get("type") == "text" else
+            {"type": "input_image", "image_url": block["image_url"]["url"]}
+            if block.get("type") == "image_url" else block
+            for block in m["content"]
+        ]) if isinstance(m.get("content"), list) else m for m in rest]
         kw["input"] = rest
         if temperature is not None and "temperature" not in dropped:
             kw["temperature"] = temperature
@@ -1159,6 +1219,7 @@ async def stream_completion(
     # 流式 usage 是"到当前为止的累计值"：逐 chunk 直接累加会重复膨胀，
     # 因此按增量计入（当前累计 - 上次累计），延迟只计一次。
     prev = {"prompt": 0, "completion": 0, "total": 0}
+    cache_prev = None
     _latency_recorded = False
     metrics = _metrics_ref()  # 当前上下文的计费 dict（惰性创建，勿用模块级共享对象）
     try:
@@ -1176,6 +1237,10 @@ async def stream_completion(
             usage = _stream_usage(chunk, ladder.dialect)
             if usage is not None:
                 p, c, t = _usage_tuple(usage, ladder.dialect)
+                observed_cache = _prompt_cache_usage(usage, ladder.dialect)
+                # Cumulative usage is one observation per call, not per chunk.
+                # Never keep an earlier cache numerator with a different input total.
+                cache_prev = observed_cache
                 if t or p or c:
                     metrics["prompt_tokens"] += max(p - prev["prompt"], 0)
                     metrics["completion_tokens"] += max(c - prev["completion"], 0)
@@ -1213,9 +1278,11 @@ async def stream_completion(
             if call is not None:
                 call.prompt_tokens += prev["prompt"]
                 call.completion_tokens += prev["completion"]
+                call.prompt_cache = cache_prev
             else:
                 record_llm(provider.id, (time.perf_counter() - request_started) * 1000.0,
-                           prev["prompt"], prev["completion"])
+                           prev["prompt"], prev["completion"],
+                           **({'prompt_cache':cache_prev} if cache_prev is not None else {}))
         except Exception:  # metrics must never affect model requests
             _log.debug("记录流式 LLM 指标失败", exc_info=True)
 
@@ -1249,6 +1316,7 @@ async def chat_structured(
     no_think: bool | None = None,
     schema_in_prompt: bool = True,
     prompt_tail: str = "",
+    images: list[dict[str, str]] | None = None,
 ) -> Any:
     """结构化输出：让模型严格按提供的 JSON Schema 输出。
 
@@ -1276,6 +1344,8 @@ async def chat_structured(
         data = await chat_structured("……", schema={"$schema":"…", "type":"object", "properties":{...}})
     返回解析后的 dict（键名遵循 schema 的 properties）。
     history 为多轮上下文，用于消解指代（如"那明天呢"承接上一轮的车次）。
+    images 为当前消息的图片（mime、content_base64），不写入历史或日志。
+    明确不支持图片输入时抛 ImageInputUnsupported，供调用方本地 OCR 回退。
     """
     settings = get_settings()
     if settings.llm_mock:
@@ -1292,7 +1362,9 @@ async def chat_structured(
 
     provider = current_provider()
     client = await _get_async_client(provider)
-    _model = model or provider.effective_structured_model
+    # A separately configured extraction/classification model may be text-only.
+    # Image requests must use the user's conversation (vision) model instead.
+    _model = model or (provider.model if images else provider.effective_structured_model)
     schema_json = json.dumps(schema, ensure_ascii=False)
     # 是否把**完整 schema** 下发给上游做约束解码（而不只是声明"要一个 JSON 对象"）。
     # 本地小模型必开：小模型"根本没输出 JSON"的比例高得离谱，而约束解码是唯一能把合法率
@@ -1308,6 +1380,15 @@ async def chat_structured(
     # 变量部分**永远拼在最后**：这一条决定了本地推理能不能吃到前缀缓存（见 docstring）
     user_prompt += prompt_tail
     messages = build_messages(user_prompt, system, history)
+    if images:
+        blocks: list[dict[str, Any]] = [{"type": "text", "text": user_prompt}]
+        for image in images:
+            mime = image.get("mime")
+            encoded = image.get("content_base64")
+            if mime not in {"image/png", "image/jpeg", "image/webp", "image/gif"} or not isinstance(encoded, str) or not encoded:
+                raise ValueError("图片类型或内容无效")
+            blocks.append({"type": "image_url", "image_url": {"url": f"data:{mime};base64,{encoded}"}})
+        messages[-1] = {"role": "user", "content": blocks}
     ladder = _Ladder(provider)
 
     while True:
@@ -1322,6 +1403,9 @@ async def chat_structured(
         try:
             resp = await _create_once(client, ladder, kw)
         except Exception as e:  # noqa: BLE001
+            if images and _image_input_unsupported(e):
+                _record_llm_failure(provider, _t0)
+                raise ImageInputUnsupported("当前模型不支持图片输入，请使用本地文字识别。") from e
             decision = ladder.advance(e)
             if decision is not None:
                 continue

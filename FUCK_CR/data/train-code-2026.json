@@ -1,0 +1,111 @@
+{
+  "schema_version": "1.0",
+  "meta": {
+    "doc_ids": ["CR-01", "CR-03"],
+    "as_of": "2026-10-17",
+    "revision": 1,
+    "sources": ["S1", "S2", "S3", "S7"],
+    "confidence_default": "A",
+    "note": "2026版《列车车次编排规定》解读级数据；规定全文未公开。逐趟车新旧对照未发布，禁止据此编造。"
+  },
+  "effective": {
+    "batch1_freight": "2026-11-24T18:00+08:00",
+    "batch1_passenger": "2026-11-25T00:00+08:00",
+    "batch2": "2026-12 月下旬（具体日期未公布）",
+    "batch1_scope": "货物列车、军用列车、路用列车（不含动车组检测/确认/试运转）、普速旅客列车、普速旅游列车、因故折返旅客列车、特快班列",
+    "batch2_scope": "高速旅客列车、动集旅客列车、城际旅客列车、市郊（域）旅客列车、动车组快运列车、动车组检测/确认/试运转列车",
+    "confidence": "A",
+    "note": "官方公开口径只到“11月下旬/12月下旬”；两个精确时点来自《上海铁道》报转述（S15），属 C 级。"
+  },
+  "passenger": [
+    {"prefix": "X", "read": "新", "category": "高速旅客列车", "max_speed_kmh": ">350", "ranges": ["X1-X9998"], "note": "为 CR450 等未来更高速度等级复兴号预留；目前无车"},
+    {"prefix": "G", "read": "高", "category": "高速旅客列车", "max_speed_kmh": 350, "ranges": ["G1-G9998"], "note": "复兴号动车组"},
+    {"prefix": "T", "read": "特", "category": "高速旅客列车", "max_speed_kmh": 300, "ranges": ["T1-T9998"], "note": "接收旧 G(300) 与部分 C(>200)"},
+    {"prefix": "K", "read": "快", "category": "高速旅客列车", "max_speed_kmh": "200-250", "ranges": ["K1-K9998"], "note": "接收旧 D(200-250) 与部分 C(>200)；比新 D 快"},
+    {"prefix": "D", "read": "动", "category": "动集旅客列车", "max_speed_kmh": "<=200", "ranges": ["D1-D9998"], "note": "动集专属；旧 D 中非动集列车不再用 D"},
+    {"prefix": "C", "read": "城", "category": "城际旅客列车", "max_speed_kmh": "<=200", "ranges": ["C1-C2998"], "note": "限路局管内城际；>200 改 G/T/K"},
+    {"prefix": "S", "read": "市郊", "category": "市郊（域）旅客列车", "max_speed_kmh": "<=160", "ranges": ["S1-S2998"], "note": "限城市市域、路局管内；>160 改 T/K/C"},
+    {"prefix": "Z", "read": "字母音", "category": "普速旅客列车", "max_speed_kmh": 160, "ranges": ["Z1-Z1998"], "note": "保留字头，改读 /ziː/，号段重排"},
+    {"prefix": "N", "read": "字母音", "category": "普速旅客列车", "max_speed_kmh": 140, "ranges": ["N1-N1998"], "note": "接收旧 T（特快）"},
+    {"prefix": "V", "read": "字母音", "category": "普速旅客列车", "max_speed_kmh": 120, "ranges": ["V1-V5998", "V6001-V6998", "V7001-V7998"], "note": "V1-5998 快速；V6001-6998 普通旅客快车；V7001-7998 普通旅客慢车"},
+    {"prefix": "Y", "read": "游", "category": "普速旅游列车", "max_speed_kmh": null, "ranges": ["Y1-Y998", "Y1001-Y9998"], "note": "Y1-998 旅游专线；Y1001-9998 旅游专列"}
+  ],
+  "freight": [
+    {
+      "prefix": "B",
+      "read": "班",
+      "ranges": [
+        {"range": "B1-B198", "product": "特快城际班列", "max_speed_kmh": 160},
+        {"range": "B201-B998", "product": "快速多式联运班列", "max_speed_kmh": 120, "note": "B201-B698 为快捷物流班列（公开订舱）"},
+        {"range": "B1001-B1998", "product": "快速城际班列", "max_speed_kmh": 120},
+        {"range": "B2001-B2998", "product": "快速中欧班列", "max_speed_kmh": 120},
+        {"range": "B3001-B3998", "product": "快速中亚班列", "max_speed_kmh": 120},
+        {"range": "B4001-B5998", "product": "普快多式联运班列", "max_speed_kmh": 90},
+        {"range": "B6001-B7998", "product": "普快城际班列", "max_speed_kmh": 90},
+        {"range": "B8001-B8998", "product": "普快中欧班列", "max_speed_kmh": 90},
+        {"range": "B9001-B9998", "product": "普快中亚班列", "max_speed_kmh": 90}
+      ],
+      "note": "由旧 X（行包/货运班列）整体改为 B"
+    },
+    {
+      "prefix": "DH",
+      "read": "动货",
+      "ranges": [
+        {"range": "DH1-DH998", "product": "动车组快运列车", "max_speed_kmh": ">250"},
+        {"range": "DH1001-DH1998", "product": "动车组快运列车", "max_speed_kmh": "<=250"}
+      ],
+      "note": "新增字头"
+    },
+    {
+      "prefix": "",
+      "read": "",
+      "ranges": [
+        {"range": "71001-77998", "product": "重载货物列车", "max_speed_kmh": 90},
+        {"range": "80001-84998", "product": "煤炭直达列车", "max_speed_kmh": 90},
+        {"range": "85001-85998", "product": "石油直达列车", "max_speed_kmh": 90}
+      ],
+      "note": "大宗直达为无字头 5 位纯数字；其他货物列车仍无字头"
+    }
+  ],
+  "work": [
+    {"prefix": "", "ranges": ["5 位纯数字"], "note": "轨道车、接触网作业车、大型养路机械、路内通勤、救援列车等"},
+    {"prefix": "DJ", "read": "动检", "ranges": ["DJ1-DJ998", "DJ1001-DJ1998", "DJ2001-DJ5998", "DJ6001-DJ9998"], "note": "动车组检测/确认列车"},
+    {"prefix": "X", "ranges": ["X55001-X55998"], "note": "动车组试运转列车（>350），C 级"},
+    {"prefix": "G", "ranges": ["G55001-G55998"], "note": "动车组试运转列车（350），C 级"},
+    {"prefix": "T", "ranges": ["T55001-T55998"], "note": "动车组试运转列车（300），C 级"},
+    {"prefix": "K", "ranges": ["K55001-K55998"], "note": "动车组试运转列车（250），C 级"},
+    {"prefix": "D", "ranges": ["D55001-D55998"], "note": "动力集中动车组试运转列车（200），C 级"}
+  ],
+  "legacy_2014": [
+    {"prefix": "G", "meaning": "高速动车组", "max_speed_kmh": "300-350", "read": "高"},
+    {"prefix": "D", "meaning": "动车组（含动集）", "max_speed_kmh": "160-250", "read": "动"},
+    {"prefix": "C", "meaning": "城际动车组", "max_speed_kmh": "200-350", "read": "城"},
+    {"prefix": "S", "meaning": "市郊列车", "max_speed_kmh": "<=160（少量更高）", "read": "市郊"},
+    {"prefix": "Z", "meaning": "直达特快", "max_speed_kmh": 160, "read": "直"},
+    {"prefix": "T", "meaning": "特快", "max_speed_kmh": 140, "read": "特"},
+    {"prefix": "K", "meaning": "快速", "max_speed_kmh": 120, "read": "快"},
+    {"prefix": "", "meaning": "普快/普慢（无字头数字车次）", "max_speed_kmh": "<=120", "read": ""},
+    {"prefix": "L", "meaning": "临时旅客列车", "max_speed_kmh": null, "read": ""},
+    {"prefix": "Y", "meaning": "旅游列车", "max_speed_kmh": 120, "read": "游"},
+    {"prefix": "X", "meaning": "行包/货运班列", "max_speed_kmh": null, "read": "行"}
+  ],
+  "mapping": [
+    {"old": "G(350)", "new": "G", "confidence": "A"},
+    {"old": "G(300)", "new": "T", "confidence": "A-inferred"},
+    {"old": "D(200-250)", "new": "K", "confidence": "A-inferred"},
+    {"old": "D(动集)", "new": "D", "confidence": "A"},
+    {"old": "C(>200)", "new": "G/T/K", "confidence": "A"},
+    {"old": "C(<=200 管内)", "new": "C", "confidence": "A"},
+    {"old": "S(<=160)", "new": "S", "confidence": "A"},
+    {"old": "S(>160)", "new": "T/K/C", "confidence": "A"},
+    {"old": "Z", "new": "Z", "confidence": "A"},
+    {"old": "T(140)", "new": "N", "confidence": "A"},
+    {"old": "K(120)", "new": "V", "confidence": "A"},
+    {"old": "无字头 普快", "new": "V6001-V6998", "confidence": "A"},
+    {"old": "无字头 普慢", "new": "V7001-V7998", "confidence": "A"},
+    {"old": "L", "new": "同类字头+预留号段", "confidence": "A"},
+    {"old": "Y", "new": "Y", "confidence": "A"},
+    {"old": "X(行包/班列)", "new": "B", "confidence": "A"},
+    {"old": "动车组快运", "new": "DH", "confidence": "A"}
+  ]
+}

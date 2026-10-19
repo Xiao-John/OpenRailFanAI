@@ -1,0 +1,43 @@
+status: passed
+entries:
+- acc_id: ACC-INPUT-01
+  module: 图片与文档导入
+  design_ref: frontend/tests/visual/designs/attachment-composer.html
+  impl_ref: acceptance/runs/inputs-20261019T193432/captures/attachment-composer.png
+  viewport:
+    width: 390
+    height: 844
+  diff_px: null
+  status: passed
+  file: ACC-INPUT-01__attachment-composer__20261019.png
+  generated_at: '2026-10-19T19:34:32.922164+08:00'
+  script_version: inputs-1.0.0
+  verification:
+    tests: 17
+    failed: 0
+    skipped: 0
+    scope: 定向原生交互、离线图片处理、密钥隔离及默认布局协调性通过；不代表云端准确率或完整真机验收
+  run_manifest: acceptance/runs/inputs-20261019T193432/manifest.yaml
+  visual_review: acceptance/runs/inputs-20261019T193432/visual-review.yaml
+- acc_id: ACC-INPUT-02
+  module: 车次规则兼容按钮
+  design_ref: frontend/tests/visual/designs/fuck-cr-settings.html
+  impl_ref: acceptance/runs/inputs-20261019T193432/captures/fuck-cr-settings.png
+  viewport:
+    width: 390
+    height: 844
+  diff_px: null
+  status: passed
+  file: ACC-INPUT-02__fuck-cr-settings__20261019.png
+  generated_at: '2026-10-19T19:34:32.922164+08:00'
+  script_version: inputs-1.0.0
+  verification:
+    tests: 17
+    failed: 0
+    skipped: 0
+    scope: 定向原生交互、离线图片处理、密钥隔离及默认布局协调性通过；不代表云端准确率或完整真机验收
+  run_manifest: acceptance/runs/inputs-20261019T193432/manifest.yaml
+  visual_review: acceptance/runs/inputs-20261019T193432/visual-review.yaml
+test_source: android/app/build/outputs/androidTest-results/connected/debug/TEST-wordzhan_test(AVD)
+  - 14-_app-.xml
+test_xml_sha256: 1a89f80343237bff9386f9b850753f443ac0e79f187ce783b5a9afb6f2421d03
