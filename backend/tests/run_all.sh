@@ -69,6 +69,11 @@ SUITES=(
   test_dict_mileage
   # 决策层性能优化（确定性快路径 / 合并调用 / 投机预取）
   test_perf_fastpath
+  # 决策层：闭合知识叶子 + 站名匹配缓存（全部无网络）
+  test_closed_knowledge_tree
+  test_decision_station_matching
+  # 未来日期不查交路（产品红线：不据历史记录推断未来担当）
+  test_future_routing_guard
   # 静态资源交付（gzip 压缩 + 版本戳分级缓存；全部无网络）
   test_static_assets
   # LLM 多供应商 / 双 API 方言（chat.completions 与 responses，含自动探测与参数降级；全部无网络）
@@ -87,6 +92,8 @@ SUITES=(
   test_mock_render
   # 多轮槽位/意图继承（省略句承接上文；含"该交出的必须交出"红线；全部无网络）
   test_multiturn_slots
+  # 提示词缓存用量观测（流式累计 usage、缺失字段、命中率口径；全部无网络）
+  test_prompt_cache_metrics
   # 本地小模型加固（输出不可用 ≠ 服务不可用：JSON 宽容解析 + 决策层回退；全部无网络）
   test_slm_hardening
   # Main 票价与余票交付、文案、日期及成对结果回归（2026-10-06）

@@ -298,7 +298,9 @@ def test_apk_assets_satisfy_index_html_references():
     """
     import zipfile
 
-    apks = sorted((REPO_ROOT / "android/app/build/outputs/apk").rglob("*.apk"))
+    # androidTest 是测试进程的包（没有 assets/webapp），不能当作应用产物。
+    apks = sorted(p for p in (REPO_ROOT / "android/app/build/outputs/apk").rglob("*.apk")
+                  if "androidTest" not in p.parts)
     if not apks:
         print("[SKIP] 未找到已构建的 APK，跳过资源引用检查（构建后会自动纳入）")
         return
@@ -445,7 +447,8 @@ def test_settings_row_gets_edit_callback():
     """
     pages = (REPO_ROOT / "frontend/src/pages.js").read_text(encoding="utf-8")
     # 模块级函数 providerRow 的签名要带 onEdit 回调
-    assert "function providerRow(entry, rerender, onEdit)" in pages, (
+    # 只要求前缀：后续新增 activeId/entryCount 等参数不应让这条作用域检查失效。
+    assert "function providerRow(entry, rerender, onEdit" in pages, (
         "providerRow 未通过参数接收编辑回调（会引用不到闭包内的 openEditor）"
     )
     assert "() => onEdit(entry)" in pages, "编辑按钮未使用传入的回调"
@@ -545,7 +548,9 @@ def test_apk_contains_build_stamp():
 
     import zipfile
 
-    apks = sorted((ANDROID_DIR / "app/build/outputs/apk").rglob("*.apk"))
+    # androidTest 包由测试构建生成，不应带应用的前端构建标记。
+    apks = sorted(p for p in (ANDROID_DIR / "app/build/outputs/apk").rglob("*.apk")
+                  if "androidTest" not in p.parts)
     if not apks:
         print("[SKIP] 未找到已构建的 APK，跳过构建标记的产物检查")
         return
@@ -862,7 +867,8 @@ def test_launcher_entry_and_label_survive():
         "主 manifest 丢了 LAUNCHER 入口 —— 装完桌面不会有图标"
     assert 'android:label="@string/app_name"' in manifest, \
         "主 manifest 的 <application> 丢了 label —— 安装器会只显示包名"
-    assert 'android:icon="@drawable/ic_launcher"' in manifest, \
+    assert any(f'android:icon="@{kind}/ic_launcher"' in manifest
+               for kind in ("mipmap", "drawable")), \
         "主 manifest 的 <application> 丢了 icon"
 
     # NPU 需要的 FastRPC 库声明：必须在 <application> 内，且 required=false

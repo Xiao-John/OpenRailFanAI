@@ -54,7 +54,10 @@ def test_gzip_compresses_static_assets() -> None:
             r = c.get(u, headers={"Accept-Encoding": "gzip"})
             assert r.status_code == 200, f"{u} -> {r.status_code}"
             assert r.headers.get("content-encoding") == "gzip", f"{u} 没有压缩：{dict(r.headers)}"
-            wire += int(r.headers["content-length"])
+            # 文件响应是流式的，Starlette 的 gzip 中间件会移除 content-length，
+            # 用传输层实际读取的字节数（压缩后）而不是这个头；两种响应都能量到。
+            assert r.num_bytes_downloaded > 0, f"{u} 没有读到压缩字节"
+            wire += r.num_bytes_downloaded
             decoded += len(r.content)
     ratio = decoded / max(1, wire)
     assert ratio > 2.0, f"压缩收益过低：{decoded} → {wire}（仅 {ratio:.2f}x）"

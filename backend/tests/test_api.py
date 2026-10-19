@@ -161,12 +161,16 @@ def test_sessions_info():
 
 
 def test_chat_with_history():
-    """多轮上下文：追问「那明天呢」应承接上文的对象（G1）。"""
+    """多轮上下文：追问「那今天呢」应承接上文的对象（G1）。
+
+    不用「明天」：未来日期按产品规则不查交路（retrieve 的 future_routing_guard），
+    那会把"上下文是否继承"测成"是否违反未来日期红线"。
+    """
     history = [
         {"role": "user", "content": "G1今天由哪组动车组担当？"},
         {"role": "assistant", "content": "今日（2026-09-13）G1次列车由 CR400BFA-5054 动车组担当。"},
     ]
-    payload_msg = "那明天呢？"
+    payload_msg = "那今天呢？"
 
     def _ok(d: dict) -> bool:
         slots = {s["name"]: s["value"] for s in d["slots"]}
