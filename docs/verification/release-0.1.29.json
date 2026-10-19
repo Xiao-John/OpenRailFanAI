@@ -1,0 +1,61 @@
+{
+  "url": "https://github.com/Xiao-John/OpenRailFanAI/releases/tag/v0.1.29",
+  "id": 417231726,
+  "tag": "v0.1.29",
+  "latest": "v0.1.29",
+  "source_commit": "83794ad0a5a6a8665a43db94d022b5be3cd55fc0",
+  "build": {
+    "version": "0.1.29",
+    "commit": "83794ad",
+    "builtAt": "2026-10-19T19:46:09+08:00"
+  },
+  "local_size": 56351221,
+  "local_sha256": "762ea071ff94a2def490b7e376f4235388541b1d3e8aa7c65fe2132465a75283",
+  "assets": [
+    {
+      "name": "OpenRailFanAI-0.1.29-arm64-release.apk",
+      "size": 56351221,
+      "digest": "sha256:762ea071ff94a2def490b7e376f4235388541b1d3e8aa7c65fe2132465a75283",
+      "url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/v0.1.29/OpenRailFanAI-0.1.29-arm64-release.apk"
+    },
+    {
+      "name": "OpenRailFanAI-0.1.29-arm64-release.apk.sha256",
+      "size": 105,
+      "digest": "sha256:edb1afc48269a54c0e32d32fd8f4f1e8e77f4e570e30561f3585f7078626e5ab",
+      "url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/v0.1.29/OpenRailFanAI-0.1.29-arm64-release.apk.sha256"
+    }
+  ],
+  "verified_at": "2026-10-19T19:52:35.116682+08:00",
+  "runtime": {
+    "device": "emulator-5588",
+    "android_api": "35",
+    "release_install": true,
+    "native_home_visible": true,
+    "health_status": "ok",
+    "backend_version": "dev",
+    "fuck_cr_status": {
+      "schema_version": 1,
+      "feature": "fuck_cr",
+      "button_label": "一键FUCK_CR",
+      "mode": "legacy",
+      "enabled": false,
+      "new_rules_ready": false,
+      "can_enable": false,
+      "message": "新版车次兼容规则尚未就绪。"
+    },
+    "scope": "正式签名包安装、首页及内置服务初步检查；未执行真实云端查询"
+  },
+  "signing_certificate_sha256": "e644691a89343cc83ee596340fd3a4648ca792b569e9744f3d9326b5e70244ec",
+  "tests": {
+    "native_targeted": 17,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "组件交互、离线图片处理和密钥隔离；非完整项目及真实云端视觉评测"
+  },
+  "notes": [
+    "发布包从83794ad干净树重新构建，包内build.json不含dirty。",
+    "初次本地体验包未发布；本记录的SHA-256为GitHub最终资产。",
+    "原生检查XML以二进制方式保留原始CRLF，在发布回执提交中纠正首次暂存的自动换行归一化；原始检查和结果未改写。",
+    "历史运行缓存保留本地；源码、测试、第三方资源、交接文档与选定证据已提交。"
+  ]
+}

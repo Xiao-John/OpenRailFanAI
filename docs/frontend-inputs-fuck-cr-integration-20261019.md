@@ -40,4 +40,6 @@ Kotlin 主代码与原生测试源码编译通过。模拟器 emulator-5554（An
 
 安装包以 `-PincludeDict=true assembleRelease` 构建，版本递增到 0.1.29；打包完成后核对版本、签名与词典。本轮不推远程。
 
-构建结果：`dist/android/OpenRailFanAI-0.1.29-arm64-release.apk`，56,351,225 字节，versionCode=129；沿用既有发布签名，签名验证通过。包内词典为19,898,368字节，已确认包含新的兼容状态 API 和图片/文档处理模块。APK SHA-256：`8e542248755ca7be28b722cb5fa42a89fa1d04f1c46c314b0971523feb31f9a4`。
+提交前的本地体验包（非最终发布资产）：`dist/android/OpenRailFanAI-0.1.29-arm64-release.apk`，56,351,225 字节，versionCode=129；沿用既有发布签名，签名验证通过。包内词典为19,898,368字节，已确认包含新的兼容状态 API 和图片/文档处理模块。APK SHA-256：`8e542248755ca7be28b722cb5fa42a89fa1d04f1c46c314b0971523feb31f9a4`。
+
+正式发布包由干净提交 `83794ad` 重建，56,351,221 字节，SHA-256 为 `762ea071ff94a2def490b7e376f4235388541b1d3e8aa7c65fe2132465a75283`。GitHub 资产摘要与本地相符，最终记录见 `verification/release-0.1.29.json`。

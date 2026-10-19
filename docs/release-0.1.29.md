@@ -28,4 +28,6 @@ China Railway has yet to officially roll out its upcoming train numbering scheme
 
 完整项目回归尚未全部通过，独立评审记录了环境相关失败、测试假设问题及旧解析器对未知字头的边界缺陷；本版本没有将其包装成“完整改革兼容”。尚未逐家验证真实注册付款，也未评测真实云端模型的视觉准确率。
 
-最终发布从干净的 Git 提交重新构建，版本、签名、包内词典、安装运行及 GitHub 资产校验记录见 `docs/verification/release-0.1.29.json`（发布后生成）。
+最终发布从干净的 Git 提交重新构建，版本、签名、包内词典、安装运行及 GitHub 资产校验记录见 `docs/verification/release-0.1.29.json`。
+
+发布完成：标签 `v0.1.29` 指向干净构建提交 `83794ad`；源码已同步默认分支 `main`。正式签名包在临时 Android 15 模拟器安装启动，首页和内置服务健康检查通过，兼容状态确认为不可启用。APK 与校验文件的 GitHub 摘要均与本地相符。
