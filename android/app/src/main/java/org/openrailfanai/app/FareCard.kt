@@ -1,5 +1,7 @@
 package org.openrailfanai.app
 
+import androidx.compose.ui.draw.clip
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -153,7 +155,7 @@ internal fun StructuredFareCard(value: FareResult, modifier: Modifier = Modifier
             }
         }.flatMap { it.split('；', '。').map(String::trim).filter(String::isNotEmpty) }.distinct()
         if (notices.isNotEmpty()) FareNotice(notices.joinToString("；") + "。")
-        Column(Modifier.fillMaxWidth().background(NativeColors.panel, RoundedCornerShape(8.appDp)).padding(horizontal = 10.appDp)) {
+        Column(Modifier.fillMaxWidth().background(NativeColors.panel, RoundedCornerShape(8.appDp)).clip(RoundedCornerShape(8.appDp)).padding(horizontal = 10.appDp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 44.appDp).clickable { details = !details },
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.appDp)) {
                 RailIcon("link", Modifier.size(18.appDp), NativeColors.muted)

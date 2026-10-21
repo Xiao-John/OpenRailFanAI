@@ -170,6 +170,7 @@ fun HistoryScreen(
                             items.forEach { conversation ->
                                 val selected = conversation.id == currentId
                                 Row(Modifier.fillMaxWidth().background(if (selected) NativeColors.selected else Color.Transparent, RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(12.dp))
                                     .testTag("history-row-${conversation.id}"), verticalAlignment = Alignment.CenterVertically) {
                                     Box(Modifier.weight(1f).heightIn(min = 48.dp).clickable { onSelect(conversation.id) }
                                         .padding(horizontal = 12.dp, vertical = 8.dp).testTag("history-select-${conversation.id}"),
@@ -271,7 +272,7 @@ private fun HistoryButton(text: String, primary: Boolean = false, danger: Boolea
     val color = when { danger -> NativeColors.danger; primary -> Color.White; else -> HistoryBlue }
     val border = if (primary) HistoryBlue else HistoryLine
     val buttonModifier = Modifier.fillMaxWidth().border((1).appDp, border, RoundedCornerShape((10).appDp))
-        .background(if (primary) HistoryBlue else NativeColors.surface, RoundedCornerShape((10).appDp)).clickable(onClick = onClick)
+        .background(if (primary) HistoryBlue else NativeColors.surface, RoundedCornerShape((10).appDp)).clip(RoundedCornerShape((10).appDp)).clickable(onClick = onClick)
         .heightIn(min = if (primary) (50).appDp else 48.dp).then(if (testTag == null) Modifier else Modifier.testTag(testTag))
     if (icon != null) {
         Row(buttonModifier.padding(horizontal = (12).appDp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {

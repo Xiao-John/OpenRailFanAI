@@ -1,5 +1,7 @@
 package org.openrailfanai.app
 
+import androidx.compose.ui.draw.clip
+
 import android.app.DatePickerDialog
 import org.json.JSONArray
 import androidx.compose.foundation.background
@@ -522,14 +524,14 @@ private fun ActionButton(
     val widthModifier = if (fillWidth) Modifier.fillMaxWidth() else Modifier
     if (textStyle != null) {
         Box(widthModifier.widthIn(min = minWidth.appDp).border(1.appDp, RailAccent, RoundedCornerShape(10.appDp))
-            .heightIn(min = maxOf(44.dp, minHeight.appDp)).clickable(onClick = onClick).testTag(tag).padding(horizontal = 13.appDp),
+            .heightIn(min = maxOf(44.dp, minHeight.appDp)).clip(RoundedCornerShape(10.appDp)).clickable(onClick = onClick).testTag(tag).padding(horizontal = 13.appDp),
             contentAlignment = Alignment.Center) {
             BasicText(label, Modifier.testTag("$tag-label"), style = textStyle)
         }
         return
     }
     BasicText(label, widthModifier.widthIn(min = minWidth.appDp).border(1.appDp, RailAccent, RoundedCornerShape(10.appDp)).heightIn(min = maxOf(44.dp, minHeight.appDp))
-        .clickable(onClick = onClick).testTag(tag).padding(horizontal = 13.appDp, vertical = 8.appDp),
+        .clip(RoundedCornerShape(10.appDp)).clickable(onClick = onClick).testTag(tag).padding(horizontal = 13.appDp, vertical = 8.appDp),
         style = textStyle ?: TextStyle(color = RailAccent, fontSize = 16.appSp, textAlign = if (centerText) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Start))
 }
 
@@ -546,7 +548,7 @@ private fun StateActionButton(
 ) {
     val widthModifier = if (fillWidth) Modifier.fillMaxWidth() else Modifier
     Box(
-        widthModifier.widthIn(min = minWidth.appDp).heightIn(min = 44.dp).clickable(onClick = onClick).testTag(tag),
+        widthModifier.widthIn(min = minWidth.appDp).heightIn(min = 44.dp).clip(RoundedCornerShape(10.appDp)).clickable(onClick = onClick).testTag(tag),
         contentAlignment = Alignment.Center,
     ) {
         Box(

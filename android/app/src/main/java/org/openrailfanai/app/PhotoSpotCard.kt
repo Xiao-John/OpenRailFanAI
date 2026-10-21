@@ -1,5 +1,7 @@
 package org.openrailfanai.app
 
+import androidx.compose.ui.draw.clip
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -124,6 +126,7 @@ private fun PhotoSourceCard(doc: JSONObject, onPending: () -> Unit) {
 @Composable
 private fun PhotoPendingButton(onClick: () -> Unit) {
     Row(Modifier.heightIn(min = 44.dp).background(if (NativeColors.dark) Color(0xFF48371C) else Color(0xFFFFF1CA), RoundedCornerShape(9.appDp))
+        .clip(RoundedCornerShape(9.appDp))
         .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 12.appDp).testTag("photo-pending"),
         horizontalArrangement = Arrangement.spacedBy(8.appDp), verticalAlignment = Alignment.CenterVertically) {
         val color = if (NativeColors.dark) Color(0xFFF1C979) else Color(0xFF805809)
@@ -138,6 +141,7 @@ private fun PhotoSourceRow(url: String, note: String) {
     val uri = LocalUriHandler.current
     Column {
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).background(NativeColors.panel, RoundedCornerShape(9.appDp))
+            .clip(RoundedCornerShape(9.appDp))
             .clickable(role = Role.Button) { expanded = !expanded }.padding(horizontal = 10.appDp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.appDp)) {
             RailIcon("link", Modifier.size(18.appDp), NativeColors.muted)

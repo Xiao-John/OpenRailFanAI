@@ -1,5 +1,7 @@
 package org.openrailfanai.app
 
+import androidx.compose.ui.draw.clip
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.background
@@ -546,6 +548,7 @@ private fun AttachmentImportPanel(cameraAvailable: Boolean, onCamera: () -> Unit
 @Composable
 private fun AttachmentImportAction(label: String, icon: String, tag: String, modifier: Modifier, enabled: Boolean, onClick: () -> Unit) {
     Column(modifier.heightIn(min = 92.dp).background(NativeColors.panel, RoundedCornerShape(20.dp))
+        .clip(RoundedCornerShape(20.dp))
         .clickable(enabled = enabled, role = Role.Button, onClick = onClick).testTag(tag)
         .padding(vertical = 16.dp, horizontal = 8.dp),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
@@ -581,6 +584,7 @@ private fun ChatWelcome(onDraft: (String) -> Unit) {
                     Row(Modifier.weight(1f).heightIn(min = 56.dp)
                         .background(NativeColors.surface, RoundedCornerShape(16.dp))
                         .border(1.dp, NativeColors.line, RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .clickable(role = Role.Button) { onDraft(query) }.padding(12.dp)
                         .testTag("welcome-$label"),
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,

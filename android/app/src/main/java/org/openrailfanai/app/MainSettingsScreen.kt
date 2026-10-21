@@ -142,6 +142,7 @@ fun MainSettingsScreen(
                 configs.forEach { provider ->
                     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp)
                         .border(1.dp, SettingsBorder, RoundedCornerShape(16.dp)).testTag("provider-card-${provider.id}")
+                        .clip(RoundedCornerShape(16.dp))
                         .clickable(enabled = busy.isEmpty(), role = Role.Button) {
                             activeId = provider.id; selectedId = provider.id; rememberKey = repository.rememberKeyForProvider(provider.id); feedback = ""; models = emptyList(); showEditor = false; showAdvanced = false; onKeyEdited()
                         }.padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -345,6 +346,7 @@ fun MainSettingsScreen(
                     val isActive = preset.id == activeId
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         .background(if (isActive) SettingsBlue.copy(alpha = 0.08f) else Color.Transparent, RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .clickable(role = Role.Button) { selectProvider(configs.firstOrNull { it.id == preset.id } ?: preset) }
                         .padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -422,6 +424,7 @@ internal fun SettingsButton(text: String, modifier: Modifier = Modifier, primary
     val background by animateColorAsState(targetBackground, tween(100), label = "button-feedback")
     Box(modifier.heightIn(min = 48.dp).background(background, RoundedCornerShape(12.dp))
         .border(1.dp, if (primary) Color.Transparent else SettingsBorder, RoundedCornerShape(12.dp))
+        .clip(RoundedCornerShape(12.dp))
         .clickable(interactionSource = interactions, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 12.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
         val foreground = if (primary) Color.White else if (enabled) SettingsInk else SettingsMuted
         if (text.startsWith("＋ ")) {
