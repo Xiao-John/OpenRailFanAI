@@ -245,6 +245,21 @@ def main():
     latest = api.request('GET', base + '/releases/latest')
     if latest.get('tag_name') != tag:
         raise RuntimeError('Release 已发布，但 latest 尚未指向本版本，请核对后重试')
+    # Draft 上传阶段的资产 URL 是 untagged-<hash>；公开后必须重新取一次发布态资产，
+    # 否则回执里会留下 untagged URL（0.1.30/0.1.31 已出现）。
+    published = api.request('GET', base + '/releases/tags/' + tag)
+    published_assets = []
+    for path in (apk, sidecar):
+        asset = next((a for a in published.get('assets', []) if a.get('name') == path.name), None)
+        expected = 'sha256:' + digest(path)
+        if not asset or asset.get('digest') != expected or asset.get('size') != path.stat().st_size:
+            raise RuntimeError('公开 Release 的资产摘要或大小与本地不一致')
+        url = asset.get('browser_download_url', '')
+        if f'/releases/download/{tag}/' not in url:
+            raise RuntimeError('公开 Release 的资产 URL 不是版本标签路径：' + url)
+        published_assets.append({k: asset[k] for k in ('name', 'size', 'digest', 'browser_download_url')})
+    assets = published_assets
+    release = published
     receipt = {'url': release['html_url'], 'id': release['id'], 'tag': tag, 'latest': latest['tag_name'],
         'source_commit': source, 'build': build, 'local_size': apk.stat().st_size, 'local_sha256': checksum,
         'signing_certificate_sha256': certificate.group(1).lower(), 'dictionary_bytes': dictionary_bytes,

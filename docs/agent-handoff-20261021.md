@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| HEAD | `1e5de3d`（fix(android): 贴底时消息区随输入栏同步上推） |
+| HEAD | `2173d90`（docs: record Main 0.1.31 publication）；后续脚本/回执修正见文末 |
 | 版本 | `0.1.30` |
 | Release tag | `v0.1.30` → `ace82ff`（release: prepare Main 0.1.30） |
 | 工作区 | 写本文档前干净；本文档为新增文件 |
@@ -26,6 +26,8 @@
 | `7220b02` | 圆角按钮的 ripple/indication 补 `clip(shape)`；覆盖 SettingsButton、HistoryButton、供应商卡/预设、欢迎示例、附件入口、机位按钮、时刻卡操作、票价详情 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
 | `34cf43e` | 开关行（记住 API Key、图片、个人记忆、向导记住密钥）补 `clip(12dp)`，整行 ripple 同步圆角 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
 | `1e5de3d` | 贴底（≤32dp）时消息区随输入栏/IME 同步上推；非贴底保持阅读位置 | `:app:compileDebugKotlin` BUILD SUCCESSFUL；`test_android` 通过 |
+| `7d06869` | 0.1.31 发布准备（VERSION、发布说明、构建） | `scripts/release.sh`；正式签名、词典与 GitHub 资产校验通过 |
+| `2173d90` | 0.1.31 发布回执 | Release `v0.1.31` 公开并 latest |
 
 ### 2.2 更早的相关提交（本仓库历史）
 
@@ -117,6 +119,21 @@
 
 本轮**没有删除任何文件**。
 
+### 3.9 0.1.31 发布
+
+- 版本 `0.1.31`，tag `v0.1.31` 指向构建提交 `7d06869`；Release 已公开并 latest。
+- APK：`dist/android/OpenRailFanAI-0.1.31-arm64-release.apk`，56,344,832 B，SHA-256 `45f9f62ae333b64be91656c380fbe209197263b6094c95b6311b23d1a668dd60`。
+- `docs/verification/release-0.1.31.json`：签名证书 `e644691a...` 与 0.1.30 一致；包内词典 19,898,368 B；GitHub 资产摘要一致。
+- 发布脚本可用；但发现并修正了一个回执缺陷（见 §3.10）。
+
+### 3.10 发布回执的 untagged URL 缺陷
+
+- 现象：`release-0.1.30.json` 与 `release-0.1.31.json` 的资产 URL 是 `.../releases/download/untagged-<hash>/...`，而 GitHub Release 实际公开后的 URL 是 `.../download/v0.1.30/...`、`.../download/v0.1.31/...`。
+- 原因：`scripts/release/publish.py` 在上传草稿资产后就把 `browser_download_url` 写进回执；草稿阶段的 GitHub 资产 URL 是 untagged，公开后脚本没有重新读取发布态资产。
+- 影响：回执中的下载地址不可作为稳定引用；App 更新器读取的是 GitHub API 的实时资产 URL，不受这份回执影响。
+- 修复：脚本在 PATCH 公开后重新 `GET /releases/tags/<tag>`，校验摘要/大小/URL 前缀，再用发布态资产写回执；两个历史回执已按实际公开 URL 更正。
+- 未改已公开 Release 的资产内容，也未移动 tag。
+
 ### 3.8 输入区 / 消息区 IME 同步
 
 - 规则：消息列表距底部 **≤32dp** 视为“贴底”；该状态下消息区视口尺寸变化时，按同一像素增量 `scrollBy`，让内容跟着输入栏同步上推。否则不滚动，保持当前阅读位置。
@@ -136,6 +153,7 @@
 4. 测试分层：`run_all.sh` 拆 `--offline`/`--live`；前端 Node 缺失时显式 `SKIP`。
 5. 文档索引的失效链接（§3.7）。
 6. 真机/模拟器复验 IME 同步：贴底应跟手、非贴底不应跳；32dp 阈值可按实际手感调整。
+7. 用 0.1.31 APK 实测更新器（从 0.1.30 检查更新→下载→签名校验→安装）；本轮只核对了 GitHub API 资产 URL 与摘要。
 
 ## 5. 验证命令
 
@@ -158,4 +176,6 @@ bash ../scripts/android/build.sh :app:compileDebugKotlin
 | 2026-10-21 | `7220b02` | 圆角按压层裁切；SettingsButton/HistoryButton 等已修 |
 | 2026-10-21 | `34cf43e` | 开关行 ripple 裁切（记忆/图片/记住密钥/向导） |
 | 2026-10-21 | `1e5de3d` | 贴底时消息区随输入栏同步上推（≤32dp） |
+| 2026-10-22 | `7d06869` / `2173d90` | 0.1.31 发布与回执 |
+| 2026-10-22 | 本轮 | 修复回执 untagged URL；更正 0.1.30/0.1.31 回执 |
 | 2026-10-21 | 本文 | 建立交接文档；记录方角按压层审计与未决项 |

@@ -18,13 +18,13 @@
       "name": "OpenRailFanAI-0.1.30-arm64-release.apk",
       "size": 56344832,
       "digest": "sha256:cc0444456c8bdcd505c508af3e175c24785f39c94f862a2a7f5a0a4b6ebd8701",
-      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/untagged-bfd747e502745f1454d0/OpenRailFanAI-0.1.30-arm64-release.apk"
+      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/v0.1.30/OpenRailFanAI-0.1.30-arm64-release.apk"
     },
     {
       "name": "OpenRailFanAI-0.1.30-arm64-release.apk.sha256",
       "size": 105,
       "digest": "sha256:94bcb01c9f3fc84d2cc1fecd1e5952c4f769d7ebb51462eaa402b47bc23af9e1",
-      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/untagged-bfd747e502745f1454d0/OpenRailFanAI-0.1.30-arm64-release.apk.sha256"
+      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/v0.1.30/OpenRailFanAI-0.1.30-arm64-release.apk.sha256"
     }
   ],
   "verified_at": "2026-10-21T22:56:02.790411+08:00",
