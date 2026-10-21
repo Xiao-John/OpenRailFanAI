@@ -1,0 +1,32 @@
+{
+  "url": "https://github.com/Xiao-John/OpenRailFanAI/releases/tag/v0.1.30",
+  "id": 419687468,
+  "tag": "v0.1.30",
+  "latest": "v0.1.30",
+  "source_commit": "ace82ffba690019d455e825e4dc39b49ebb83298",
+  "build": {
+    "version": "0.1.30",
+    "commit": "ace82ff",
+    "builtAt": "2026-10-21T22:52:52+08:00"
+  },
+  "local_size": 56344832,
+  "local_sha256": "cc0444456c8bdcd505c508af3e175c24785f39c94f862a2a7f5a0a4b6ebd8701",
+  "signing_certificate_sha256": "e644691a89343cc83ee596340fd3a4648ca792b569e9744f3d9326b5e70244ec",
+  "dictionary_bytes": 19898368,
+  "assets": [
+    {
+      "name": "OpenRailFanAI-0.1.30-arm64-release.apk",
+      "size": 56344832,
+      "digest": "sha256:cc0444456c8bdcd505c508af3e175c24785f39c94f862a2a7f5a0a4b6ebd8701",
+      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/untagged-bfd747e502745f1454d0/OpenRailFanAI-0.1.30-arm64-release.apk"
+    },
+    {
+      "name": "OpenRailFanAI-0.1.30-arm64-release.apk.sha256",
+      "size": 105,
+      "digest": "sha256:94bcb01c9f3fc84d2cc1fecd1e5952c4f769d7ebb51462eaa402b47bc23af9e1",
+      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/untagged-bfd747e502745f1454d0/OpenRailFanAI-0.1.30-arm64-release.apk.sha256"
+    }
+  ],
+  "verified_at": "2026-10-21T22:56:02.790411+08:00",
+  "validation": "Python、Kotlin主代码及原生测试源码编译通过；离线评审回归67套完整通过、2套含明确跳过。新增记忆、手势和模型标题未完成真实模型或真机验收。本次发布脚本核对正式签名、包名版本、干净构建提交、词典和GitHub资产摘要，不自动执行测试。"
+}
