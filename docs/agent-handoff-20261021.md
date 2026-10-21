@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| HEAD | `34cf43e`（fix(android): 开关行的按压层也裁成圆角） |
+| HEAD | `1e5de3d`（fix(android): 贴底时消息区随输入栏同步上推） |
 | 版本 | `0.1.30` |
 | Release tag | `v0.1.30` → `ace82ff`（release: prepare Main 0.1.30） |
 | 工作区 | 写本文档前干净；本文档为新增文件 |
@@ -25,6 +25,7 @@
 | `b767f4f` | 记忆开关与供应商向导「记住密钥」恢复整行点击 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
 | `7220b02` | 圆角按钮的 ripple/indication 补 `clip(shape)`；覆盖 SettingsButton、HistoryButton、供应商卡/预设、欢迎示例、附件入口、机位按钮、时刻卡操作、票价详情 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
 | `34cf43e` | 开关行（记住 API Key、图片、个人记忆、向导记住密钥）补 `clip(12dp)`，整行 ripple 同步圆角 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
+| `1e5de3d` | 贴底（≤32dp）时消息区随输入栏/IME 同步上推；非贴底保持阅读位置 | `:app:compileDebugKotlin` BUILD SUCCESSFUL；`test_android` 通过 |
 
 ### 2.2 更早的相关提交（本仓库历史）
 
@@ -116,6 +117,13 @@
 
 本轮**没有删除任何文件**。
 
+### 3.8 输入区 / 消息区 IME 同步
+
+- 规则：消息列表距底部 **≤32dp** 视为“贴底”；该状态下消息区视口尺寸变化时，按同一像素增量 `scrollBy`，让内容跟着输入栏同步上推。否则不滚动，保持当前阅读位置。
+- 实现不依赖单独监听 IME，而是监听 **消息列表容器 `onSizeChanged`**：键盘弹出、附件面板展开、输入框多行增高导致的视口收缩都走同一路径，避免“输入栏先动、内容后动”。
+- `followBottom` 只在用户停止滚动时重算（`snapshotFlow { isScrollInProgress }`），IME 造成的视口变化不会把它误判成“用户离开底部”；阅读状态也只在真实滚动时更新。
+- 未做真机动画复验；32dp 阈值是产品口径的暂定值，可在 `MainChatScreen.kt` 调整。
+
 ### 3.7 文档索引问题
 
 `docs/README.md` 当前引用 `independent-review-fixes-20261019.md`，但该文件不存在（截至 2026-10-21）。要么补文件，要么删掉/改正这条索引，避免新读者点空。
@@ -127,6 +135,7 @@
 3. 新解析器 P0 六项：见独立文档；parser/shadow 保持不动。
 4. 测试分层：`run_all.sh` 拆 `--offline`/`--live`；前端 Node 缺失时显式 `SKIP`。
 5. 文档索引的失效链接（§3.7）。
+6. 真机/模拟器复验 IME 同步：贴底应跟手、非贴底不应跳；32dp 阈值可按实际手感调整。
 
 ## 5. 验证命令
 
@@ -148,4 +157,5 @@ bash ../scripts/android/build.sh :app:compileDebugKotlin
 | 2026-10-21 | `b767f4f` | 记忆/记住密钥开关整行点击；compile 通过 |
 | 2026-10-21 | `7220b02` | 圆角按压层裁切；SettingsButton/HistoryButton 等已修 |
 | 2026-10-21 | `34cf43e` | 开关行 ripple 裁切（记忆/图片/记住密钥/向导） |
+| 2026-10-21 | `1e5de3d` | 贴底时消息区随输入栏同步上推（≤32dp） |
 | 2026-10-21 | 本文 | 建立交接文档；记录方角按压层审计与未决项 |
