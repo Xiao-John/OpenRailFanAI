@@ -6,6 +6,7 @@
 
 | 文档 | 内容 |
 |---|---|
+| [`release-0.1.31.md`](release-0.1.31.md) | **发布说明**：开关整行点击、圆角按压层裁切、贴底时输入区同步上推 |
 | [`agent-handoff-20261021.md`](agent-handoff-20261021.md) | **交接**：0.1.30 后改动、开关修复、方角按压层审计与未决项 |
 | [`release-automation.md`](release-automation.md) | **发布工具**：一份Markdown驱动版本、构建、签名核验、源码推送与Release上传 |
 | [`release-0.1.30.md`](release-0.1.30.md) | **发布说明**：个人记忆、统一侧栏、模型标题及评审修复 |
