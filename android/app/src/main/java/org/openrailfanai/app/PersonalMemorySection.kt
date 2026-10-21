@@ -1,12 +1,14 @@
 package org.openrailfanai.app
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,13 +41,18 @@ internal fun PersonalMemorySection(settings: MainSettingsRepository, baseUrl: St
     fun invalidate() {
         generation++; client.cancel(); job?.cancel(); loading = false; summary = ""; revision = store.revision
     }
+    fun applyEnabled(value: Boolean) {
+        runCatching { store.setEnabled(value); enabled = value; invalidate(); message = if (value) "已开启；可保存消息或使用“记住：内容”。" else "已关闭，后续对话不再附带记忆；已有记忆保留，可单独清空。" }
+            .onFailure { message = "无法保存记忆开关，请重试。" }
+    }
     SettingsCard("个人记忆", "默认关闭。开启后，相关记忆会随提问发送给当前模型服务商；只保存你明确选定的内容。") {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            BasicText("启用跨对话记忆", style = TextStyle(color = NativeColors.ink, fontSize = 16.sp))
-            SettingsSwitch(enabled, true) { value ->
-                runCatching { store.setEnabled(value); enabled = value; invalidate(); message = if (value) "已开启；可保存消息或使用“记住：内容”。" else "已关闭，后续对话不再附带记忆；已有记忆保留，可单独清空。" }
-                    .onFailure { message = "无法保存记忆开关，请重试。" }
-            }
+        // 与“记住 API Key”“图片”保持一致：整行提供点击与开关语义，滑块只负责拖动。
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = enabled, enabled = true, role = Role.Switch) { applyEnabled(it) }
+            .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            BasicText("启用跨对话记忆", Modifier.weight(1f), style = TextStyle(color = NativeColors.ink, fontSize = 16.sp))
+            SettingsSwitch(enabled, true) { applyEnabled(it) }
         }
         BasicText(if (rows == null) "记忆文件无法读取，原文件未改动。" else "本机已保存 ${rows.length()} 条；不会自动收集全部聊天。", style = TextStyle(color = NativeColors.muted, fontSize = 14.sp))
         if (enabled) {

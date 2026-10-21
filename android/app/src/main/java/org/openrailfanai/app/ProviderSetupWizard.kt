@@ -3,6 +3,7 @@ package org.openrailfanai.app
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -11,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -206,7 +208,9 @@ internal fun ProviderSetupWizard(
                         if (models.isNotEmpty()) Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             models.forEach { choice -> SettingsButton(choice, Modifier.fillMaxWidth()) { model = choice; models = emptyList(); feedback = "已选择模型，点击连接继续。" } }
                         }
-                        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .toggleable(value = rememberKey, enabled = !busy, role = Role.Switch) { rememberKey = it }
+                            .padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 BasicText("记住密钥", style = TextStyle(color = NativeColors.ink, fontSize = 16.sp))
                                 BasicText(if (rememberKey) "加密保存在当前设备。" else "本次运行可用，关闭后需重新填写。", style = wizardCaption())
