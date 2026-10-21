@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| HEAD | `2173d90`（docs: record Main 0.1.31 publication）；后续脚本/回执修正见文末 |
+| HEAD | `c7f9c9d`（fix(release): 回执改用公开后的版本资产 URL） |
 | 版本 | `0.1.30` |
 | Release tag | `v0.1.30` → `ace82ff`（release: prepare Main 0.1.30） |
 | 工作区 | 写本文档前干净；本文档为新增文件 |
@@ -28,6 +28,7 @@
 | `1e5de3d` | 贴底（≤32dp）时消息区随输入栏/IME 同步上推；非贴底保持阅读位置 | `:app:compileDebugKotlin` BUILD SUCCESSFUL；`test_android` 通过 |
 | `7d06869` | 0.1.31 发布准备（VERSION、发布说明、构建） | `scripts/release.sh`；正式签名、词典与 GitHub 资产校验通过 |
 | `2173d90` | 0.1.31 发布回执 | Release `v0.1.31` 公开并 latest |
+| `c7f9c9d` | 发布回执改用公开后的版本资产 URL；更正 0.1.30/0.1.31 回执 | py_compile 通过；远端资产/摘要核对 |
 
 ### 2.2 更早的相关提交（本仓库历史）
 
@@ -177,5 +178,5 @@ bash ../scripts/android/build.sh :app:compileDebugKotlin
 | 2026-10-21 | `34cf43e` | 开关行 ripple 裁切（记忆/图片/记住密钥/向导） |
 | 2026-10-21 | `1e5de3d` | 贴底时消息区随输入栏同步上推（≤32dp） |
 | 2026-10-22 | `7d06869` / `2173d90` | 0.1.31 发布与回执 |
-| 2026-10-22 | 本轮 | 修复回执 untagged URL；更正 0.1.30/0.1.31 回执 |
+| 2026-10-22 | `c7f9c9d` | 修复回执 untagged URL；更正 0.1.30/0.1.31 回执 |
 | 2026-10-21 | 本文 | 建立交接文档；记录方角按压层审计与未决项 |
