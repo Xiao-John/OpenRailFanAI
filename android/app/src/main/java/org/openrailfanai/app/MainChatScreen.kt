@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -116,6 +117,17 @@ internal fun MainChatScreen(
     BackHandler(enabled = showImport) { showImport = false }
     LaunchedEffect(chatState.busy) { if (chatState.busy) showImport = false }
     val listState = rememberLazyListState()
+    var lastListHeight by remember { mutableStateOf(0) }
+    // 仅在“贴底/接近底部”时跟随 IME 上推；否则保持用户当前阅读位置。
+    var followBottom by remember { mutableStateOf(true) }
+    val followBottomThreshold = with(LocalDensity.current) { 32.dp.toPx() }
+    fun nearBottom(): Boolean {
+        val info = listState.layoutInfo
+        if (!listState.canScrollForward) return true
+        val last = info.visibleItemsInfo.lastOrNull() ?: return true
+        if (last.index != info.totalItemsCount - 1) return false
+        return (last.offset + last.size - info.viewportEndOffset) <= followBottomThreshold
+    }
     val tokenTotal = conversationTokens ?: messages.filter { it.role == "assistant" }.sumOf { replyTokenUsage(it.meta) ?: 0L }
     val persistedResults = messages.filter { it.role == "assistant" }.flatMap {
         DisplayResultParser.parseArray(it.meta?.optJSONArray("displayResults"))
@@ -155,8 +167,14 @@ internal fun MainChatScreen(
             onScrollDiagnostics?.invoke(diagnostic.firstVisibleIndex, diagnostic.firstVisibleOffset,
                 diagnostic.viewportStart, diagnostic.viewportEnd, diagnostic.visibleIndices)
             diagnostic.atBottom?.let { bottom ->
-                if (!scrollingToLatest && (bottom || listState.isScrollInProgress)) onReadingChange(!bottom)
+                // IME 导致的视口变化不算“用户离开底部”；只有真实滚动才更新阅读状态。
+                if (!scrollingToLatest && listState.isScrollInProgress) onReadingChange(!bottom)
             }
+        }
+    }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }.collect { scrolling ->
+            if (!scrolling) followBottom = nearBottom()
         }
     }
     LaunchedEffect(chatState.answer, chatState.results.size, chatState.phase, chatState.reading, messages.size) {
@@ -167,6 +185,7 @@ internal fun MainChatScreen(
                 try {
                     listState.scrollToItem(itemCount - 1)
                     listState.scrollBy(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.size?.toFloat() ?: 0f)
+                    followBottom = true
                 } finally { scrollingToLatest = false }
             }
         }
@@ -211,7 +230,17 @@ internal fun MainChatScreen(
         if (!connected && status.isNotBlank()) {
             BasicText(status, style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
         }
-        Box(Modifier.weight(1f).fillMaxWidth().captureLayoutConstraints("main-list-container", onLayoutDiagnostics).testTag("main-list-container")) {
+        Box(Modifier.weight(1f).fillMaxWidth()
+            .onSizeChanged { size ->
+                val previous = lastListHeight
+                lastListHeight = size.height
+                // 视口收缩/扩张与输入栏在同一布局链上；贴底时按同一增量补偿，避免输入栏先动、内容后动。
+                if (previous > 0 && followBottom && !scrollingToLatest && listState.layoutInfo.totalItemsCount > 0) {
+                    val delta = previous - size.height
+                    if (delta != 0) scope.launch { listState.scrollBy(delta.toFloat()) }
+                }
+            }
+            .captureLayoutConstraints("main-list-container", onLayoutDiagnostics).testTag("main-list-container")) {
         if (messages.isEmpty() && !chatState.busy) {
             ChatWelcome(onDraft = { draft -> onFollowup(draft); inputFocusRequester.requestFocus() })
         } else LazyColumn(
@@ -407,6 +436,7 @@ internal fun MainChatScreen(
                                 if (lastIndex >= 0) {
                                     listState.scrollToItem(lastIndex)
                                     listState.scrollBy(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.size?.toFloat() ?: 0f)
+                                    followBottom = true
                                 }
                                 onReadingChange(false)
                             } finally { scrollingToLatest = false }
