@@ -1,7 +1,10 @@
 package org.openrailfanai.app
 
+import androidx.compose.ui.draw.clip
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicText
@@ -47,7 +50,7 @@ internal fun PersonalMemorySection(settings: MainSettingsRepository, baseUrl: St
     }
     SettingsCard("个人记忆", "默认关闭。开启后，相关记忆会随提问发送给当前模型服务商；只保存你明确选定的内容。") {
         // 与“记住 API Key”“图片”保持一致：整行提供点击与开关语义，滑块只负责拖动。
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp))
             .toggleable(value = enabled, enabled = true, role = Role.Switch) { applyEnabled(it) }
             .padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {

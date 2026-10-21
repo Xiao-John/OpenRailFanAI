@@ -242,7 +242,7 @@ fun MainSettingsScreen(
                 }
                 if (feedback.isNotBlank()) BasicText(feedback, Modifier.fillMaxWidth().background(if (feedbackError) Color(0xFFFFEAEA) else SettingsBlue.copy(alpha = 0.08f), RoundedCornerShape(10.dp)).padding(12.dp),
                     style = TextStyle(color = if (feedbackError) Color(0xFFB3261E) else SettingsBlue, fontSize = 14.sp))
-                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = rememberKey, enabled = busy.isEmpty(), role = Role.Switch) { rememberKey = it }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp)).toggleable(value = rememberKey, enabled = busy.isEmpty(), role = Role.Switch) { rememberKey = it }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         BasicText("记住 API Key", style = TextStyle(color = SettingsInk, fontSize = 16.sp))
                         BasicText(if (rememberKey) "密钥加密保存在当前设备。" else "本次运行仍可使用，关闭应用后需重新填写。", style = TextStyle(color = SettingsMuted, fontSize = 14.sp))
@@ -256,7 +256,7 @@ fun MainSettingsScreen(
                         BasicText("文字（必需）", Modifier.weight(1f), style = TextStyle(color = SettingsMuted, fontSize = 16.sp))
                         SettingsSwitch(true, false) {}
                     }
-                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = "image" in selected.inputTypes, enabled = busy.isEmpty(), role = Role.Switch) { enabled -> edit { it.copy(inputTypes = if (enabled) setOf("text", "image") else setOf("text")) } }, verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp)).toggleable(value = "image" in selected.inputTypes, enabled = busy.isEmpty(), role = Role.Switch) { enabled -> edit { it.copy(inputTypes = if (enabled) setOf("text", "image") else setOf("text")) } }, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             BasicText("图片", style = TextStyle(color = SettingsInk, fontSize = 16.sp))
                             BasicText("仅支持看图的模型开启；关闭时在设备上识别文字。", style = TextStyle(color = SettingsMuted, fontSize = 14.sp))

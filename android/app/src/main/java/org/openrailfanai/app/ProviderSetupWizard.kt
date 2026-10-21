@@ -1,5 +1,7 @@
 package org.openrailfanai.app
 
+import androidx.compose.ui.draw.clip
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -208,7 +210,7 @@ internal fun ProviderSetupWizard(
                         if (models.isNotEmpty()) Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             models.forEach { choice -> SettingsButton(choice, Modifier.fillMaxWidth()) { model = choice; models = emptyList(); feedback = "已选择模型，点击连接继续。" } }
                         }
-                        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp))
                             .toggleable(value = rememberKey, enabled = !busy, role = Role.Switch) { rememberKey = it }
                             .padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
