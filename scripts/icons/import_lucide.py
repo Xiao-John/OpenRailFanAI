@@ -3,7 +3,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import urllib.request, xml.etree.ElementTree as ET, json, re
 ROOT=Path(__file__).resolve().parents[2]
-MAPPING={'calendar':'calendar','clock':'clock','link':'link','info':'info','chevron':'chevron-right','chevron-down':'chevron-down','chevron-up':'chevron-up','chevron-left':'chevron-left','search':'search','train-search':'train-front','person':'user-round','cloud-error':'cloud-alert','file':'file-text','plus':'plus','back':'arrow-left','down':'arrow-down','up':'arrow-up','edit':'square-pen','trash':'trash-2','history':'history','settings':'settings','help':'circle-help','close':'x','stop':'square','send':'send','check':'circle-check','warning':'circle-alert','copy':'copy','refresh':'rotate-cw','more':'ellipsis','share':'share-2'}
+MAPPING={'calendar':'calendar','clock':'clock','link':'link','info':'info','chevron':'chevron-right','chevron-down':'chevron-down','chevron-up':'chevron-up','chevron-left':'chevron-left','search':'search','train-search':'train-front','person':'user-round','cloud-error':'cloud-alert','file':'file-text','plus':'plus','back':'arrow-left','down':'arrow-down','up':'arrow-up','edit':'square-pen','trash':'trash-2','history':'history','settings':'settings','help':'circle-help','close':'x','stop':'square','send':'send','check':'circle-check','warning':'circle-alert','copy':'copy','refresh':'rotate-cw','more':'ellipsis','share':'share-2','camera':'camera','image':'image','paperclip':'paperclip','memory':'bookmark-plus','sidebar':'panel-left'}
 OUT=ROOT/'android/app/src/main/res'
 A='http://schemas.android.com/apk/res/android'
 def path(e):

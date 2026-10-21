@@ -27,6 +27,7 @@ SUITES=(
   test_llm_image_transport
   # 基础能力
   test_dates
+  test_dates_without_tzdata
   test_od
   test_context
   test_policy
@@ -107,28 +108,79 @@ SUITES=(
   test_fuck_cr
   test_fuck_cr_parser
   test_fare_contract
+  test_github_updates
+  test_photo_annotations
+  test_photo_dictionary_updates
+  test_structured_sse_visibility
+  test_routing_projection_coupling
+  test_service_batch
+  test_incident_service_delivery
+  test_review_fixes
   test_multidate_services
 )
 
+# 默认离线；--live 仅运行真实接口/模型套件，--all 合并执行。
+MODE="${1:---offline}"
+case "$MODE" in --offline|--live|--all|--list) ;; *) echo "用法：$0 [--offline|--live|--all|--list]" >&2; exit 2 ;; esac
+LIVE_ONLY=" test_tools test_emu_routing test_api "
+MIXED=" test_train_stops test_station_screen "
+if [ "$MODE" = "--list" ]; then
+  for suite in "${SUITES[@]}"; do
+    case "$LIVE_ONLY" in *" $suite "*) echo "live $suite" ;; *) echo "offline $suite" ;; esac
+  done
+  echo "mixed（离线时仅跑本地断言）:$MIXED"
+  exit 0
+fi
+NODE="${NODE:-$(command -v node || true)}"
+NODE_READY=false
+if [ -n "$NODE" ] && "$NODE" --version >/dev/null 2>&1; then
+  NODE_READY=true
+  export PATH="$(dirname "$NODE"):$PATH"
+fi
 FAILED=()
+SKIPPED=()
+PARTIAL=()
 PASSED=0
-
+TOTAL=0
+LOG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/railfan-tests.XXXXXX")"
+trap 'rm -rf "$LOG_DIR"' EXIT
 for suite in "${SUITES[@]}"; do
+  IS_LIVE=false
+  case "$LIVE_ONLY" in *" $suite "*) IS_LIVE=true ;; esac
+  if [ "$MODE" = "--offline" ] && [ "$IS_LIVE" = true ]; then continue; fi
+  if [ "$MODE" = "--live" ] && [ "$IS_LIVE" = false ]; then
+    case "$MIXED" in *" $suite "*) ;; *) continue ;; esac
+  fi
+  TOTAL=$((TOTAL + 1))
   echo "──────── ${suite} ────────"
-  if PYTHONPATH=. "$PYTHON" "tests/${suite}.py"; then
-    PASSED=$((PASSED + 1))
+  case "$suite" in
+    test_frontend_store|test_frontend_render)
+      if [ "$NODE_READY" != true ]; then
+        echo "[SKIP] 没有可运行的 Node；可用 NODE=/绝对路径/node 指定"
+        SKIPPED+=("$suite:Node不可用")
+        continue
+      fi ;;
+  esac
+  if RAILFAN_TEST_MODE="${MODE#--}" PYTHONPATH=. "$PYTHON" "tests/${suite}.py" >"$LOG_DIR/$suite.log" 2>&1; then
+    cat "$LOG_DIR/$suite.log"
+    if grep -Eq '\[SKIP\]|OK \(skipped=' "$LOG_DIR/$suite.log"; then
+      PARTIAL+=("$suite")
+    else
+      PASSED=$((PASSED + 1))
+    fi
   else
+    cat "$LOG_DIR/$suite.log"
     FAILED+=("${suite}")
-    echo ">>> ${suite} 失败（继续运行后续套件）"
+    echo ">>> ${suite} 失败（继续运行后续套件；不把断言失败改为跳过）"
   fi
 done
-
 echo
 echo "════════════════ 测试汇总 ════════════════"
-echo "通过：${PASSED} / ${#SUITES[@]}"
+echo "模式：${MODE}；套件：${TOTAL}；完整通过：${PASSED}；含跳过：${#PARTIAL[@]}；环境跳过：${#SKIPPED[@]}；失败：${#FAILED[@]}"
+[ "${#PARTIAL[@]}" -eq 0 ] || echo "含跳过（不能视为完整通过）：${PARTIAL[*]}"
+[ "${#SKIPPED[@]}" -eq 0 ] || echo "环境跳过：${SKIPPED[*]}"
 if [ "${#FAILED[@]}" -gt 0 ]; then
   echo "失败：${FAILED[*]}"
-  echo "=== 存在失败套件（见上方各自输出） ==="
   exit 1
 fi
-echo "=== 全部测试通过 ==="
+echo "=== 所选范围执行完成；跳过项目未获验收 ==="

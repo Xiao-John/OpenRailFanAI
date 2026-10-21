@@ -34,9 +34,9 @@ async def download(body: DownloadRequest):
         info=await software.check(body.current_version,body.abi)
         if info['latest_version']!=body.latest_version:
             raise HTTPException(409,detail={'code':'release_changed','message':'发布版本已变化，请重新检查'})
+        if not info['asset']:raise HTTPException(409,detail={'code':'asset_missing','message':'该架构没有可下载安装包'})
         if info['update_available'] is False:
             raise HTTPException(409,detail={'code':'not_newer','message':'没有比当前软件更新的版本'})
-        if not info['asset']:raise HTTPException(409,detail={'code':'asset_missing','message':'该架构没有可下载安装包'})
         if not DOWNLOAD_SLOTS.acquire(blocking=False):
             raise HTTPException(429,detail={'code':'busy','message':'安装包下载繁忙，请稍后重试'})
         try:directory=Path(tempfile.mkdtemp(prefix='railfan-package-'))

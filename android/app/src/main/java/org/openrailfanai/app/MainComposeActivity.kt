@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -82,9 +84,13 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
     private var pendingAgentExport: ByteArray? = null
     private var previousAgentTheme: String? = null
     private var pendingImportConversationId: String? = null
+    private var pendingCameraPath: String? = null
     private val agentFiles = mutableStateMapOf<String, org.json.JSONArray>()
     private val busy: Boolean get() = chatState.busy
     private val io = Executors.newSingleThreadExecutor()
+    private val titleIo = Executors.newSingleThreadExecutor()
+    private val titleJobs = mutableSetOf<String>()
+    @Volatile private var titleClient: ConversationTitleClient? = null
     private var backendService: BackendService? = null
     private var bound = false
     private var repository: ChatRepository? = null
@@ -100,6 +106,8 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         super.onCreate(savedInstanceState)
         // Compose owns safe-area and IME consumption on every supported Android version.
         enableEdgeToEdge()
+        pendingImportConversationId = savedInstanceState?.getString("pending_import_conversation")
+        pendingCameraPath = savedInstanceState?.getString("pending_camera_path")
         pageNavigation = MainPageNavigation.restore(savedInstanceState?.getStringArrayList(STATE_PAGE_STACK))
         if (intent.getBooleanExtra("open_update_settings", false)) {
             pageNavigation = pageNavigation.navigateTo(MainPage.SETTINGS)
@@ -124,6 +132,18 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 navigateBackOrDelegateToActivity()
             }
             when (pageNavigation.current) {
+                MainPage.MEMORY -> {
+                    Column(Modifier.fillMaxSize().background(NativeColors.background).windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            SettingsButton("返回", Modifier.width(72.dp)) { navigateBackOrDelegateToActivity() }
+                            BasicText("个人记忆", Modifier.padding(start = 16.dp), style = TextStyle(color = NativeColors.ink, fontSize = 20.sp))
+                        }
+                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                            if (connectedPort > 0) PersonalMemorySection(settingsRepository, "http://127.0.0.1:$connectedPort")
+                            else BasicText("正在连接设备内服务…", style = TextStyle(color = NativeColors.muted, fontSize = 16.sp))
+                        }
+                    }
+                }
                 MainPage.SETTINGS -> {
                 Column(Modifier.fillMaxSize().background(NativeColors.background).windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
                     val port = connectedPort
@@ -167,6 +187,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                     PendingAttachment(file.optString("name"), bytes, AppAgent.isImage(file.optString("name"), file.optString("mime")))
                 },
                 onImportAttachment = { imagesOnly -> openAgentImport(imagesOnly) },
+                onTakePhoto = { openAgentCamera() },
                 onRemoveAttachment = { if (!busy) { agentFiles.remove(conversationId); status = "附件已移除" } },
                 onOpenHistory = { pageNavigation = pageNavigation.navigateTo(MainPage.HISTORY) },
                 onNewConversation = { openNewConversation() },
@@ -228,6 +249,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                             conversationRevision++
                         },
                         onSettings = { pageNavigation = pageNavigation.navigateTo(MainPage.SETTINGS) },
+                        onMemory = { pageNavigation = pageNavigation.navigateTo(MainPage.MEMORY) },
                         onHelp = { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(HELP_URL))) },
                     )
                 }
@@ -271,6 +293,8 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
     override fun onSaveInstanceState(outState: Bundle) {
         saveCurrentDraft()
         outState.putStringArrayList(STATE_PAGE_STACK, ArrayList(pageNavigation.savedPages()))
+        outState.putString("pending_import_conversation", pendingImportConversationId)
+        outState.putString("pending_camera_path", pendingCameraPath)
         super.onSaveInstanceState(outState)
     }
 
@@ -329,6 +353,15 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             return
         }
         if (displayAction == null) {
+            val memoryCommand = Regex("^(?:请)?记住[：:]([\\s\\S]+)$").matchEntire(query)
+            if (memoryCommand != null) {
+                val answer = runCatching { PersonalMemoryStore(this).remember(memoryCommand.groupValues[1], "用户明确要求保存"); "已保存到本机个人记忆，可在设置中查看总结、删除或关闭。" }
+                    .getOrElse { it.message ?: "记忆未保存，请到设置检查。" }
+                conversationStore.addUser(conversationId, query)
+                conversationStore.addAssistant(conversationId, answer, org.json.JSONObject().put("intent", "app_action"))
+                input = ""; saveCurrentDraft(); stateMachine.reset(); chatState = stateMachine.state; conversationRevision++
+                return
+            }
             val theme = AppAgent.themeCommand(query)
             if (theme != null) {
                 val target = if (theme == "undo") previousAgentTheme else theme
@@ -382,6 +415,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             displayAction = displayAction,
             llmSpec = settingsRepository.requestLlmSpec(),
             agentFiles = requestAttachments,
+            personalMemory = runCatching { PersonalMemoryStore(this).relevant(query) }.getOrElse { Toast.makeText(this, "本轮未能读取记忆，已按普通对话继续", Toast.LENGTH_SHORT).show(); emptyList() },
         )
         io.execute {
             val response = runCatching {
@@ -433,6 +467,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                         conversationStore.addAssistant(requestConversationId, outcome.answer, meta)
                         conversationRevision++
                         status = outcome.error ?: "查询完成"
+                        if (outcome.error == null) scheduleConversationTitle(requestConversationId, request.llmSpec)
                     }
                 }.onFailure { error ->
                     val message = when (error) {
@@ -450,6 +485,24 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         }
     }
 
+    private fun scheduleConversationTitle(id: String, spec: org.json.JSONObject?) {
+        if (connectedPort <= 0 || !conversationStore.needsGeneratedTitle(id) || !titleJobs.add(id)) return
+        val snapshot = conversationStore.all().firstOrNull { it.id == id } ?: run { titleJobs.remove(id); return }
+        val client = ConversationTitleClient("http://127.0.0.1:$connectedPort")
+        titleIo.execute {
+            titleClient = client
+            val result = runCatching { client.generate(snapshot.messages, spec) }
+            if (titleClient === client) titleClient = null
+            runOnUiThread {
+                titleJobs.remove(id)
+                if (!isDestroyed) result.onSuccess { generated ->
+                    conversationStore.applyGeneratedTitle(id, generated.title, generated.tokens)
+                    conversationRevision++
+                }
+            }
+        }
+    }
+
     private fun stopQuery() {
         val id = chatState.requestId ?: return
         if (stateMachine.stop(id)) {
@@ -458,6 +511,28 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             conversationRevision++
             status = "已停止生成"
             repository?.cancel()
+        }
+    }
+
+    private fun openAgentCamera() {
+        if (busy || pendingImportConversationId != null) return
+        pendingImportConversationId = conversationId
+        runCatching {
+            val directory = java.io.File(cacheDir, "attachment-camera").apply { mkdirs() }
+            val file = java.io.File.createTempFile("photo-", ".jpg", directory)
+            pendingCameraPath = file.absolutePath
+            val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.updates", file)
+            startActivityForResult(Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
+                clipData = ClipData.newRawUri("拍照导入", uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            }, REQUEST_AGENT_CAMERA)
+        }.onFailure {
+            pendingCameraPath?.let { java.io.File(it).delete() }
+            pendingCameraPath = null
+            pendingImportConversationId = null
+            status = "无法打开相机，请改用相册或文件导入。"
+            Toast.makeText(this, status, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -488,11 +563,17 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
     @Deprecated("Deprecated by Android, retained for the SAF result callback")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_AGENT_IMPORT) {
+        if (requestCode == REQUEST_AGENT_IMPORT || requestCode == REQUEST_AGENT_CAMERA) {
+            val cameraFile = if (requestCode == REQUEST_AGENT_CAMERA) pendingCameraPath?.let { java.io.File(it) } else null
+            pendingCameraPath = null
             val targetConversation = pendingImportConversationId
             pendingImportConversationId = null
-            val uri = data?.data
-            if (resultCode != RESULT_OK || uri == null || targetConversation == null) return
+            val uri = if (cameraFile != null) androidx.core.content.FileProvider.getUriForFile(this, "$packageName.updates", cameraFile) else data?.data
+            if (resultCode != RESULT_OK || uri == null || targetConversation == null) {
+                cameraFile?.delete()
+                if (uri != null && cameraFile != null) revokeUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                return
+            }
             io.execute {
                 val result = runCatching {
                     val name = contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
@@ -512,6 +593,10 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                         output.toByteArray()
                     } ?: error("无法读取文件")
                     org.json.JSONObject().put("name", name).put("mime", mime).put("content_base64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+                }
+                cameraFile?.let {
+                    revokeUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    it.delete()
                 }
                 runOnUiThread {
                     result.onSuccess {
@@ -559,6 +644,8 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             unbindService(connection)
         }
         repository?.cancel()
+        titleClient?.cancel()
+        titleIo.shutdownNow()
         io.shutdownNow()
         super.onDestroy()
     }
@@ -567,6 +654,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         private const val REQUEST_EXPORT = 8741
         private const val REQUEST_AGENT_IMPORT = 8742
         private const val REQUEST_AGENT_EXPORT = 8743
+        private const val REQUEST_AGENT_CAMERA = 8744
         private const val STATE_PAGE_STACK = "main_page_stack"
         private const val HELP_URL = "https://github.com/OpenRailFanAI/OpenRailFanAI"
     }

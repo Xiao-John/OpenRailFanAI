@@ -24,6 +24,7 @@ from fastapi.responses import StreamingResponse
 
 from app.models import ChatRequest, PipelineResult
 from app.pipeline import orchestrator
+from app.personal_memory import memory_context
 
 _log = logging.getLogger("railfan.api")
 
@@ -51,7 +52,8 @@ def _safe_label(value: Optional[str], *, max_len: int = 32) -> str:
 async def chat(req: ChatRequest) -> PipelineResult:
     """块式接口：一次返回完整结果（测试/兼容用）。"""
     _log.info("chat(block) session=%s", _safe_label(req.session_id))
-    return await orchestrator.run(req.message, history=_to_history(req), llm=req.llm_spec(), display_action=req.display_action, client_capabilities=req.client_capabilities)
+    with memory_context(req.personal_memory):
+        return await orchestrator.run(req.message, history=_to_history(req), llm=req.llm_spec(), display_action=req.display_action, client_capabilities=req.client_capabilities)
 
 
 def _sse_encode(event: dict) -> str:
@@ -68,7 +70,7 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     _log.info("chat(stream) session=%s", _safe_label(req.session_id))
     history = _to_history(req)
 
-    async def gen():
+    async def _gen():
         agen = orchestrator.run_stream(req.message, history=history, llm=req.llm_spec(), display_action=req.display_action, client_capabilities=req.client_capabilities)
         completed = False
         try:
@@ -99,6 +101,21 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
                 _log.debug("关闭上游生成器时出现异常", exc_info=True)
             if not completed:
                 _log.debug("流式生成未正常完成（可能被用户停止）")
+
+    async def gen():
+        stream = _gen()
+        try:
+            while True:
+                try:
+                    # 不把 ContextVar token 持有到 yield 之后，允许跨任务取消。
+                    with memory_context(req.personal_memory):
+                        event = await stream.__anext__()
+                except StopAsyncIteration:
+                    break
+                yield event
+        finally:
+            with memory_context(req.personal_memory):
+                await stream.aclose()
 
     return StreamingResponse(
         gen(),

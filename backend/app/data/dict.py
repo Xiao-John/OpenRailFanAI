@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sqlite3
+import httpx
 import time
 from pathlib import Path
 
@@ -181,6 +182,10 @@ def _polite_lock_for_loop() -> "asyncio.Lock":
     return _polite_lock
 
 
+class DictionaryFetchError(RuntimeError):
+    """资料源传输或 HTTP 失败；不表示资料不存在。"""
+
+
 async def _polite_get(params: dict) -> str:
     """对 jprailfan 发一次请求，并保证两次请求**起点**间隔 ≥ `dict_site_min_interval_s`。
 
@@ -200,15 +205,18 @@ async def _polite_get(params: dict) -> str:
         from app.tools._http import get_client
 
         client = await get_client()
-        r = await client.get(
-            "https://www.jprailfan.com/tools/stat/index.php",
-            params=params,
-            # 个人站点：可识别 UA + 长超时（页面大、站点慢），覆盖共享 client 的默认超时
-            headers={"User-Agent": _UA},
-            timeout=120.0,
-        )
-        r.raise_for_status()
-        return r.text
+        try:
+            r = await client.get(
+                "https://www.jprailfan.com/tools/stat/index.php",
+                params=params,
+                # 个人站点：可识别 UA + 长超时（页面大、站点慢），覆盖共享 client 的默认超时
+                headers={"User-Agent": _UA},
+                timeout=120.0,
+            )
+            r.raise_for_status()
+            return r.text
+        except httpx.HTTPError as error:
+            raise DictionaryFetchError('车站与线路资料源暂时无法访问，请稍后重试') from error
 
 
 def _cells(row_html: str) -> list[str]:

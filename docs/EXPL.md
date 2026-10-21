@@ -128,8 +128,7 @@ Main 移动端视觉夹具位于 `frontend/tests/visual/fixtures.json`，用 `no
 | 回归 | `test_regressions` `test_product_fixes` `test_r1_fixes` `test_r1_fixes2`：脱敏、非对象 JSON、流关闭、SSRF、体积上限、搜索相关性、交路一致性、日志净化；车迷测试集 17 项；R1 的 9 项 + 第 2 批 10 项（D06 次日值隔离、跨日期/自造印证禁令、完整性契约、反推禁令） |
 | 语义与治理 | `test_routing` `test_orchestrator_semantics` `test_cost_governance` `test_hardening` `test_config_docs` `test_frontend_store` `test_mock_render` `test_multiturn_slots`：mock 路由不伪造起讫站、块式/流式故障语义一致与恰好一次 `done`、历史只注入一次 + 工具并发保序、径路多候选/里程口径/缓存 TTL、配置与文档一致性；确定性规则回复（prompt 结构化解析、槽位不丢、只搬运不编造、降级接线与开关）；**多轮槽位/意图继承**（省略句承接上文、区间端点替换、以及"纯指代 / 时间冲突 / 垃圾区间一律交回模型"的红线）；前端数据层 node 直跑（22 项：多对话 CRUD、消息上限、思考/日志截断、主题持久化） |
 
-- **无网络套件**（断网/CI 可跑，前端套件需 node）：`test_regressions` `test_routing` `test_orchestrator_semantics` `test_cost_governance` `test_hardening` `test_config_docs` `test_product_fixes` `test_r1_fixes` `test_r1_fixes2`
-  `test_station_quality` `test_rail_line_stations` `test_dict_mileage` `test_perf_fastpath` `test_frontend_store` `test_mock_render` `test_multiturn_slots`；其余依赖真实 LLM 或境内数据源。
+- 测试清单以 `backend/tests/run_all.sh --list` 为准，不再维护另一份易过期的离线枚举。默认或 `--offline` 跑离线回归，`--live` 跑真实接口/模型联调，`--all` 合并执行。混合套件在离线模式保留本地断言并明确跳过真实接口检查；缺少可运行的 Node 时单独计为环境跳过，可用 `NODE=/绝对路径/node` 指定。完整通过、含跳过、环境跳过与失败分别汇总；跳过不等于通过。
 - 真实模型联调通过（SiliconFlow / DeepSeek-V4-Flash）；意图分类 6 用例 × 3 次 = **18 次判定 100% 一致**（单次仍可能漂移，`test_api` 语义断言用有限重试，结构断言仍为硬断言）。
 
 ## 七、代码导读（关键文件入口）

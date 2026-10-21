@@ -57,11 +57,14 @@ class TicketSnapshot(unittest.IsolatedAsyncioTestCase):
             return httpx.Response(200, text='init')
         self.client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         self.addAsyncCleanup(self.client.aclose)
-        for p in [patch.dict('os.environ', {'APP_VARIANT': 'main', 'MAIN_TICKET_SHARED_ROWS_ENABLED': 'true'}),
+        for p in [patch.dict('os.environ', {'APP_VARIANT': 'main'}),
                   patch.object(snapshot, 'get_client', return_value=self.client),
                   patch.object(fare, 'get_client', return_value=self.client)]:
             p.start()
             self.addCleanup(p.stop)
+        setting = patch.object(snapshot.get_settings(), 'main_ticket_shared_rows_enabled', True)
+        setting.start()
+        self.addCleanup(setting.stop)
         self.addAsyncCleanup(registry.close_queries)
         self.addAsyncCleanup(rt.close_query_flights)
 
@@ -216,7 +219,7 @@ class TicketSnapshot(unittest.IsolatedAsyncioTestCase):
         async def run():
             self.assertFalse(snapshot.active())
             return await fare.query('北京南','上海虹桥',self.day,'G1')
-        with patch.dict('os.environ',MAIN_TICKET_SHARED_ROWS_ENABLED='false'):
+        with patch.object(snapshot.get_settings(), 'main_ticket_shared_rows_enabled', False):
             self.assertEqual(len((await run())['data']),1)
         with patch.dict('os.environ',APP_VARIANT='lm'):
             self.assertEqual(len((await run())['data']),1)

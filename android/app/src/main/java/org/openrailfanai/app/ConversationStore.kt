@@ -69,7 +69,7 @@ class ConversationStore private constructor(private val directory: File) {
     @Synchronized fun rename(id: String, title: String) {
         mutate(id) { conversation ->
             val clean = title.trim()
-            conversation.put("title", clean.ifBlank { "新对话" }).put("titleAuto", clean.isBlank())
+            conversation.put("title", clean.ifBlank { "新对话" }).put("titleAuto", clean.isBlank()).put("titleGenerated", false)
                 .put("updatedAt", System.currentTimeMillis())
         }
     }
@@ -96,9 +96,8 @@ class ConversationStore private constructor(private val directory: File) {
             val messages = conversation.optJSONArray("messages") ?: JSONArray()
             messages.put(JSONObject().put("role", "user").put("content", text).also { if (meta != null) it.put("meta", meta) })
             conversation.put("messages", trimMessages(messages)).put("updatedAt", System.currentTimeMillis())
-            if (conversation.optBoolean("titleAuto", true)) {
-                val title = text.replace(Regex("\\s+"), " ").trim().let { if (it.length > 18) it.take(18) + "…" else it }
-                if (title.isNotBlank()) conversation.put("title", title)
+            if (conversation.optBoolean("titleAuto", true) && !conversation.optBoolean("titleGenerated", false)) {
+                conversation.put("title", "未命名对话")
             }
         }
     }
@@ -110,6 +109,22 @@ class ConversationStore private constructor(private val directory: File) {
             conversation.put("totalTokens", previousTokens + (replyTokenUsage(meta) ?: 0L))
             messages.put(JSONObject().put("role", "assistant").put("content", content).put("meta", meta))
             conversation.put("messages", trimMessages(messages)).put("updatedAt", System.currentTimeMillis())
+        }
+    }
+
+    @Synchronized fun needsGeneratedTitle(id: String): Boolean {
+        val rows = readState().optString(CONVERSATIONS_KEY).toJSONArray()
+        return (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }.firstOrNull { it.optString("id") == id }
+            ?.let { it.optBoolean("titleAuto", true) && !it.optBoolean("titleGenerated", false) } ?: false
+    }
+
+    @Synchronized fun applyGeneratedTitle(id: String, title: String, tokens: Long = 0L) {
+        mutate(id) { item ->
+            item.put("totalTokens", item.recordedTokenTotal() + tokens.coerceAtLeast(0L))
+            item.put("titleTokens", item.optLong("titleTokens") + tokens.coerceAtLeast(0L))
+            if (item.optBoolean("titleAuto", true) && !item.optBoolean("titleGenerated", false)) {
+                item.put("title", title.take(24)).put("titleGenerated", true)
+            }
         }
     }
 

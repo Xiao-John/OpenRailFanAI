@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 
 import app.tools.train_schedule as ts
 from app.tools import _rt12306 as rt
@@ -373,7 +374,10 @@ def main():
     test_listed_code_not_treated_as_alias()
     test_alias_lookup_failure_degrades_silently()
     test_departed_alias_named_in_answer()
-    test_live_12306_identity_and_stops()
+    if os.environ.get("RAILFAN_TEST_MODE") != "offline":
+        test_live_12306_identity_and_stops()
+    else:
+        print("[SKIP] 离线模式：真实12306经停联调")
     print("\n车次经停站修复回归测试全部通过 ✔")
 
 

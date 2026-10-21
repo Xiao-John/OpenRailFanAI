@@ -74,14 +74,16 @@ def image_info(content: bytes, extension: str):
 
 
 def local_ocr(content: bytes, mime: str) -> str:
-    executable = os.environ.get('RAILFAN_TESSERACT') or shutil.which('tesseract')
+    from app.config import get_settings
+    settings = get_settings()
+    executable = settings.railfan_tesseract or shutil.which('tesseract')
     if not executable:
         raise LocalOCRUnavailable('本地 OCR 未安装；请配置 Tesseract 或使用客户端 OCR')
     suffix = next((ext for ext, value in IMAGE_EXTENSIONS.items() if value == mime), None)
     if suffix is None:
         raise ValueError('不支持的图片类型')
     image_info(content, suffix)
-    language_dir = os.environ.get('RAILFAN_TESSDATA_DIR')
+    language_dir = settings.railfan_tessdata_dir
     bundled = Path(__file__).resolve().parents[1] / 'resources' / 'ocr' / 'tessdata'
     if not language_dir and bundled.is_dir():
         language_dir = str(bundled)

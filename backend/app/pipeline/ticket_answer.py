@@ -40,7 +40,9 @@ def render(params: dict, result: ToolResult) -> str:
     scope = f"{params.get('from_station', '')}→{params.get('to_station', '')}"
     subject = " ".join(filter(None, [params.get("date"), params.get("train"), scope]))
     if not result.ok:
-        parts = [f"未取得 {subject} 的余票结果：{result.error or '接口未提供结果'}"]
+        empty = (os.environ.get("APP_VARIANT", "main").lower() != "lm" and isinstance(result.data, dict)
+                 and result.data.get("availability_status") == "empty")
+        parts = [result.error or f"{subject} 未查询到余票数据"] if empty else [f"未取得 {subject} 的余票结果：{result.error or '接口未提供结果'}"]
         if result.note:
             parts.append(result.note)
         if result.sources:

@@ -61,12 +61,16 @@ class RailMileageTool(Tool):
                 note="请先运行 `python3 scripts/mirror_dict.py --all` 构建本地字典（GTFS + 线路里程表）",
             )
 
-        if from_st and to_st:
-            return self._two_stations(from_st, to_st)
-        if line:
-            return await self._line_table(line)
-        if station:
-            return await self._station_profile(station)
+        try:
+            if from_st and to_st:
+                return self._two_stations(from_st, to_st)
+            if line:
+                return await self._line_table(line)
+            if station:
+                return await self._station_profile(station)
+        except D.DictionaryFetchError:
+            return ToolResult(ok=False, error="车站与线路资料源暂时无法访问，请稍后重试",
+                              note="本次未取得资料，不能据此判断车站或线路不存在", fetched_at=_now_iso())
         return ToolResult(
             ok=False,
             error="缺少参数：需要 from+to（两站里程）、line（线路逐站里程）或 station（车站档案）",

@@ -117,6 +117,7 @@ internal class UpdateTasks private constructor(context: Context) {
             require(response.optString("status") == "ok") { "更新检查未返回有效状态" }
             software = response
             softwareMessage = when {
+                !response.optBoolean("download_supported") -> "当前架构暂无可下载的正式安装包，请查看发布页面。"
                 response.isNull("update_available") || !response.has("update_available") -> "当前版本无法与正式版比较，请查看发布页面。"
                 response.optBoolean("update_available") -> "发现新版本 ${response.optString("latest_version")}" + if (!response.optBoolean("download_supported")) "，当前架构没有可下载的安装包。" else ""
                 response.optString("latest_version") == current -> "已是最新正式版。"

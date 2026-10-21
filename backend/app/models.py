@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, constr
 
 from app.config import get_settings
 
@@ -30,6 +30,7 @@ class ChatRequest(BaseModel):
         default_factory=list,
         description="此前已完成的多轮对话（不含本次 message），用于上下文理解",
     )
+    personal_memory: list[constr(min_length=1, max_length=2100)] = Field(default_factory=list, max_items=8, repr=False, description="用户开启记忆后提供的相关片段，仅用于个性化生成")
     display_action: Optional[dict] = Field(None, description="由界面发起的结构化展示动作参数")
 
     client_capabilities: list[str] = Field(default_factory=list, max_items=32, description="可选展示能力；未声明保留旧版文字回执")

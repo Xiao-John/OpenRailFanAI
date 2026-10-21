@@ -5,6 +5,7 @@ internal enum class MainPage {
     CHAT,
     HISTORY,
     SETTINGS,
+    MEMORY,
 }
 
 /** Immutable navigation state with a small back stack and no Android dependencies. */

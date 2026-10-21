@@ -2,6 +2,7 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 from app import dates
@@ -16,7 +17,7 @@ except zoneinfo.ZoneInfoNotFoundError:
 else:
     raise AssertionError("隔离环境意外存在tzdata")
 import importlib.util
-spec = importlib.util.spec_from_file_location("isolated_dates", "backend/app/dates.py")
+spec = importlib.util.spec_from_file_location("isolated_dates", __DATE_SOURCE__)
 dates = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dates)
 future_railway_date, normalize_date = dates.future_railway_date, dates.normalize_date
@@ -24,6 +25,7 @@ assert future_railway_date("明天") == normalize_date("明天")
 assert future_railway_date("今天") == ""
 print("无时区数据库的日期路径通过")
 '''
+code = code.replace('__DATE_SOURCE__', repr(str(Path(__file__).resolve().parents[1] / 'app/dates.py')))
 subprocess.run([sys.executable, '-S', '-c', code], env={**os.environ, 'PYTHONPATH': 'backend'}, check=True)
 
 class UtcClock:

@@ -120,7 +120,8 @@ def test_tool_station_profile_and_missing():
     assert res.ok, res.error
     for piece in ("-VNP", "10010", "接算站"):
         assert piece in res.text, res.text
-    bad = asyncio.run(RailMileageTool().invoke({"station": "阿斯加德"}))
+    with patch.object(D, "station_profile", return_value=None):
+        bad = asyncio.run(RailMileageTool().invoke({"station": "阿斯加德"}))
     assert not bad.ok and "未取到" in (bad.error or ""), bad.error
     noargs = asyncio.run(RailMileageTool().invoke({}))
     assert not noargs.ok and "缺少参数" in (noargs.error or ""), noargs.error

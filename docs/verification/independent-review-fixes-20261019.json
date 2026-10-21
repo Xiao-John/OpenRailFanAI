@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-10-19T20:36:00.049582+08:00",
+  "base_commit": "63583cc",
+  "working_tree_changes": true,
+  "version": "0.1.29",
+  "new_parser_changed": false,
+  "release_built": false,
+  "published": false,
+  "offline": {
+    "command": "NODE=<working-node> bash backend/tests/run_all.sh --offline",
+    "suites": 69,
+    "passed": 67,
+    "partial": 2,
+    "skipped_environment": 0,
+    "failed": 0,
+    "partial_suites": [
+      "test_train_stops",
+      "test_station_screen"
+    ]
+  },
+  "focused": {
+    "review_regressions": 14,
+    "batch_services": 15,
+    "status": "passed",
+    "ticket_query_delivery": 17,
+    "ticket_delivery_dedup": 15,
+    "ticket_copy": 11,
+    "github_updates": 14
+  },
+  "kotlin": {
+    "command": "bash scripts/android/build.sh compileDebugKotlin compileDebugAndroidTestKotlin",
+    "status": "passed"
+  },
+  "preserved_spinner": {
+    "sha256": "bbec419ed5ecf8b89ee4604616ef8373e08873890104a13bcbbbe8dac112df9f",
+    "byte_identical": true
+  },
+  "backend": {
+    "url": "http://127.0.0.1:8000",
+    "health": "ok"
+  },
+  "limits": [
+    "真实云端与公网链路未验收",
+    "新增附件面板未执行真机或视觉验收",
+    "未清理历史产物",
+    "R8和LM依赖问题暂缓"
+  ]
+}

@@ -1,4 +1,4 @@
-"""Match old longest/substring/tie semantics without relying on benchmark snapshots."""
+"""保留站名包含消歧，并按出现位置稳定排序，不依赖 set 遍历顺序。"""
 import random
 import unittest
 from unittest.mock import patch
@@ -19,9 +19,10 @@ class StationMatching(unittest.TestCase):
         texts += [''.join(rng.choices(list(sorted(names)),k=3)) for _ in range(100)]
         with patch.object(fastpath,'_station_names',return_value=names):
             for text in texts:
-                self.assertEqual(fastpath._station_hits(text),old_hits(text,names))
+                expected=sorted(old_hits(text,names), key=lambda name:(text.find(name), -len(name), name))
+                self.assertEqual(fastpath._station_hits(text),expected)
                 candidates=[n for n in names if 2<=len(n)<=8 and n in text]
-                self.assertEqual(fastpath._station_in_text(text),max(candidates,key=len) if candidates else '')
+                self.assertEqual(fastpath._station_in_text(text),expected[0] if candidates else '')
     def test_in_place_dictionary_changes_are_seen(self):
         names={'北京'}
         with patch.object(fastpath,'_station_names',return_value=names):

@@ -8,6 +8,7 @@ import os
 
 import httpx
 
+from app.config import get_settings
 from app.dates import normalize_date
 from app.query_cache import QueryCache, query_scope
 from app.tools._http import BROWSER_HEADERS, get_client
@@ -32,7 +33,7 @@ _REFRESH: ContextVar[object | None] = ContextVar('ticket_snapshot_refresh', defa
 
 def active() -> bool:
     return (_STORE.get() is not None and os.environ.get('APP_VARIANT', 'main').lower() != 'lm'
-            and os.environ.get('MAIN_TICKET_SHARED_ROWS_ENABLED', 'true').lower() != 'false')
+            and get_settings().main_ticket_shared_rows_enabled)
 
 
 def refresh_key():
@@ -73,10 +74,12 @@ def request_scope(fn):
     async def scoped(*args, **kwargs):
         if _STORE.get() is not None or os.environ.get('APP_VARIANT', 'main').lower() == 'lm':
             return await fn(*args, **kwargs)
+        from app.query_cache import scope_context
         store = RequestStore()
         token = _STORE.set(store)
         try:
-            return await fn(*args, **kwargs)
+            with scope_context():
+                return await fn(*args, **kwargs)
         finally:
             _STORE.reset(token)
             await store.finish()
@@ -152,6 +155,6 @@ async def availability(from_code, to_code, day):
                            to_station_code=parts[7], start_time=record['start_time'],
                            arrive_time=record['arrive_time'], duration=record['duration'],
                            seats=ts._extract_seats(record, ts._SEAT_FIELD_MAP)))
-    if not trains:
-        raise rt.Realtime12306Error('未找到该线路的余票')
+    if snapshot['rows'] and not trains:
+        raise rt.Realtime12306Error('余票响应包含记录，但记录格式无法解析')
     return SnapshotTrains(trains, snapshot['fetched_at'])

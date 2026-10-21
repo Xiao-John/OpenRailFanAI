@@ -278,6 +278,7 @@ fun MainSettingsScreen(
                     }
                 }
             }
+            PersonalMemorySection(repository, client.updateBaseUrl)
             FuckCrSettingsSection(client.updateBaseUrl)
             UpdateSettingsSection(client, onOpenUrl)
             SettingsCard("外观", "") {
@@ -386,7 +387,7 @@ internal fun SettingsCard(title: String, subtitle: String, modifier: Modifier = 
 }
 
 @Composable
-internal fun Field(label: String, value: String, password: Boolean = false, enabled: Boolean = true, trailingAction: String? = null, onTrailingAction: (() -> Unit)? = null, onChange: (String) -> Unit) {
+internal fun Field(label: String, value: String, password: Boolean = false, enabled: Boolean = true, trailingAction: String? = null, onTrailingAction: (() -> Unit)? = null, multiline: Boolean = false, onChange: (String) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             BasicText(label, Modifier.weight(1f), style = TextStyle(color = SettingsInk, fontSize = 14.sp, fontWeight = FontWeight.Medium))
@@ -394,7 +395,7 @@ internal fun Field(label: String, value: String, password: Boolean = false, enab
         }
         BasicTextField(value, onChange, Modifier.fillMaxWidth().heightIn(min = 52.dp).background(NativeColors.background, RoundedCornerShape(12.dp)).border(1.dp, SettingsBorder, RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 14.dp)
             .semantics { contentDescription = if (password) "${label}输入框" else "$label 输入框" },
-            enabled = enabled, singleLine = true, textStyle = TextStyle(color = SettingsInk, fontSize = 15.sp),
+            enabled = enabled, singleLine = !multiline, minLines = if (multiline) 3 else 1, maxLines = if (multiline) 6 else 1, textStyle = TextStyle(color = SettingsInk, fontSize = 15.sp),
             visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
             decorationBox = { inner -> Box { if (value.isEmpty()) BasicText(if (password) "填写 API Key" else "填写$label", style = TextStyle(color = SettingsMuted, fontSize = 15.sp)); inner() } },
         )

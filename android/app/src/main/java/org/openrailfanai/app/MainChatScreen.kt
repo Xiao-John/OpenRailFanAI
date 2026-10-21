@@ -54,7 +54,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 import kotlinx.coroutines.flow.collect
@@ -98,8 +103,16 @@ internal fun MainChatScreen(
     pendingAttachment: PendingAttachment? = null,
     onImportAttachment: ((Boolean) -> Unit)? = null,
     onRemoveAttachment: () -> Unit = {},
+    onTakePhoto: (() -> Unit)? = null,
 ) {
+    var saveMemory by remember { mutableStateOf<Pair<String, String>?>(null) }
+    // 同一个阈值同时控制输入消息和回复的记忆入口。
+    val memoryIconOnly = LocalConfiguration.current.screenWidthDp < 460 * LocalDensity.current.fontScale
     var showImport by remember { mutableStateOf(false) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    BackHandler(enabled = showImport) { showImport = false }
+    LaunchedEffect(chatState.busy) { if (chatState.busy) showImport = false }
     val listState = rememberLazyListState()
     val tokenTotal = conversationTokens ?: messages.filter { it.role == "assistant" }.sumOf { replyTokenUsage(it.meta) ?: 0L }
     val persistedResults = messages.filter { it.role == "assistant" }.flatMap {
@@ -157,7 +170,7 @@ internal fun MainChatScreen(
         }
     }
 
-    val pageModifier = modifier.fillMaxSize().background(NativeColors.background)
+    val pageModifier = modifier.fillMaxSize().background(NativeColors.background).sidebarSwipe(opening = true, onSwipe = onOpenHistory)
     // Insets are consumed here once; the composer ends at the live safe bottom,
     // without adding a fixed gap copied from the mockup's device illustration.
     Column((if (applySystemInsets) pageModifier.windowInsetsPadding(systemInsets).imePadding() else pageModifier)
@@ -169,19 +182,10 @@ internal fun MainChatScreen(
         ) {
             Box(
                 Modifier.align(androidx.compose.ui.Alignment.CenterStart).requiredSize(48.dp)
-                    .clickable { onSettings(null) }.semantics { contentDescription = "设置"; role = Role.Button }
-                    .testTag("main-settings-control"),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
+                    .clickable(onClick = onOpenHistory).semantics { contentDescription = "打开侧栏"; role = Role.Button }
+                    .testTag("main-sidebar-control"), contentAlignment = androidx.compose.ui.Alignment.Center,
             ) {
-                RailIcon("settings", Modifier.size(24.dp), NativeColors.ink, "main-settings-icon")
-            }
-            Box(
-                Modifier.align(androidx.compose.ui.Alignment.CenterStart).offset(x = 48.dp).requiredSize(48.dp)
-                    .clickable(onClick = onOpenHistory).semantics { contentDescription = "对话历史"; role = Role.Button }
-                    .testTag("main-history-control"),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) {
-                RailIcon("history", Modifier.size(24.dp), NativeColors.ink, "main-history-icon")
+                RailIcon("sidebar", Modifier.size(24.dp), NativeColors.ink, "main-sidebar-icon")
             }
             Row(
                 Modifier.align(androidx.compose.ui.Alignment.Center),
@@ -236,6 +240,13 @@ internal fun MainChatScreen(
                                 .size(36.appDp).background(NativeColors.selected, CircleShape).testTag("main-user-avatar"),
                                 contentAlignment = androidx.compose.ui.Alignment.Center) {
                                 RailIcon("person", Modifier.size(22.appDp), NativeColors.blue, "main-user-avatar-icon")
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth().padding(end = 42.appDp), horizontalArrangement = Arrangement.End) {
+                            ResultAction("修改", "edit", "user-edit-$index", iconOnly = memoryIconOnly) { onFollowup(message.content); inputFocusRequester.requestFocus() }
+                            Spacer(Modifier.width(12.dp))
+                            ResultAction("记忆", "memory", "user-memory-$index", iconOnly = memoryIconOnly) {
+                                saveMemory = message.content to "用户选定的输入消息"
                             }
                         }
                     } else {
@@ -329,9 +340,12 @@ internal fun MainChatScreen(
                         FlowRow(Modifier.fillMaxWidth().padding(start = 50.appDp, top = 2.appDp)
                             .captureLayoutConstraints("result-actions", onLayoutDiagnostics).testTag("result-actions"),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            ResultAction("复制", "copy", "result-copy") { onCopy(replyText) }
-                            ResultAction("重新生成", "refresh", "result-regenerate") { onRegenerate(originalQuery) }
-                            ResultAction("分享", "share", "result-share") { onShare(replyText) }
+                            ResultAction("复制", "copy", "result-copy", iconOnly = memoryIconOnly) { onCopy(replyText) }
+                            ResultAction("重新生成", "refresh", "result-regenerate", iconOnly = memoryIconOnly) { onRegenerate(originalQuery) }
+                            ResultAction("分享", "share", "result-share", iconOnly = memoryIconOnly) { onShare(replyText) }
+                            ResultAction("记忆", "memory", "result-memory-$index", iconOnly = memoryIconOnly) {
+                                saveMemory = replyText to "用户选定的助手回复，未经独立核实"
+                            }
                         }
                         Box(Modifier.fillMaxWidth().padding(start = 50.appDp, bottom = 2.dp), contentAlignment = androidx.compose.ui.Alignment.CenterEnd) {
                             val tokens = replyTokenUsage(metadata)
@@ -451,9 +465,13 @@ internal fun MainChatScreen(
             horizontalArrangement = Arrangement.spacedBy(8.appDp),
         ) {
             if (onImportAttachment != null) Box(Modifier.padding(start = 4.dp).size(44.dp)
-                .clickable(enabled = !chatState.busy, role = Role.Button) { showImport = true }
+                .clickable(enabled = !chatState.busy, role = Role.Button) {
+                    focusManager.clearFocus()
+                    keyboard?.hide()
+                    showImport = !showImport
+                }
                 .semantics { contentDescription = "导入附件" }.testTag("import-attachment"), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                RailIcon("plus", Modifier.size(22.dp), NativeColors.muted)
+                RailIcon(if (showImport) "close" else "plus", Modifier.size(22.dp), NativeColors.muted)
             }
             BasicTextField(
                 value = input,
@@ -463,6 +481,7 @@ internal fun MainChatScreen(
                 modifier = Modifier.weight(1f)
                     .heightIn(min = 56.dp, max = 144.dp)
                     .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .onFocusChanged { if (it.isFocused) showImport = false }
                     .focusRequester(inputFocusRequester)
                     .semantics { contentDescription = "消息输入框" }.testTag("main-input-field"),
                 decorationBox = { inner ->
@@ -488,20 +507,52 @@ internal fun MainChatScreen(
                     if (chatState.busy) "main-stop-icon" else "main-send-icon")
             }
         }
+        RailReveal(showImport && onImportAttachment != null, modifier = Modifier.fillMaxWidth()) {
+            AttachmentImportPanel(
+                cameraAvailable = onTakePhoto != null,
+                onCamera = { showImport = false; onTakePhoto?.invoke() },
+                onGallery = { showImport = false; onImportAttachment?.invoke(true) },
+                onFile = { showImport = false; onImportAttachment?.invoke(false) },
+            )
+        }
         if (chatState.busy) Box(Modifier.fillMaxWidth().padding(bottom = 4.appDp), contentAlignment = androidx.compose.ui.Alignment.Center) {
             BasicText("可停止生成，已返回内容会保留", Modifier.testTag("query-preserve-note"),
                 style = TextStyle(color = NativeColors.muted, fontSize = 13.25.appSp, letterSpacing = .25.appSp))
         }
       }
     }
-    if (showImport && onImportAttachment != null) Dialog(onDismissRequest = { showImport = false }) {
-        SettingsCard("导入资料", "每次一份，最大 8 MiB。选好后可以编辑问题，发送后才会处理。") {
-            SettingsButton("导入图片", Modifier.fillMaxWidth(), primary = true) { showImport = false; onImportAttachment(true) }
-            SettingsButton("导入文档", Modifier.fillMaxWidth()) { showImport = false; onImportAttachment(false) }
-            BasicText("文档支持 TXT、MD、TEX、CSV、JSON、DOC、DOCX、RTF；图片支持 PNG、JPEG、WebP、GIF。", style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
-            BasicText("图片是否发给模型取决于设置中的“图片”开关；关闭时先在设备上识别文字。", style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
-            SettingsButton("取消", Modifier.fillMaxWidth()) { showImport = false }
+
+    saveMemory?.let { (text, source) -> SaveMessageMemoryDialog(text, source) { saveMemory = null } }
+
+}
+
+/** 输入框下方的推入式工具区；占据正常布局空间，不盖住消息或另开悬浮窗口。 */
+@Composable
+private fun AttachmentImportPanel(cameraAvailable: Boolean, onCamera: () -> Unit, onGallery: () -> Unit, onFile: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp).testTag("attachment-import-panel"),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            AttachmentImportAction("拍照", "camera", "attachment-camera", Modifier.weight(1f), cameraAvailable, onCamera)
+            AttachmentImportAction("相册", "image", "attachment-gallery", Modifier.weight(1f), true, onGallery)
+            AttachmentImportAction("文件", "paperclip", "attachment-file", Modifier.weight(1f), true, onFile)
         }
+        BasicText("每次一份，最大 8 MiB；选好后可编辑问题，发送后处理。",
+            style = TextStyle(color = NativeColors.muted, fontSize = 13.appSp))
+        BasicText("关闭设置中的“图片”开关时，只在设备上识别文字。",
+            style = TextStyle(color = NativeColors.muted, fontSize = 13.appSp))
+    }
+}
+
+@Composable
+private fun AttachmentImportAction(label: String, icon: String, tag: String, modifier: Modifier, enabled: Boolean, onClick: () -> Unit) {
+    Column(modifier.heightIn(min = 92.dp).background(NativeColors.panel, RoundedCornerShape(20.dp))
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).testTag(tag)
+        .padding(vertical = 16.dp, horizontal = 8.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp, androidx.compose.ui.Alignment.CenterVertically)) {
+        RailIcon(icon, Modifier.size(28.dp), if (enabled) NativeColors.ink else NativeColors.muted)
+        BasicText(label, style = TextStyle(color = if (enabled) NativeColors.ink else NativeColors.muted,
+            fontSize = 17.appSp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium))
     }
 }
 
@@ -521,7 +572,7 @@ private fun ChatWelcome(onDraft: (String) -> Unit) {
         val examples = listOf(
             Triple("查票价", "search", "明天北京南到上海虹桥的 G1 票价"),
             Triple("查时刻", "calendar", "G1 今天的时刻表"),
-            Triple("查交路", "train-logo", "CR400AF-5033 今天的交路"),
+            Triple("查交路", "train-logo", "CR400BF-5033 今天的交路"),
             Triple("找机位", "search", "我想找一个拍 CR400AF 的机位"),
         )
         examples.chunked(2).forEach { row ->
@@ -546,13 +597,14 @@ private fun ChatWelcome(onDraft: (String) -> Unit) {
 }
 
 @Composable
-private fun ResultAction(label: String, icon: String, tag: String, onClick: () -> Unit) {
-    Box(Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick)
-        .semantics { contentDescription = label; role = Role.Button }.testTag("$tag-action")) {
-        Row(Modifier.padding(top = 9.appDp), horizontalArrangement = Arrangement.spacedBy(10.appDp),
+private fun ResultAction(label: String, icon: String, tag: String, iconOnly: Boolean = false, onClick: () -> Unit) {
+    Box(Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick)
+        .semantics { contentDescription = label; role = Role.Button }.testTag("$tag-action"),
+        contentAlignment = if (iconOnly) androidx.compose.ui.Alignment.Center else androidx.compose.ui.Alignment.TopStart) {
+        Row(Modifier.padding(top = if (iconOnly) 0.dp else 9.appDp), horizontalArrangement = Arrangement.spacedBy(10.appDp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             RailIcon(icon, Modifier.size(18.appDp), NativeColors.muted, "$tag-icon")
-            BasicText(label, Modifier.testTag("$tag-label"), style = TextStyle(color = NativeColors.muted, fontSize = 16.appSp))
+            if (!iconOnly) BasicText(label, Modifier.testTag("$tag-label"), style = TextStyle(color = NativeColors.muted, fontSize = 16.appSp))
         }
     }
 }

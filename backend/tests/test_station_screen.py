@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import date, timedelta
 
 from app.tools import _rt12306 as rt
@@ -395,8 +396,11 @@ async def main():
     await test_empty_is_ambiguous()
     await test_window_hint_boundary()
     await test_missing_params()
-    await test_live_get_vs_post()
-    await test_live_screen()
+    if os.environ.get("RAILFAN_TEST_MODE") != "offline":
+        await test_live_get_vs_post()
+        await test_live_screen()
+    else:
+        print("[SKIP] 离线模式：真实12306大屏联调")
     if _skips:
         print(f"\n[WARN] 本次有 {len(_skips)} 项因外部依赖不可达被跳过：")
         for s in _skips:

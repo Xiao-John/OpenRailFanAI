@@ -199,12 +199,15 @@ async def execute(trains: list[str], operations: list[str], *, date, od, message
             if op in {"fare", "ticket"}:
                 delivery_fragments[index] = (name, params, result)
             error = result.error or "工具未返回查询结果"
-            sections[index] = heading + "\n查询失败：" + error
+            empty_ticket = (op == "ticket" and os.environ.get("APP_VARIANT", "main").lower() != "lm"
+                            and isinstance(result.data, dict) and result.data.get("availability_status") == "empty")
+            sections[index] = heading + "\n" + (error if empty_ticket else "查询失败：" + error)
             if result.note:
                 sections[index] += "\n" + result.note
             if result.sources:
                 sections[index] += "\n来源：" + "、".join(result.sources)
-            notes.append(f"[{params['train']} {params['date']} {name}] 失败原因：{error}")
+            reason = "空结果说明" if empty_ticket else "失败原因"
+            notes.append(f"[{params['train']} {params['date']} {name}] {reason}：{error}")
             if op in {"schedule", "routing", "fare", "ticket"}:
                 response["display_errors"].append({**({"query_date": params["date"]} if len(days) > 1 else {}),
                                                    "tool": name, "train_code": params["train"],

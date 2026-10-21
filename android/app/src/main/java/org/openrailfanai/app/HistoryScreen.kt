@@ -84,6 +84,7 @@ fun HistoryScreen(
     onDelete: (String) -> Unit,
     onSettings: () -> Unit,
     onHelp: () -> Unit,
+    onMemory: () -> Unit = {},
     modifier: Modifier = Modifier,
     applySystemInsets: Boolean = true,
     systemInsets: WindowInsets = WindowInsets.safeDrawing,
@@ -116,11 +117,11 @@ fun HistoryScreen(
             .testTag("history-drawer-scrim"))
         Column(Modifier.width(drawerWidth).fillMaxHeight().railEntrance(fromLeft = true)
             .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
-            .background(NativeColors.surface).pointerInput(Unit) { detectTapGestures {} }.testTag("history-content")
+            .background(NativeColors.surface).sidebarSwipe(opening = false, onSwipe = onBack).pointerInput(Unit) { detectTapGestures {} }.testTag("history-content")
             .padding(horizontal = 16.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("history-header"),
                 verticalAlignment = Alignment.CenterVertically) {
-                BasicText("对话历史", Modifier.weight(1f).testTag("history-title"),
+                BasicText("RailFanAI", Modifier.weight(1f).testTag("history-title"),
                     style = TextStyle(color = HistoryInk, fontSize = 20.appSp, fontWeight = FontWeight.SemiBold))
                 Box(Modifier.size(48.dp).clickable(onClick = onBack).testTag("history-back-control"), contentAlignment = Alignment.Center) {
                     RailIcon("close", Modifier.size(22.dp).testTag("history-close-control"), HistoryMuted, "history-close-icon")
@@ -138,11 +139,25 @@ fun HistoryScreen(
                         inner()
                     })
             }
-            Spacer(Modifier.height(12.dp))
-            HistoryButton("新建对话", primary = true, icon = "plus", testTag = "history-create", labelTestTag = "history-create-label", onClick = onCreate)
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(historyScrollState)
-                .testTag("history-scroll-container").padding(top = 20.dp, bottom = 16.dp),
+                .testTag("history-scroll-container").padding(top = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                    .clip(RoundedCornerShape(12.dp)).clickable(onClick = onMemory)
+                    .semantics { contentDescription = "个人记忆" }.testTag("sidebar-memory")
+                    .padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    RailIcon("memory", Modifier.size(23.dp), HistoryInk)
+                    BasicText("记忆", style = TextStyle(color = HistoryInk, fontSize = 17.appSp, fontWeight = FontWeight.Medium))
+                }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(HistoryLine))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    BasicText("对话", Modifier.weight(1f).padding(start = 12.dp), style = TextStyle(color = HistoryMuted, fontSize = 14.appSp))
+                    Box(Modifier.size(48.dp).clickable(onClick = onCreate)
+                        .semantics { contentDescription = "新建对话" }.testTag("history-create"), contentAlignment = Alignment.Center) {
+                        RailIcon("plus", Modifier.size(21.dp), HistoryMuted)
+                    }
+                }
                 groups.forEach { (label, items) ->
                     if (items.isNotEmpty()) {
                         Column(Modifier.fillMaxWidth().testTag(when (label) {

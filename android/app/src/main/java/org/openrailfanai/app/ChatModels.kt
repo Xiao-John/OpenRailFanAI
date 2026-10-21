@@ -15,6 +15,7 @@ data class ChatStreamRequest(
     val llmSpec: JSONObject? = null,
     val clientCapabilities: List<String> = emptyList(),
     val agentFiles: JSONArray? = null,
+    val personalMemory: List<String> = emptyList(),
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("message", message)
@@ -22,6 +23,7 @@ data class ChatStreamRequest(
         .put("session_id", sessionId)
         .put("client_capabilities", JSONArray().also { array -> clientCapabilities.distinct().forEach { array.put(it) } })
         .also { body ->
+            if (personalMemory.isNotEmpty()) body.put("personal_memory", JSONArray(personalMemory))
             displayAction?.let { body.put("display_action", it) }
             llmSpec?.let { spec ->
                 val keys = spec.keys()

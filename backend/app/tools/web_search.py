@@ -289,7 +289,7 @@ class WebSearchTool2(Tool):
         为什么要多试几条（`_FETCH_SPARE`）：实测 `baike.baidu.com` 对任何请求头都回
         **403**（换 UA、加 Referer、先取百度 Cookie 都不行，是 IP/风控层面的拦截），
         而车迷向关键词的前两条结果经常就是百度百科 —— 只抓前 N 条就会"全军覆没"。
-        多试两条、只保留前 N 条**成功**的，代价是多几个并发请求（延迟不变）。
+        前 N 条失败时再补抓备用条目，不为已经足够的结果发出多余请求。
         """
         settings = get_settings()
         top_n = max(0, int(settings.web_search_fetch_top_n or 0))
@@ -309,18 +309,27 @@ class WebSearchTool2(Tool):
         limit = int(settings.fact_text_max_chars)
         overhead = sum(len(u) + 60 for u in candidates[:top_n])
         budget = max(0, limit - used_chars - 120 - overhead)
-        per_page = max(400, budget // top_n)          # 低于 400 字就没有阅读价值了
-        max_chars = min(max(200, int(settings.web_search_fetch_chars or 1800)), per_page)
-
-        fetched = await asyncio.gather(*(fetch_page(u, max_chars=max_chars) for u in candidates))
-
-        good = [p for p in fetched if p["ok"]][:top_n]
-        kept_urls = {p["url"] for p in good}
-        pages = [p for p in fetched if p["url"] in kept_urls]      # 保持原顺序
-        failed = [p for p in fetched if not p["ok"] and p["url"] not in kept_urls]
+        if budget < 200:
+            return [], "；正文预算不足，未发起正文抓取"
+        count = min(top_n, len(candidates), budget // 200)
+        # 为备用长 URL 也预留来源开销，避免抓回必然被截掉的正文。
+        budget = max(0, limit - used_chars - 120 - sum(sorted((len(u) + 60 for u in candidates), reverse=True)[:count]))
+        if budget < count * 200:
+            return [], "；正文预算不足，未发起正文抓取"
+        max_chars = min(max(200, int(settings.web_search_fetch_chars or 1800)), budget // count)
+        fetched = []
+        good = []
+        remaining = list(candidates)
+        while remaining and len(good) < count:
+            batch, remaining = remaining[:count - len(good)], remaining[count - len(good):]
+            outcomes = await asyncio.gather(*(fetch_page(u, max_chars=max_chars) for u in batch))
+            fetched.extend(outcomes)
+            good.extend(p for p in outcomes if p["ok"])
+        pages = good
+        failed = [p for p in fetched if not p["ok"]]
 
         truncated_n = sum(1 for p in pages if p["truncated"])
-        note = f"；已抓取 {len(candidates)} 条的正文（成功 {len(good)} 条"
+        note = f"；已抓取 {len(fetched)} 条的正文（成功 {len(good)} 条"
         if truncated_n:
             note += f"，其中 {truncated_n} 条按字数上限截断"
         if failed:

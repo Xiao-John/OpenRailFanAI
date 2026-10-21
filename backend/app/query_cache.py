@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import contextmanager
+from contextvars import ContextVar
 from collections import OrderedDict
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -15,14 +17,45 @@ from typing import Any, Awaitable, Callable
 from app.metrics import record_cache
 
 
+_REQUEST_SCOPE = ContextVar("query_config_scope", default=None)
+
+
+@contextmanager
+def scope_context():
+    """配置在请求内固定；供应商仍按当前上下文隔离，结束后丢弃摘要缓存。"""
+    if _REQUEST_SCOPE.get() is not None:
+        yield
+        return
+    token = _REQUEST_SCOPE.set({})
+    try:
+        yield
+    finally:
+        _REQUEST_SCOPE.reset(token)
+
+
 def query_scope() -> str:
     from app.config import get_settings
     from app.llm.client import _ACTIVE_PROVIDER
 
+    cache = _REQUEST_SCOPE.get()
     settings = get_settings()
-    config = settings.dict() if hasattr(settings, "dict") else vars(settings)
-    return hashlib.sha256(json.dumps([config, _ACTIVE_PROVIDER.get()],
-        sort_keys=True, default=str).encode()).hexdigest()
+    if cache is None or cache.get("settings") is not settings:
+        config = settings.dict() if hasattr(settings, "dict") else vars(settings)
+        config_digest = hashlib.sha256(json.dumps(config, sort_keys=True, default=str).encode()).hexdigest()
+        if cache is not None:
+            cache.clear()
+            cache.update(settings=settings, digest=config_digest, providers={})
+    else:
+        config_digest = cache["digest"]
+    provider = json.dumps(_ACTIVE_PROVIDER.get(), sort_keys=True, default=str)
+    # 缓存键与值均为摘要，避免在请求缓存中保存额外的明文密钥副本。
+    provider_digest = hashlib.sha256(provider.encode()).hexdigest()
+    if cache is not None and provider_digest in cache["providers"]:
+        return cache["providers"][provider_digest]
+    digest = hashlib.sha256((config_digest + provider_digest).encode()).hexdigest()
+    if cache is not None:
+        cache["providers"][provider_digest] = digest
+    return digest
 
 
 @dataclass

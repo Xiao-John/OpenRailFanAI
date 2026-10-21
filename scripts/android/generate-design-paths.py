@@ -14,15 +14,9 @@ from PIL import Image
 from native_icon_metrics import _foreground
 
 ROOT = Path(__file__).resolve().parents[2]
+# 仅保留产品仍引用的加载图形；其余功能图标已由统一矢量素材替代。
 TARGETS = {
-    "trainSearch": {"source": "desi2.png", "roi": [1226, 160, 108, 80], "color": "muted"},
     "querySpinner": {"source": "desi2.png", "roi": [89, 182, 58, 58], "color": "blue"},
-    "brandTrain": {"source": "desi1.png", "roi": [202, 174, 38, 40], "color": "blue", "enclosed_fill": True},
-    "assistantTrain": {"source": "desi1.png", "roi": [71, 308, 30, 32], "color": "blue", "enclosed_fill": True},
-    "historyClose": {"source": "desi1.png", "roi": [1382, 183, 27, 28], "color": "dark"},
-    "historySearch": {"source": "desi1.png", "roi": [1022, 238, 25, 26], "color": "muted"},
-    "historyEdit": {"source": "desi1.png", "roi": [1034, 790, 25, 25], "color": "dark", "coverage_underlay": True, "pixel_hairlines": True},
-    "historyTrash": {"source": "desi1.png", "roi": [1033, 844, 27, 27], "color": "red"},
 }
 
 

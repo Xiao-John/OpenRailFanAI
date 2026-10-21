@@ -57,7 +57,7 @@ class LocalOCRTest(unittest.TestCase):
     def invoke(self, runner):
         with patch.object(images.shutil,'which',return_value='/local/tesseract'), \
              patch.object(images.subprocess,'run',runner), \
-             patch.dict(os.environ,{'RAILFAN_TESSERACT':'/local/tesseract'}):
+             patch.object(__import__('app.config', fromlist=['get_settings']).get_settings(), 'railfan_tesseract', '/local/tesseract'):
             return images.local_ocr(PNG,'image/png')
 
     def test_command_is_local_bounded_and_temp_input_removed(self):

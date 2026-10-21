@@ -381,6 +381,8 @@ def build_prompt(
     else:
         data_anchor = "(无可引用的检索数据)"
 
+    from app.personal_memory import memory_prompt
+    personal_context = memory_prompt() if os.environ.get("APP_VARIANT", "main").lower() != "lm" else ""
     ctx = format_history(history, limit=GEN_HISTORY_LIMIT)
     ctx_block = f"[对话历史]\n{ctx}\n\n" if ctx else ""
 
@@ -420,7 +422,7 @@ def build_prompt(
         # 必须显式用 `+`：`requirements` 现在是变量，不能像原来那样靠相邻字符串字面量
         # 做隐式拼接 —— 从字面量换成变量时漏掉这一步就是一个语法错误。
         + requirements
-        + f"{ctx_block}"
+        + f"{ctx_block}{personal_context}"
         f"用户原话：{user_message}\n"
         f"关键槽位 => {slot_lines}\n"
         f"工具调用：{trace or '(无)'}\n"

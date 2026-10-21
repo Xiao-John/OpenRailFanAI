@@ -122,7 +122,7 @@ _KNOWLEDGE_HINT_RE = re.compile(
 
 
 def _station_in_text(text: str) -> str:
-    """本地站点库最长匹配取站名（与 retrieve._station_from_text 同策略，独立实现避免循环依赖）。"""
+    """从已排除包含短名的结果中取原话最先出现的站名，保证同长度站名顺序稳定。"""
     if not text:
         return ""
     hits = _station_hits(text)
@@ -317,9 +317,9 @@ def _target_of(text: str) -> str:
 
 
 def _station_hits(text: str) -> list[str]:
-    """原话里出现的**全部**站名（丢掉被更长站名包含的短名），按长度降序。
+    """原话里出现的**全部**站名（丢掉被更长站名包含的短名），按原话出现位置、长度及名称稳定排序。
 
-    用途是判断"本次到底提到了几个站"。只看 `_station_in_text`（只回最长的一个）
+    用途是判断"本次到底提到了几个站"。只看 `_station_in_text`（只回第一个）
     会出事：实测「深圳北到厦门北今天还有票吗？要高铁的」里两个站名同长，
     `max` 取到先出现的**深圳北**，于是把它当成"本次新给的终点"去替换上文区间，
     得到 **北京南→深圳北** —— 起点当成终点，方向直接错（"看起来正常的错答案"）。
@@ -331,10 +331,7 @@ def _station_hits(text: str) -> list[str]:
              for size in range(2, min(8, len(text) - start) + 1)
              if text[start:start + size] in names}
     kept = {n for n in found if not any(len(k) > len(n) and n in k for k in found)}
-    if len({len(n) for n in kept}) == len(kept):
-        return sorted(kept, key=len, reverse=True)
-    # Equal-length ties retain the original station-set iteration order.
-    return sorted((n for n in names if n in kept), key=len, reverse=True)
+    return sorted(kept, key=lambda name: (text.find(name), -len(name), name))
 
 
 def _merge_od(

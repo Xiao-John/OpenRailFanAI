@@ -142,7 +142,19 @@ async def test_cnrail_map():
 
 
 async def test_web_fetch_live():
+    # 固定公网目标的 DNS 若被本机映射到保留地址，正确的 SSRF 拒绝属于环境限制。
+    from app.tools._http import assert_public_url_async, UnsafeUrlError
+    try:
+        await assert_public_url_async("https://example.com/")
+    except UnsafeUrlError:
+        _skips.append("web.fetch：固定目标 DNS 无公网解析，安全守卫正确拒绝")
+        print("[SKIP] web.fetch：固定目标 DNS 无公网解析，安全守卫正确拒绝")
+        return
     r = await registry.invoke_by_name("web.fetch", {"url": "https://example.com/"})
+    if not r.ok and (r.error or '').split('：',1)[0] in {'dns','connect','timeout','tls'}:
+        _skips.append("web.fetch：传输环境不可用")
+        print(f"[SKIP] web.fetch：{r.error}")
+        return
     assert r.ok, r
     assert "Example" in str(r.data.get("title")), r
     print(f"[PASS] web.fetch(example.com) -> title={r.data.get('title')}")

@@ -28,9 +28,25 @@ _log = logging.getLogger("railfan.main")
 settings = get_settings()
 
 
+def app_version() -> str:
+    """应用版本 —— 唯一来源是仓库根的 VERSION 文件。
+
+    为什么不让前端硬编码：以前界面写死 "v0.6"，而 Android 包的版本是另一个号，
+    同时出现两个互不相干的版本号，用户根本无从判断自己装的是哪一版。
+    读不到就如实返回 "dev"（从源码直接跑的自建部署就该显示 dev），不要编一个号。
+    """
+    try:
+        v = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
+        return v or "dev"
+    except OSError:
+        return "dev"
+
+
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     """Release query work before closing its HTTP and model connections."""
+    if settings.allow_remote_access:
+        _log.warning("允许非回环访问：接口仍为匿名；请使用可信网络或反向代理鉴权，远端请求可使用服务器模型密钥。命令行覆盖绑定地址时也必须自行落实此边界。")
     if os.environ.get("APP_VARIANT", "main").lower() != "lm" and settings.dict_bundled_db_path:
         import asyncio
         from app.updates.dictionary import sync_bundled, run_io
@@ -57,7 +73,7 @@ async def _lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="OpenRailFanAI",
-    version="0.1.0",
+    version=app_version(),
     lifespan=_lifespan,
     # 生产环境默认不暴露接口文档（/docs 会完整列出接口面，且无鉴权），
     # 需要时显式打开 ENABLE_API_DOCS=true 并置于内网/鉴权之后。
@@ -66,11 +82,10 @@ app = FastAPI(
     openapi_url="/openapi.json" if (settings.enable_api_docs and not settings.is_production) else None,
 )
 
-# 开发用：允许跨域（v1 最简前端可跨域调用）
-# TODO: 部署到公网时改为白名单（默认允许跨域便于本地调试）
+# 默认仅同源；桌面调试需要跨源时显式配置来源白名单。
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[origin.strip() for origin in settings.cors_allowed_origins.split(",") if origin.strip()],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,20 +96,6 @@ app.add_middleware(
 # 手机连桌面后端跑 WebView 时，第一个页面加载要传 130 KB。
 # ⚠️ SSE（text/event-stream）在 Starlette 的排除名单里，不会被压 —— 流式不受影响。
 app.add_middleware(GZipMiddleware, minimum_size=1024)
-
-
-def app_version() -> str:
-    """应用版本 —— 唯一来源是仓库根的 VERSION 文件。
-
-    为什么不让前端硬编码：以前界面写死 "v0.6"，而 Android 包的版本是另一个号，
-    同时出现两个互不相干的版本号，用户根本无从判断自己装的是哪一版。
-    读不到就如实返回 "dev"（从源码直接跑的自建部署就该显示 dev），不要编一个号。
-    """
-    try:
-        v = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
-        return v or "dev"
-    except OSError:
-        return "dev"
 
 
 @app.get("/health")
@@ -118,6 +119,8 @@ def version() -> dict:
 @app.get("/api/metrics")
 def metrics() -> dict:
     """进程内脱敏性能快照；不含用户文本、密钥、URL 或原始异常。"""
+    if not settings.metrics_enabled:
+        raise HTTPException(status_code=404, detail="指标接口已关闭")
     return metrics_snapshot()
 
 
@@ -131,6 +134,10 @@ def _include_routes() -> None:
         from app.api.fuck_cr import router as fuck_cr_router
         app.include_router(fuck_cr_router, prefix="/api")
         from app.api.agent import router as agent_router
+        from app.api.memory import router as memory_router
+        from app.api.conversation_titles import router as title_router
+        app.include_router(title_router, prefix="/api")
+        app.include_router(memory_router, prefix="/api")
         app.include_router(agent_router, prefix="/api")
         from app.api.software_updates import router as software_updates_router
         from app.api.dictionary_updates import router as dictionary_updates_router

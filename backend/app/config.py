@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import BaseSettings, validator
+from pydantic import BaseSettings, validator, root_validator
 
 # 占位 Key（见 .env.example）：这些值不算"已配置 LLM"
 _PLACEHOLDER_API_KEYS = {
@@ -81,6 +81,26 @@ class Settings(BaseSettings):
     # ---- 服务器 ----
     host: str = "127.0.0.1"
     port: int = 8000
+    # 非回环部署须显式承认匿名调用风险；这不是身份认证。
+    allow_remote_access: bool = False
+    metrics_enabled: bool = True
+    # 逗号分隔的来源白名单；空值只允许同源，原生客户端不受 CORS 限制。
+    cors_allowed_origins: str = ""
+    main_ticket_shared_rows_enabled: bool = True
+    railfan_tesseract: str = ""
+    railfan_tessdata_dir: str = ""
+
+    @root_validator(skip_on_failure=True)
+    def _remote_bind_requires_opt_in(cls, values):
+        import ipaddress
+        host = str(values.get('host', '')).strip().lower()
+        try:
+            loopback = ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            loopback = host == 'localhost'
+        if not loopback and not values.get('allow_remote_access'):
+            raise ValueError('非回环 HOST 必须显式设置 ALLOW_REMOTE_ACCESS=true；匿名接口可消耗服务端密钥，请先配置可信网络或反向代理鉴权')
+        return values
 
     # ---- 运行环境 ----
     # dev / production。production 下对"必须显式配置的密钥"做 fail-fast 校验。

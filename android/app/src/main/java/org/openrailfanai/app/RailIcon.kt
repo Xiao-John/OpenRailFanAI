@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun RailIcon(name: String, modifier: Modifier = Modifier, tint: Color = NativeColors.blue, semanticTag: String? = null) {
     val resource = when (name) {
+        "sidebar" -> R.drawable.ic_sidebar_lucide
+        "memory" -> R.drawable.ic_memory_lucide
         "more" -> R.drawable.ic_more_lucide
         "calendar" -> R.drawable.ic_calendar_lucide
         "clock" -> R.drawable.ic_clock_lucide
@@ -33,6 +35,9 @@ internal fun RailIcon(name: String, modifier: Modifier = Modifier, tint: Color =
         "train-search" -> R.drawable.ic_train_search_lucide
         "person" -> R.drawable.ic_person_lucide
         "cloud-error" -> R.drawable.ic_cloud_error_lucide
+        "camera" -> R.drawable.ic_camera_lucide
+        "image" -> R.drawable.ic_image_lucide
+        "paperclip" -> R.drawable.ic_paperclip_lucide
         "file" -> R.drawable.ic_file_lucide
         "plus" -> R.drawable.ic_plus_lucide
         "back" -> R.drawable.ic_back_lucide

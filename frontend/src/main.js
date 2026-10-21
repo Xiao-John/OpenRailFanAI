@@ -13,6 +13,7 @@
 //   4) 编辑重发 / 重新生成：丢弃目标消息之后的内容后重跑
 //   5) 三端自适应：移动优先（抽屉侧栏），≥1024px 侧栏常驻
 //   6) 无需登录：对话匿名可用，不存任何凭据
+import { safeHttpSource, routingSourceUrl } from "./source-links.js";
 import { store } from "./store.js";
 import { themeCommand, fileCommand, fileHistory, inputTypes, pickTextFile, downloadArtifact } from "./agent.js";
 const agentFiles = new Map();
@@ -950,7 +951,7 @@ function renderTrainScheduleCards(container, results, requestMeta = {}) {
       }
       table.appendChild(body); const wrap = el("div", "schedule-table-wrap"); wrap.appendChild(table); routeCard.appendChild(wrap);
       const sourceRow = el("div", "schedule-source");
-      const link = document.createElement("a"); link.href = (result.sources || []).find((url) => url.includes("rail.re")) || "https://rail.re"; link.target = "_blank";
+      const link = document.createElement("a"); link.href = routingSourceUrl(result.sources || []); link.target = "_blank";
       link.rel = "noopener noreferrer"; link.append(icon("link"), document.createTextNode(`rail.re · ${UI_COPY.routing.source}`)); sourceRow.appendChild(link);
       const detailsEl = appendRequestDetails(result, requestMeta, false);
       const detailsButton = el("button", "schedule-detail-label routing-details-button", "");
@@ -1018,7 +1019,7 @@ function renderTrainScheduleCards(container, results, requestMeta = {}) {
     const axis = el("div", "schedule-table-wrap"); axis.appendChild(table); card.appendChild(axis);
     const note = el("div", "schedule-note"); note.append(icon("info"), document.createTextNode(UI_COPY.schedule.note)); card.appendChild(note);
     const sourceRow = el("div", "schedule-source");
-    const sourceUrl = (result.sources || [])[0];
+    const sourceUrl = safeHttpSource((result.sources || [])[0]);
     if (sourceUrl) {
       const link = document.createElement("a"); link.href = sourceUrl; link.target = "_blank";
       link.rel = "noopener noreferrer"; link.append(icon("link"), document.createTextNode(`${displaySourceLabel(result)} · ${UI_COPY.schedule.source}`));
@@ -1162,7 +1163,7 @@ function emptyState() {
   for (const [iconName, label, question] of [
     ["ticket", "查票价", "明天北京南到上海虹桥的 G1 票价"],
     ["clock", "查时刻", "G1 今天的时刻表"],
-    ["route", "查交路", "CR400AF-5033 今天的交路"],
+    ["route", "查交路", "CR400BF-5033 今天的交路"],
     ["camera", "找机位", "我想找一个拍 CR400AF 的机位"],
   ]) {
     const b = el("button", "quick-item");

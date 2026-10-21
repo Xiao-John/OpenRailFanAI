@@ -229,9 +229,9 @@ def is_emu_train_code(v: str | None) -> bool:
 # 注意：不能用 \b —— 中文"次"在 Unicode 下也是词字符，会导致 "G1次列车" 匹配失败。
 # 改用否定断言：车次号后不能紧跟 ASCII 字母/数字。
 # 自由文本扫描只用"字母前缀"形态：纯数字在文本里极易误命中（年份、里程、编号）
-_TRAIN_CODE_IN_TEXT_RE = re.compile(r"(0?[GDCTZKYSLBN]\d{1,4}[A-Z]?)(?![A-Za-z0-9])", re.I)
+_TRAIN_CODE_IN_TEXT_RE = re.compile(r"(?<![A-Za-z0-9])(0?[GDCTZKYSLBN]\d{1,4}[A-Z]?)(?![A-Za-z0-9])", re.I)
 # 纯数字车次只在后接"次"时才算（"1461次列车"），避免年份/编号误命中
-_PURE_DIGIT_TRAIN_RE = re.compile(r"(?<!\d)(\d{1,4})(?=次(?:列车|车)?)")
+_PURE_DIGIT_TRAIN_RE = re.compile(r"(?<![A-Za-z0-9_-])(\d{1,4})(?=次(?:列车|车)?)")
 _TRAIN_NOISE_RE = re.compile(r"(次列车|次|列车|车次|高铁|动车|列车组)$")
 
 

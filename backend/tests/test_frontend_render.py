@@ -40,6 +40,10 @@ def test_markdown_tables_render():
             print(line)
     assert proc.returncode == 0, f"Markdown 渲染测试失败：\n{out}"
     print("[PASS] Markdown：表格/对齐/单元格行内语法正确，代码块与转义未被破坏")
+    links = subprocess.run([node, str(REPO_ROOT / "frontend/tests/source-links.test.mjs")],
+                           capture_output=True, text=True, timeout=30, cwd=str(REPO_ROOT))
+    assert links.returncode == 0, links.stdout + links.stderr
+    print(links.stdout.strip())
 
 
 def test_renderer_is_a_separate_module():
@@ -82,7 +86,7 @@ def test_interrupted_answer_is_visible():
     就要保证后果是可见的：流式途中定期落盘 + 打 `meta.streaming` 标记 + 重开时如实提示。
     """
     js = (REPO_ROOT / "frontend/src/main.js").read_text(encoding="utf-8")
-    assert 'meta: { streaming: true }' in js, (
+    assert re.search(r'meta:\s*\{\s*streaming:\s*true\b', js), (
         "生成开始时没有打上 streaming 标记：进程被杀后无法判断这条回答是否写完"
     )
     assert "persistThrottled" in js, (

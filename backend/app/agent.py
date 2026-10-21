@@ -238,7 +238,7 @@ async def run(req):
         if sum(len(d.get('text','')) for d in documents)+sum(len(m['content']) for m in history)>80000:
             raise ValueError('文件和历史合计超过 80000 字符，请缩小处理范围')
         return json.dumps({'request':req.message,'reference_date':railway_today().isoformat(),
-                           'files':documents,'history':history},ensure_ascii=False)
+                           'files':documents,'history':history,'personal_memory':req.personal_memory},ensure_ascii=False)
     if sum(len(d.get('text','')) for d in documents)+sum(len(m['content']) for m in history)>80000:
         raise ValueError('文件和历史合计超过 80000 字符，请缩小处理范围')
     from app.llm import client

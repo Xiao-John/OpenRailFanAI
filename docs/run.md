@@ -13,7 +13,7 @@
 
 ## 1. 一键配置 + 启动（推荐）
 
-在仓库根目录执行 `bash scripts/setup.sh`：创建虚拟环境 → 安装依赖 → 生成 `.env`（已存在则保留）→ 跑一遍全部测试自检 → 启动 `http://127.0.0.1:8000` 并**自动打开对话页面**。`.env` 未配置 `LLM_API_KEY`（含占位值）则自动启用 `LLM_MOCK=true`，已配置真实 Key 则走真实模型整链。停止：`kill <输出中的 PID>`（日志 `.setup-uvicorn.log`）。可选：`PORT=8001 bash scripts/setup.sh` 换端口 · `SKIP_TESTS=1 bash scripts/setup.sh` 跳过测试 · `bash scripts/setup.sh --check-key` 仅检查配置不启动 · 首次配置 LLM Key 可用 `--api-key <你的Key>`（或交互式粘贴/环境变量 `LLM_API_KEY=...`/手改 `.env`，四种任选；写入后 `.env` 权限收紧为 600）。
+在仓库根目录执行 `bash scripts/setup.sh`：创建虚拟环境 → 安装依赖 → 生成 `.env`（已存在则保留）→ 跑一遍离线测试自检 → 启动 `http://127.0.0.1:8000` 并**自动打开对话页面**。`.env` 未配置 `LLM_API_KEY`（含占位值）则自动启用 `LLM_MOCK=true`，已配置真实 Key 则走真实模型整链。停止：`kill <输出中的 PID>`（日志 `.setup-uvicorn.log`）。可选：`PORT=8001 bash scripts/setup.sh` 换端口 · `SKIP_TESTS=1 bash scripts/setup.sh` 跳过测试 · `bash scripts/setup.sh --check-key` 仅检查配置不启动 · 首次配置 LLM Key 可用 `--api-key <你的Key>`（或交互式粘贴/环境变量 `LLM_API_KEY=...`/手改 `.env`，四种任选；写入后 `.env` 权限收紧为 600）。
 
 **预热离线数据（可选）**：`bash scripts/prewarm.sh`（站点库 + 离线车次目录，缺失才下载；`--force` 强制重下，如升级 Python 后）。离线车次目录是**非实时兜底数据**，只用于"仅给车次号"时推断起止站；未预热时相关查询**如实提示未就绪**，不会在请求路径里同步下载。
 
@@ -53,6 +53,8 @@ cd backend && python3 -m venv .venv
 | `RAILRE_API_BASE` / `RAILRE_BASE` / `JPRAILFAN_BASE` / `CNRAIL_BASE` | rail.re 交路 API / rail.re 主站 / 黄河铁路网 / cnrail 地图 |
 | `FREIGHT_95306_BASE` / `KMRAIL_BASE` / `SYTLJ_BASE` | 95306 / 昆铁货运 / 沈阳局余票（长期不可用，失败如实说明原因） |
 | `HOST` / `PORT` / `APP_ENV` | `127.0.0.1` / `8000` / `dev`·`production`（production 校验必须显式配置的密钥，缺失拒绝启动） |
+| 部署限制 | `ALLOW_REMOTE_ACCESS=false`、`CORS_ALLOWED_ORIGINS=`（仅同源）、`METRICS_ENABLED=true`；非回环部署见下方安全说明 |
+| 售票共享与 OCR | `MAIN_TICKET_SHARED_ROWS_ENABLED=true`；`RAILFAN_TESSERACT=`（空值在 PATH 查找）、`RAILFAN_TESSDATA_DIR=`（空值用随包语言库）；这些配置统一由 Settings 加载，修改后重启 |
 | `ENABLE_API_DOCS` / `API_BASE` | 是否暴露 `/docs`·`/redoc`·`/openapi.json`（生产应关闭或置于鉴权/内网后）/ 前端代理目标 |
 | 治理阈值 | `MAX_MESSAGE_CHARS=2000`、`TOOL_CONCURRENCY=3`、`FACT_TEXT_MAX_CHARS=4000`（代码字段 `fact_text_max_chars`）、`FACT_TABLE_MAX_ROWS=40`、`FACT_MAX_ENTRIES=0`（注入事实条数上限；0=不限）、`STATION_LIST_LIMIT=12`、`STATION_SCREEN_LIMIT=15`、`RAIL_LINE_CACHE_TTL_S=3600`（大屏一次回全天 200–700 条，必须裁剪后再进 prompt）、`HTTP_TIMEOUT=12.0`、`HTTP_MAX_BYTES=2000000` |
 | 性能与本地字典 | `FASTPATH_ENABLED=true`（确定性快路径，出问题置 false 回退纯 LLM）、`LLM_STRUCTURED_NO_THINK=true`、`LLM_GENERATION_NO_THINK=false`、`LLM_STRUCTURED_JSON_SCHEMA=false`、`DICT_DB_PATH=data/dict.db`、`DICT_GTFS_MAX_AGE_DAYS=5`、`DICT_SITE_MIN_INTERVAL_S=2.0`（个人站点间隔下限，勿调小） |
@@ -99,7 +101,7 @@ LLM_PROVIDERS={"mygw":{"label":"公司网关","base_url":"llm.corp.com","api_key
 - **安全边界**：`APP_ENV=production` 时，**请求体带来的** `base_url`（界面自定义供应商、`/api/providers/test`）只允许公网地址，内网/环回/云元数据地址一律拒绝，除非显式设 `LLM_ALLOW_PRIVATE_BASE_URL=true`；`.env` / 配置文件里的地址属管理员可信配置，不受此限。
 - **不想配 `.env`**：界面「⚙️ 设置」里选供应商并填自己的 Key 即可（BYOK）。Key 默认只留在内存，勾选「记住 Key」才落盘（浏览器里是 localStorage；Android 应用里走系统密钥库加密后存应用私有文件），服务端不落库、不写日志。
 
-> ⚠️ **密钥**：`.env` 含真实 Key（已在 `.gitignore`），仅本地保存、不进库、不随包分发；**部署公网前必须改为环境变量注入并轮换 Key**。当前 `main.py` 为开发默认：CORS `allow_origins=["*"]`（`allow_credentials=False`）、无鉴权（`/health` 返回 `auth: "disabled"`）、无限流；对外提供访问应在反向代理层收敛入口并加限流、改白名单。
+> ⚠️ **密钥**：`.env` 含真实 Key（已在 `.gitignore`），仅本地保存、不进库、不随包分发；**部署公网前必须改为环境变量注入并轮换 Key**。默认只绑定回环、CORS 仅同源，接口仍无鉴权（`/health` 返回 `auth: "disabled"`），不提供应用层限流。`HOST` 为非回环地址时，必须显式设置 `ALLOW_REMOTE_ACCESS=true` 才能加载配置；这只是风险确认，不是认证。此时同网段调用者可能使用服务器配置的模型密钥，须限制可信网络或配置反向代理认证与限流。通过 uvicorn 命令行覆盖 `--host` 会绕过 Settings 的 HOST 校验，部署者必须自行保持同样的边界。需要浏览器跨源访问时配置 `CORS_ALLOWED_ORIGINS`（逗号分隔）；原生 Android 不受 CORS 限制。`METRICS_ENABLED=false` 关闭指标端点并返回 404。
 
 ## 4. 启动后端
 

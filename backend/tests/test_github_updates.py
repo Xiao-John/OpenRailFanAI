@@ -149,7 +149,7 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
         from types import SimpleNamespace
         archive=self.root/'bundle.zip';archive.write_bytes(self.zip)
         snapshot=self.root/'bundle.db';D.build_feed(archive,snapshot,TAG)
-        with patch.object(main,'settings',SimpleNamespace(dict_bundled_db_path=str(snapshot))), \
+        with patch.object(main,'settings',SimpleNamespace(dict_bundled_db_path=str(snapshot),allow_remote_access=False)), \
              patch('app.data.dict.db_path',return_value=self.target),patch.dict(os.environ,APP_VARIANT='main'):
             async with main._lifespan(main.app):
                 self.assertEqual(D.local(self.target)['version'],TAG)

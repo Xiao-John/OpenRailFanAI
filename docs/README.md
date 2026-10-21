@@ -1,9 +1,16 @@
 # 文档索引
 
+这是精选索引，不是 `docs/` 的全量文档清单。历史交接与验证记录仍保留在目录中。
+
 文档分为**实现**、**部署**与**候选计划**；候选计划不代表已经实现或已授权执行。
 
 | 文档 | 内容 |
 |---|---|
+| [`release-automation.md`](release-automation.md) | **发布工具**：一份Markdown驱动版本、构建、签名核验、源码推送与Release上传 |
+| [`release-0.1.30.md`](release-0.1.30.md) | **发布说明**：个人记忆、统一侧栏、模型标题及评审修复 |
+| [`sidebar-and-model-titles-20261021.md`](sidebar-and-model-titles-20261021.md) | **Main 界面**：统一左侧栏、右滑打开、固定设置与模型会话标题 |
+| [`personal-memory-mvp-20261021.md`](personal-memory-mvp-20261021.md) | **Main 试用实现**：默认关闭的本机记忆、消息保存入口、当前模型按需总结与隐私边界 |
+| [`independent-review-fixes-20261019.md`](independent-review-fixes-20261019.md) | **修复**：独立评审问题、测试分层、部署边界与暂缓项目 |
 | [`release-0.1.29.md`](release-0.1.29.md) | **发布**：多平台配置向导、图片文档输入、车次规则预备入口与源码同步 |
 | [`frontend-inputs-fuck-cr-integration-20261019.md`](frontend-inputs-fuck-cr-integration-20261019.md) | **客户端**：可见附件入口、兼容状态按钮、17项定向检查与打包记录 |
 | [`frontend-multi-provider-wizard-20261019.md`](frontend-multi-provider-wizard-20261019.md) | **客户端**：八平台配置向导、进度与密钥隔离 |

@@ -184,5 +184,35 @@
     "icon": "share-2",
     "version": "0.468.0",
     "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/share-2.svg"
+  },
+  {
+    "name": "camera",
+    "icon": "camera",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/camera.svg"
+  },
+  {
+    "name": "image",
+    "icon": "image",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/image.svg"
+  },
+  {
+    "name": "paperclip",
+    "icon": "paperclip",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/paperclip.svg"
+  },
+  {
+    "name": "memory",
+    "icon": "bookmark-plus",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/bookmark-plus.svg"
+  },
+  {
+    "name": "sidebar",
+    "icon": "panel-left",
+    "version": "0.468.0",
+    "source": "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/panel-left.svg"
   }
 ]
