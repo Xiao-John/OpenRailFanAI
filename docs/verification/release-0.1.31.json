@@ -1,0 +1,32 @@
+{
+  "url": "https://github.com/Xiao-John/OpenRailFanAI/releases/tag/v0.1.31",
+  "id": 419769086,
+  "tag": "v0.1.31",
+  "latest": "v0.1.31",
+  "source_commit": "7d068694b7811592fac7980aa05e1541eede4b79",
+  "build": {
+    "version": "0.1.31",
+    "commit": "7d06869",
+    "builtAt": "2026-10-22T00:05:30+08:00"
+  },
+  "local_size": 56344832,
+  "local_sha256": "45f9f62ae333b64be91656c380fbe209197263b6094c95b6311b23d1a668dd60",
+  "signing_certificate_sha256": "e644691a89343cc83ee596340fd3a4648ca792b569e9744f3d9326b5e70244ec",
+  "dictionary_bytes": 19898368,
+  "assets": [
+    {
+      "name": "OpenRailFanAI-0.1.31-arm64-release.apk",
+      "size": 56344832,
+      "digest": "sha256:45f9f62ae333b64be91656c380fbe209197263b6094c95b6311b23d1a668dd60",
+      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/untagged-e9583616a0aeb9ac5ce4/OpenRailFanAI-0.1.31-arm64-release.apk"
+    },
+    {
+      "name": "OpenRailFanAI-0.1.31-arm64-release.apk.sha256",
+      "size": 105,
+      "digest": "sha256:951b4c2ce7eaa07f4dbe47ab4f2d6d8a73a815251296edbc59e8c257239c4cf7",
+      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/untagged-e9583616a0aeb9ac5ce4/OpenRailFanAI-0.1.31-arm64-release.apk.sha256"
+    }
+  ],
+  "verified_at": "2026-10-22T00:07:38.826434+08:00",
+  "validation": "Kotlin 主代码 compileDebugKotlin 通过；backend/tests/test_android.py 通过。未运行完整 72 套测试，未做真机/模拟器视觉与 IME 动画验收。"
+}
