@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| HEAD | `7220b02`（fix(android): 圆角按钮的按压层同步裁切） |
+| HEAD | `34cf43e`（fix(android): 开关行的按压层也裁成圆角） |
 | 版本 | `0.1.30` |
 | Release tag | `v0.1.30` → `ace82ff`（release: prepare Main 0.1.30） |
 | 工作区 | 写本文档前干净；本文档为新增文件 |
@@ -24,6 +24,7 @@
 | `8aed092` | 新列车车次解析器的独立评审与改进建议（未改 parser/shadow） | 文档；18 个输入实测 |
 | `b767f4f` | 记忆开关与供应商向导「记住密钥」恢复整行点击 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
 | `7220b02` | 圆角按钮的 ripple/indication 补 `clip(shape)`；覆盖 SettingsButton、HistoryButton、供应商卡/预设、欢迎示例、附件入口、机位按钮、时刻卡操作、票价详情 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
+| `34cf43e` | 开关行（记住 API Key、图片、个人记忆、向导记住密钥）补 `clip(12dp)`，整行 ripple 同步圆角 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
 
 ### 2.2 更早的相关提交（本仓库历史）
 
@@ -95,10 +96,9 @@
 - `MainSettingsScreen.kt:473` 的下拉框在父 `Column` 上 `.clip(dropdownShape)`，子项 ripple 被裁切。
 - `HistoryScreen.kt:225` 的 `.shadow(8.dp, RoundedCornerShape(16.dp))` 形状参数正确。
 
-**仍未处理**：
+**开关行也已处理（`34cf43e`）**：记住 API Key、图片、个人记忆、向导记住密钥的 `toggleable` 行补 `clip(12dp)`，整行 ripple 不再露出方角。
 
-- `SettingsSwitch` 的父行（记住 API Key、图片、记忆、向导记住密钥）没有圆角背景，`toggleable` 的 ripple 仍是矩形；如需圆角，可给行补 `.clip(RoundedCornerShape(12.dp))`，或去掉父行 indication。
-- 未做真机/模拟器截图复验；本次只验证 Kotlin 编译。
+**仍未处理**：未做真机/模拟器截图复验；本次只验证 Kotlin 编译。
 
 ### 3.5 新解析器
 
@@ -123,7 +123,7 @@
 ## 4. 未决事项
 
 1. “图片”开关阴影：保留截图；下次复现时先验证 hover 与 ripple，再决定是否把父行/子滑块的 indication 收敛为一个所有者。
-2. 方角按压层：`7220b02` 已修共享组件与主要圆角行；剩余 `SettingsSwitch` 父行 ripple 未裁切，待确认是否处理。
+2. 方角按压层：`7220b02` + `34cf43e` 已修共享组件、主要圆角行与开关行；待真机/截图复验。
 3. 新解析器 P0 六项：见独立文档；parser/shadow 保持不动。
 4. 测试分层：`run_all.sh` 拆 `--offline`/`--live`；前端 Node 缺失时显式 `SKIP`。
 5. 文档索引的失效链接（§3.7）。
@@ -147,4 +147,5 @@ bash ../scripts/android/build.sh :app:compileDebugKotlin
 | 2026-10-21 | `8aed092` | 新解析器评审与建议 |
 | 2026-10-21 | `b767f4f` | 记忆/记住密钥开关整行点击；compile 通过 |
 | 2026-10-21 | `7220b02` | 圆角按压层裁切；SettingsButton/HistoryButton 等已修 |
+| 2026-10-21 | `34cf43e` | 开关行 ripple 裁切（记忆/图片/记住密钥/向导） |
 | 2026-10-21 | 本文 | 建立交接文档；记录方角按压层审计与未决项 |
