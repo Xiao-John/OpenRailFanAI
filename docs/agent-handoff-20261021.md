@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| HEAD | `b767f4f`（fix(android): 记忆与记住密钥开关恢复整行点击） |
+| HEAD | `7220b02`（fix(android): 圆角按钮的按压层同步裁切） |
 | 版本 | `0.1.30` |
 | Release tag | `v0.1.30` → `ace82ff`（release: prepare Main 0.1.30） |
 | 工作区 | 写本文档前干净；本文档为新增文件 |
@@ -23,6 +23,7 @@
 | `63583cc` | 复核版独立评审：0.1.29 发布闭环、空车次语义回归、测试与清理评估 | 文档 |
 | `8aed092` | 新列车车次解析器的独立评审与改进建议（未改 parser/shadow） | 文档；18 个输入实测 |
 | `b767f4f` | 记忆开关与供应商向导「记住密钥」恢复整行点击 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
+| `7220b02` | 圆角按钮的 ripple/indication 补 `clip(shape)`；覆盖 SettingsButton、HistoryButton、供应商卡/预设、欢迎示例、附件入口、机位按钮、时刻卡操作、票价详情 | `:app:compileDebugKotlin` BUILD SUCCESSFUL |
 
 ### 2.2 更早的相关提交（本仓库历史）
 
@@ -69,22 +70,24 @@
 
 结论：**不是 `Modifier.shadow` 的问题**。设置页/聊天页的按钮没有 elevation；方角来自 `Modifier.clickable`/`toggleable` 的 **ripple/indication 没有被 `clip(shape)` 约束**——背景是圆角，但按压层画在矩形布局边界上。
 
+**2026-10-21 已修复（`7220b02`）**：下列位置已在 `background/border` 之后、`clickable` 之前补 `.clip(shape)`；共享组件 `SettingsButton` 和 `HistoryButton` 的修复覆盖了绝大多数文字按钮。
+
 已确认的组件/位置：
 
-| 组件/位置 | 圆角来源 | 现状 |
+| 组件/位置 | 圆角来源 | 状态 |
 |---|---|---|
-| `SettingsButton`（`MainSettingsScreen.kt:423-425`） | `background/border` 12dp | `.clickable` 前没有 `.clip`；**绝大多数文字按钮**都走这里 |
-| `HistoryButton`（`HistoryScreen.kt:273-275`） | `background/border` 10dp | 同样缺 `clip` |
-| `PhotoPendingButton`（`PhotoSpotCard.kt:126-127`） | 背景 9dp | 缺 `clip` |
-| `PhotoSourceRow` 标题行（`PhotoSpotCard.kt:140-141`） | 背景 9dp | 缺 `clip` |
-| 供应商预设行（`MainSettingsScreen.kt:346-349`） | 背景 10dp | 缺 `clip` |
-| 供应商卡片行（`MainSettingsScreen.kt:143-147`） | `border` 16dp | 缺 `clip` |
-| 历史选中会话行（`HistoryScreen.kt:172-174`） | 外层背景 12dp | 内层 clickable 未 clip，ripple 相对整行是方的 |
-| 欢迎示例卡（`MainChatScreen.kt:581-584`） | 背景/border 16dp | 缺 `clip` |
-| 附件导入大按钮（`MainChatScreen.kt:548-550`） | 背景 20dp | 缺 `clip` |
-| 时刻卡 `ActionButton`（`ScheduleCard.kt:522-532`） | `border` 10dp | 缺 `clip` |
-| 时刻卡 `StateActionButton`（`ScheduleCard.kt:544-550`） | 外层 clickable、内层 10dp 背景 | 外层 ripple 未裁切 |
-| 票价卡详情行（`FareCard.kt:156-157`） | 外层背景 8dp | 内层 clickable 未裁切 |
+| `SettingsButton`（`MainSettingsScreen.kt:423-425`） | 12dp | 已修 |
+| `HistoryButton`（`HistoryScreen.kt:273-275`） | 10dp | 已修 |
+| `PhotoPendingButton`（`PhotoSpotCard.kt:126-127`） | 9dp | 已修 |
+| `PhotoSourceRow` 标题行（`PhotoSpotCard.kt:140-141`） | 9dp | 已修 |
+| 供应商预设行（`MainSettingsScreen.kt:346-349`） | 10dp | 已修 |
+| 供应商卡片行（`MainSettingsScreen.kt:143-147`） | 16dp | 已修 |
+| 历史选中会话行（`HistoryScreen.kt:172-174`） | 12dp | 已修（外层 clip） |
+| 欢迎示例卡（`MainChatScreen.kt:581-584`） | 16dp | 已修 |
+| 附件导入大按钮（`MainChatScreen.kt:548-550`） | 20dp | 已修 |
+| 时刻卡 `ActionButton`（`ScheduleCard.kt:522-532`） | 10dp | 已修 |
+| 时刻卡 `StateActionButton`（`ScheduleCard.kt:544-550`） | 10dp | 已修（外层 clip） |
+| 票价卡详情行（`FareCard.kt:156-157`） | 8dp | 已修（外层 clip） |
 
 **正确对照**：
 
@@ -92,12 +95,10 @@
 - `MainSettingsScreen.kt:473` 的下拉框在父 `Column` 上 `.clip(dropdownShape)`，子项 ripple 被裁切。
 - `HistoryScreen.kt:225` 的 `.shadow(8.dp, RoundedCornerShape(16.dp))` 形状参数正确。
 
-**建议修复方向（尚未实施）**：
+**仍未处理**：
 
-- 共享组件修一次：`SettingsButton` 加 `.clip(RoundedCornerShape(12.dp))`（放在 background/border 之后、clickable 之前）；`HistoryButton` 加 10dp clip。
-- 每屏的圆角行按同一顺序补 `.clip(shape)`；没有背景的行不需要。
-- `SettingsSwitch` 的父行本来就没有圆角背景，ripple 是矩形；要圆角就裁切整行，或去掉父行 indication、只保留滑块反馈。
-- 不要只改颜色/圆角背景——按压层不裁切时，背景再圆也会露出方角。
+- `SettingsSwitch` 的父行（记住 API Key、图片、记忆、向导记住密钥）没有圆角背景，`toggleable` 的 ripple 仍是矩形；如需圆角，可给行补 `.clip(RoundedCornerShape(12.dp))`，或去掉父行 indication。
+- 未做真机/模拟器截图复验；本次只验证 Kotlin 编译。
 
 ### 3.5 新解析器
 
@@ -122,7 +123,7 @@
 ## 4. 未决事项
 
 1. “图片”开关阴影：保留截图；下次复现时先验证 hover 与 ripple，再决定是否把父行/子滑块的 indication 收敛为一个所有者。
-2. 方角按压层：按 §3.4 清单修复；优先共享组件 `SettingsButton`/`HistoryButton`，再处理各屏行。
+2. 方角按压层：`7220b02` 已修共享组件与主要圆角行；剩余 `SettingsSwitch` 父行 ripple 未裁切，待确认是否处理。
 3. 新解析器 P0 六项：见独立文档；parser/shadow 保持不动。
 4. 测试分层：`run_all.sh` 拆 `--offline`/`--live`；前端 Node 缺失时显式 `SKIP`。
 5. 文档索引的失效链接（§3.7）。
@@ -145,4 +146,5 @@ bash ../scripts/android/build.sh :app:compileDebugKotlin
 | 2026-10-21 | `63583cc` | 复核版独立评审 |
 | 2026-10-21 | `8aed092` | 新解析器评审与建议 |
 | 2026-10-21 | `b767f4f` | 记忆/记住密钥开关整行点击；compile 通过 |
+| 2026-10-21 | `7220b02` | 圆角按压层裁切；SettingsButton/HistoryButton 等已修 |
 | 2026-10-21 | 本文 | 建立交接文档；记录方角按压层审计与未决项 |
