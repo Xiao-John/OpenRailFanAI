@@ -6,6 +6,7 @@
 
 | 文档 | 内容 |
 |---|---|
+| [`agent-handoff-20261021.md`](agent-handoff-20261021.md) | **交接**：0.1.30 后改动、开关修复、方角按压层审计与未决项 |
 | [`release-automation.md`](release-automation.md) | **发布工具**：一份Markdown驱动版本、构建、签名核验、源码推送与Release上传 |
 | [`release-0.1.30.md`](release-0.1.30.md) | **发布说明**：个人记忆、统一侧栏、模型标题及评审修复 |
 | [`sidebar-and-model-titles-20261021.md`](sidebar-and-model-titles-20261021.md) | **Main 界面**：统一左侧栏、右滑打开、固定设置与模型会话标题 |
