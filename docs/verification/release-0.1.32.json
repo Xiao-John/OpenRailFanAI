@@ -1,0 +1,32 @@
+{
+  "url": "https://github.com/Xiao-John/OpenRailFanAI/releases/tag/v0.1.32",
+  "id": 420740731,
+  "tag": "v0.1.32",
+  "latest": "v0.1.32",
+  "source_commit": "2aa9a213840c509fc2f31f3dd44fb05a0ba42d7e",
+  "build": {
+    "version": "0.1.32",
+    "commit": "2aa9a21",
+    "builtAt": "2026-10-22T21:08:59+08:00"
+  },
+  "local_size": 78411687,
+  "local_sha256": "689392a43d65c00a635d5e0f401408775d431d9b39173f375d4582e27f6c2d1b",
+  "signing_certificate_sha256": "e644691a89343cc83ee596340fd3a4648ca792b569e9744f3d9326b5e70244ec",
+  "dictionary_bytes": 19898368,
+  "assets": [
+    {
+      "name": "OpenRailFanAI-0.1.32-arm64-release.apk",
+      "size": 78411687,
+      "digest": "sha256:689392a43d65c00a635d5e0f401408775d431d9b39173f375d4582e27f6c2d1b",
+      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/v0.1.32/OpenRailFanAI-0.1.32-arm64-release.apk"
+    },
+    {
+      "name": "OpenRailFanAI-0.1.32-arm64-release.apk.sha256",
+      "size": 105,
+      "digest": "sha256:2d33e6033d84d96d68298e0e5a86b1b44603633583feb434b971801dc9f6ba3e",
+      "browser_download_url": "https://github.com/Xiao-John/OpenRailFanAI/releases/download/v0.1.32/OpenRailFanAI-0.1.32-arm64-release.apk.sha256"
+    }
+  ],
+  "verified_at": "2026-10-22T21:12:49.416626+08:00",
+  "validation": "Kotlin compileDebugKotlin、Python 修改文件语法编译、git diff --check 通过；本机后端启动及健康响应正常。未运行自动测试、真实图片识别、真实模型补查或真机验收。发布流程核验正式签名、版本、包内词典和远端资产摘要。"
+}
