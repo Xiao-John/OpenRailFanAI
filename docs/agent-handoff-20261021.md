@@ -1,17 +1,17 @@
 # Agent 交接文档（Main 0.1.30 之后）
 
-日期：2026-10-21。维护者：本轮 AI 协作者。
+日期：2026-10-22。维护者：本轮 AI 协作者。
 性质：**单一维护入口**。后续所有 AI/人工改动都追加到本文件末尾的“变更记录”，不要重写历史结论；已解决项标注解决提交，未解决项保留现场。
 
 ## 1. 当前快照
 
 | 项 | 值 |
 |---|---|
-| HEAD | `c7f9c9d`（fix(release): 回执改用公开后的版本资产 URL） |
-| 版本 | `0.1.30` |
-| Release tag | `v0.1.30` → `ace82ff`（release: prepare Main 0.1.30） |
-| 工作区 | 写本文档前干净；本文档为新增文件 |
-| 主要文档 | `docs/release-0.1.30.md`、`docs/personal-memory-mvp-20261021.md`、`docs/independent-review-20261019.md`、`docs/backend-fuck-cr-parser-recommendations-20261019.md` |
+| HEAD | `50e9872`（docs: 交接文档更新至 0.1.31 回执修正） |
+| 版本 | `0.1.31` |
+| Release tag | `v0.1.31` → `7d06869`（release: prepare Main 0.1.31） |
+| 工作区 | 干净 |
+| 主要文档 | `docs/release-0.1.31.md`、`docs/personal-memory-mvp-20261021.md`、`docs/independent-review-20261019.md`、`docs/backend-fuck-cr-parser-recommendations-20261019.md` |
 
 ## 2. 我做的更改
 
@@ -162,7 +162,7 @@
 cd /Users/xylo/Documents/OpenRailFanAI
 git log --oneline -6
 cat VERSION
-cd backend && bash tests/run_all.sh        # 72 套；本轮未复跑 0.1.30 全量
+cd backend && bash tests/run_all.sh        # 72 套；本轮未复跑 0.1.31 全量
 bash ../scripts/android/build.sh :app:compileDebugKotlin
 ```
 
@@ -179,4 +179,5 @@ bash ../scripts/android/build.sh :app:compileDebugKotlin
 | 2026-10-21 | `1e5de3d` | 贴底时消息区随输入栏同步上推（≤32dp） |
 | 2026-10-22 | `7d06869` / `2173d90` | 0.1.31 发布与回执 |
 | 2026-10-22 | `c7f9c9d` | 修复回执 untagged URL；更正 0.1.30/0.1.31 回执 |
+| 2026-10-22 | `50e9872` | 交接文档快照更新到 0.1.31（HEAD/版本/tag/主要文档） |
 | 2026-10-21 | 本文 | 建立交接文档；记录方角按压层审计与未决项 |
