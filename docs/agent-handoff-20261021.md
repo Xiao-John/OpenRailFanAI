@@ -7,11 +7,11 @@
 
 | 项 | 值 |
 |---|---|
-| HEAD（本文提交前） | `50e9872`（docs: 交接文档更新至 0.1.31 回执修正）；本文提交后以 `git log -1` 为准 |
-| 版本 | `0.1.31` |
-| Release tag | `v0.1.31` → `7d06869`（release: prepare Main 0.1.31） |
+| HEAD（本文提交前） | `cc1c909`（docs: record Main 0.1.32 publication）；本文提交后以 `git log -1` 为准 |
+| 版本 | `0.1.32` |
+| Release tag | `v0.1.32` → `2aa9a21`（release: prepare Main 0.1.32） |
 | 工作区 | 干净 |
-| 主要文档 | `docs/release-0.1.31.md`、`docs/personal-memory-mvp-20261021.md`、`docs/independent-review-20261019.md`、`docs/backend-fuck-cr-parser-recommendations-20261019.md` |
+| 主要文档 | `docs/release-0.1.32.md`、`docs/personal-memory-mvp-20261021.md`、`docs/independent-review-20261019.md`、`docs/backend-fuck-cr-parser-recommendations-20261019.md` |
 
 ## 2. 我做的更改
 
@@ -29,6 +29,8 @@
 | `7d06869` | 0.1.31 发布准备（VERSION、发布说明、构建） | `scripts/release.sh`；正式签名、词典与 GitHub 资产校验通过 |
 | `2173d90` | 0.1.31 发布回执 | Release `v0.1.31` 公开并 latest |
 | `c7f9c9d` | 发布回执改用公开后的版本资产 URL；更正 0.1.30/0.1.31 回执 | py_compile 通过；远端资产/摘要核对 |
+| `2aa9a21` | 0.1.32 发布准备（PaddleOCR、续查、思考 UI）；构建成功 | 首次上传失败；同文件重跑未重建，恢复上传 |
+| `cc1c909` | 0.1.32 发布回执 | Release `v0.1.32` 公开并 latest |
 
 ### 2.2 更早的相关提交（本仓库历史）
 
@@ -134,6 +136,14 @@
 - 影响：回执中的下载地址不可作为稳定引用；App 更新器读取的是 GitHub API 的实时资产 URL，不受这份回执影响。
 - 修复：脚本在 PATCH 公开后重新 `GET /releases/tags/<tag>`，校验摘要/大小/URL 前缀，再用发布态资产写回执；两个历史回执已按实际公开 URL 更正。
 - 未改已公开 Release 的资产内容，也未移动 tag。
+
+### 3.11 0.1.32 发布（仅补传）
+
+- 版本 `0.1.32`，tag `v0.1.32` → `2aa9a21`；Release 已公开并 latest。
+- APK：`dist/android/OpenRailFanAI-0.1.32-arm64-release.apk`，78,411,687 B，SHA-256 `689392a43d65c00a635d5e0f401408775d431d9b39173f375d4582e27f6c2d1b`；包含 PaddleOCR 模型与离线词典（19,898,368 B）。
+- 首次发布在推送/上传前失败；`state.json` 已有 APK 摘要，因此同一发布文件重跑时跳过构建，只完成校验、推送和上传。
+- `docs/verification/release-0.1.32.json` 的资产 URL 已是 `.../download/v0.1.32/...`（脚本修复生效）。
+- 未重跑测试、真实图片推理或真机验收；发布说明已如实写明。
 
 ### 3.8 输入区 / 消息区 IME 同步
 
