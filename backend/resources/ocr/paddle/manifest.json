@@ -1,0 +1,54 @@
+{
+  "license": "Apache-2.0",
+  "model_family": "PaddleOCR PP-OCRv5 mobile",
+  "purpose": "Chinese text detection and recognition, offline on Android and desktop backend",
+  "models": {
+    "det.onnx": {
+      "source": "https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_det_onnx",
+      "revision": "e6f4fa85f00e168c862bc462aebca69eef9b3d3d",
+      "path": "inference.onnx",
+      "sha256": "a431985659dc921974177a95adcfbb90fd9e51989a5e04d70d0b75f597b6e61d"
+    },
+    "det.yml": {
+      "source": "https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_det_onnx",
+      "revision": "e6f4fa85f00e168c862bc462aebca69eef9b3d3d",
+      "path": "inference.yml",
+      "sha256": "98069072e1b6b37d727fd9d9f11725faa46d6ea0de012f2ed26caea011c37699"
+    },
+    "rec.onnx": {
+      "source": "https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_rec_onnx",
+      "revision": "ed152b8b495f84de93cda5709d768548a9127622",
+      "path": "inference.onnx",
+      "sha256": "da72dc72ca4dc220df0dfde68c1dedc31c58d3e76a25871122e5056227d50092"
+    },
+    "rec.yml": {
+      "source": "https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_rec_onnx",
+      "revision": "ed152b8b495f84de93cda5709d768548a9127622",
+      "path": "inference.yml",
+      "sha256": "5dfeb2777f6d0db8177d8128a8acfcf6e6276dc4ac73ea3bf0dc06d6a5e85d8e"
+    },
+    "dict.txt": {
+      "source": "https://github.com/PaddlePaddle/PaddleOCR",
+      "revision": "dab3fe35379033fdcb2d0e9572fac0b36c9a9ebf",
+      "path": "ppocr/utils/dict/ppocrv5_dict.txt",
+      "sha256": "d1979e9f794c464c0d2e0b70a7fe14dd978e9dc644c0e71f14158cdf8342af1b"
+    }
+  },
+  "licenses": {
+    "PaddleOCR": {
+      "license": "Apache-2.0",
+      "source": "https://github.com/PaddlePaddle/PaddleOCR/blob/dab3fe35379033fdcb2d0e9572fac0b36c9a9ebf/LICENSE",
+      "sha256": "3840c5c0c61c294264d2dd77b8777be6ddd90121ef4e0e64abcd22edea581d6e"
+    },
+    "ONNX Runtime": {
+      "license": "MIT",
+      "version": "1.21.1",
+      "source": "https://github.com/microsoft/onnxruntime/tree/v1.21.1/LICENSE"
+    },
+    "RapidOCR": {
+      "license": "Apache-2.0",
+      "version": "3.10.0",
+      "source": "https://github.com/RapidAI/RapidOCR"
+    }
+  }
+}

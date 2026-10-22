@@ -178,6 +178,9 @@ android {
     // 注意用 srcDir(...) 方法而不是给 srcDirs 属性赋值 —— 后者是只读 Set<File>。
     sourceSets.getByName("main") {
         assets.srcDir(layout.buildDirectory.dir("staged-assets").get().asFile)
+        // Shared official PaddleOCR ONNX models are bundled for fully offline
+        // device OCR and are also used by the desktop backend adapter.
+        if (lmLabel == null) assets.srcDir(repoRoot.resolve("backend/resources/ocr/paddle"))
         // 设备端推理二进制只在 LM 轨打进包：正常版本不该为它多背几 MB，
         // 更不该因此被要求把 extractNativeLibs 打开。
         if (lmLabel != null) {
@@ -207,9 +210,9 @@ dependencies {
     implementation(composeBom)
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.browser:browser:1.8.0")
-    // Bundled Chinese model: OCR works offline from the first launch, without Play Services downloads.
-    if (lmLabel == null) implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
-    else compileOnly("com.google.mlkit:text-recognition-chinese:16.0.1")
+    // CPU ONNX Runtime keeps OCR offline and supports the app's minSdk 24.
+    if (lmLabel == null) implementation("com.microsoft.onnxruntime:onnxruntime-android:1.21.1")
+    else compileOnly("com.microsoft.onnxruntime:onnxruntime-android:1.21.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("org.commonmark:commonmark:0.24.0")

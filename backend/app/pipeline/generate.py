@@ -311,9 +311,10 @@ def is_structured_realtime(retrieval: dict, question_type: str | None) -> bool:
 
 def completion_options(retrieval: dict, question_type: str | None) -> dict:
     """Reduce invisible structured prose while retaining explicit BYOK budgets."""
-    if not is_structured_realtime(retrieval, question_type):
-        return {}
-    options = {"no_think": True}
+    requested = llm_client._spec_override("thinking_enabled")
+    if retrieval.get("agent_analysis") or not is_structured_realtime(retrieval, question_type):
+        return {} if requested is None else {"no_think": not requested}
+    options = {"no_think": True if requested is None else not requested}
     if not llm_client._spec_override("max_tokens"):
         options["max_tokens"] = min(int(get_settings().llm_max_tokens), 256)
     return options
@@ -418,7 +419,10 @@ def build_prompt(
         "以下是一句铁路相关请求，我已解析意图与关键信息，并调用了数据源工具。\n"
         f"{policy}\n"
         f"{structured_boundary}"
-        f"{app_actions}"
+        + ("【补充分析】已有失败/空结果卡片保留。请解释可确认内容及未解决缺口；"
+           "可以结合检索事实进行分析，不把失败说成模型连接失败，不虚构工具未提供的实时事实。\n"
+           if retrieval.get("agent_analysis") else "")
+        + f"{app_actions}"
         # 必须显式用 `+`：`requirements` 现在是变量，不能像原来那样靠相邻字符串字面量
         # 做隐式拼接 —— 从字面量换成变量时漏掉这一步就是一个语法错误。
         + requirements
@@ -428,7 +432,12 @@ def build_prompt(
         f"工具调用：{trace or '(无)'}\n"
         f"问题性质 => {question_type or 'realtime'}\n\n"
         f"[检索事实]\n{data_anchor}\n\n"
-        "[数据来源]\n" + ("\n".join(f"- {s}" for s in sources) if sources else "- (无实时来源)")
+        "[查询状态与缺口]\n"
+        + str(retrieval.get("note") or "无额外说明")
+        + "\n" + "\n".join(
+            f"- {item.get('tool', '查询')}：{item.get('message') or item.get('error') or '未获得结果'}"
+            for item in retrieval.get("display_errors") or [] if isinstance(item, dict))
+        + "\n[数据来源]\n" + ("\n".join(f"- {s}" for s in sources) if sources else "- (无实时来源)")
     )
 
 
@@ -447,7 +456,7 @@ async def generate(
     prompt = build_prompt(user_message, slots, retrieval, history, question_type)
     # 历史已在 prompt 的 [对话历史] 区块中；不再重复传入 messages（见模块 docstring）
     answer, thinking = await chat_with_reasoning(prompt, **completion_options(retrieval, question_type))
-    if suppress_duplicate_structured_answer(answer, retrieval):
+    if not retrieval.get("agent_analysis") and suppress_duplicate_structured_answer(answer, retrieval):
         answer = ""
     return answer, retrieval.get("sources") or [], thinking
 

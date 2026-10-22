@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
@@ -53,7 +54,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,6 +107,9 @@ internal fun MainChatScreen(
     onImportAttachment: ((Boolean) -> Unit)? = null,
     onRemoveAttachment: () -> Unit = {},
     onTakePhoto: (() -> Unit)? = null,
+    thinkingEnabled: Boolean = false,
+    onThinkingEnabledChange: (Boolean) -> Unit = {},
+    thinkingDefaultCollapsed: Boolean = true,
 ) {
     var saveMemory by remember { mutableStateOf<Pair<String, String>?>(null) }
     // 同一个阈值同时控制输入消息和回复的记忆入口。
@@ -141,10 +144,10 @@ internal fun MainChatScreen(
             .filterIsInstance<TrainScheduleDisplay>().lastOrNull()
     }
     val readingBaseline = remember(chatState.reading) {
-        Triple(messages.size, chatState.answer.length, chatState.results.size)
+        Triple(messages.size, chatState.answer.length + chatState.thinking.length, chatState.results.size)
     }
     val hasNewReadingContent = chatState.reading && (messages.size > readingBaseline.first ||
-        chatState.answer.length > readingBaseline.second || chatState.results.size > readingBaseline.third)
+        chatState.answer.length + chatState.thinking.length > readingBaseline.second || chatState.results.size > readingBaseline.third)
     val inputFocusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
     var scrollingToLatest by remember { mutableStateOf(false) }
@@ -177,7 +180,7 @@ internal fun MainChatScreen(
             if (!scrolling) followBottom = nearBottom()
         }
     }
-    LaunchedEffect(chatState.answer, chatState.results.size, chatState.phase, chatState.reading, messages.size) {
+    LaunchedEffect(chatState.answer, chatState.thinking, chatState.results.size, chatState.phase, chatState.reading, messages.size) {
         if (autoScrollToLatest && !chatState.reading) {
             val itemCount = snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
             if (!chatState.reading) {
@@ -191,7 +194,8 @@ internal fun MainChatScreen(
         }
     }
 
-    val pageModifier = modifier.fillMaxSize().background(NativeColors.background).sidebarSwipe(opening = true, onSwipe = onOpenHistory)
+    val pageModifier = modifier.fillMaxSize().background(NativeColors.background)
+        .sidebarSwipe(opening = true, onSwipe = onOpenHistory)
     // Insets are consumed here once; the composer ends at the live safe bottom,
     // without adding a fixed gap copied from the mockup's device illustration.
     Column((if (applySystemInsets) pageModifier.windowInsetsPadding(systemInsets).imePadding() else pageModifier)
@@ -234,10 +238,19 @@ internal fun MainChatScreen(
             .onSizeChanged { size ->
                 val previous = lastListHeight
                 lastListHeight = size.height
-                // 视口收缩/扩张与输入栏在同一布局链上；贴底时按同一增量补偿，避免输入栏先动、内容后动。
+                // 视口变化与输入栏在同一布局链上；贴底时直接回到最新消息，非贴底阅读保持原位。
                 if (previous > 0 && followBottom && !scrollingToLatest && listState.layoutInfo.totalItemsCount > 0) {
-                    val delta = previous - size.height
-                    if (delta != 0) scope.launch { listState.scrollBy(delta.toFloat()) }
+                    if (previous != size.height) scope.launch {
+                        scrollingToLatest = true
+                        try {
+                            val lastIndex = listState.layoutInfo.totalItemsCount - 1
+                            if (lastIndex >= 0) {
+                                listState.scrollToItem(lastIndex)
+                                listState.scrollBy(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.size?.toFloat() ?: 0f)
+                                followBottom = true
+                            }
+                        } finally { scrollingToLatest = false }
+                    }
                 }
             }
             .captureLayoutConstraints("main-list-container", onLayoutDiagnostics).testTag("main-list-container")) {
@@ -284,14 +297,18 @@ internal fun MainChatScreen(
                         val metadata = message.meta
                         val storedResults = DisplayResultParser.parseArray(metadata?.optJSONArray("displayResults"))
                         val presentationBody = farePresentationBody(message.content, storedResults)
-                        if (presentationBody.isNotBlank()) Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.Top) {
+                        if (presentationBody.isNotBlank() || message.meta?.optString("thinking").orEmpty().isNotBlank()) Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.Top) {
                             Box(Modifier.size(50.appDp), contentAlignment = androidx.compose.ui.Alignment.TopStart) {
                                 Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape).testTag("main-assistant-avatar"),
                                     contentAlignment = androidx.compose.ui.Alignment.Center) {
                                     RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue, "main-assistant-avatar-icon")
                                 }
                             }
-                            MarkdownAnswer(presentationBody, Modifier.weight(1f).testTag("main-answer-$index"), firstTextTag = "main-answer-$index-text")
+                            Column(Modifier.weight(1f).animateContentSize()) {
+                                ThinkingDisclosure(message.meta?.optString("thinking").orEmpty(), thinkingDefaultCollapsed,
+                                    "stored-thinking-$index")
+                                if (presentationBody.isNotBlank()) MarkdownAnswer(presentationBody, Modifier.testTag("main-answer-$index"), firstTextTag = "main-answer-$index-text")
+                            }
                         }
                         val storedRequest = ChatUiState(
                             query = metadata?.optString("query").orEmpty(), phase = ChatPhase.COMPLETED,
@@ -311,7 +328,7 @@ internal fun MainChatScreen(
                                         Modifier.width(50.appDp).heightIn(min = 32.appDp),
                                         contentAlignment = androidx.compose.ui.Alignment.TopStart,
                                     ) {
-                                        if (presentationBody.isBlank() && resultIndex == 0) {
+                                        if (presentationBody.isBlank() && message.meta?.optString("thinking").orEmpty().isBlank() && resultIndex == 0) {
                                             Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape).testTag("main-assistant-avatar"),
                                                 contentAlignment = androidx.compose.ui.Alignment.Center) {
                                                 RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue, "main-assistant-avatar-icon")
@@ -335,7 +352,7 @@ internal fun MainChatScreen(
                         metadata?.optJSONObject("photoSpots")?.let { snapshot ->
                             Row(Modifier.fillMaxWidth()) {
                                 Box(Modifier.width(50.appDp)) {
-                                    if (presentationBody.isBlank() && storedResults.isEmpty()) {
+                                    if (presentationBody.isBlank() && message.meta?.optString("thinking").orEmpty().isBlank() && storedResults.isEmpty()) {
                                         Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape).testTag("main-assistant-avatar"), contentAlignment = androidx.compose.ui.Alignment.Center) {
                                             RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue)
                                         }
@@ -347,7 +364,7 @@ internal fun MainChatScreen(
                         metadata?.optString("error")?.takeIf { it.isNotBlank() && storedResults.none { result -> result is ErrorDisplay } }?.let { errorMessage ->
                             Row(Modifier.fillMaxWidth()) {
                                 Box(Modifier.width(50.appDp)) {
-                                    if (message.content.isBlank() && storedResults.isEmpty()) {
+                                    if (message.content.isBlank() && storedResults.isEmpty() && metadata?.optString("thinking").orEmpty().isBlank()) {
                                         Box(Modifier.size(40.appDp).background(NativeColors.selected, CircleShape), contentAlignment = androidx.compose.ui.Alignment.Center) {
                                             RailIcon("train-logo", Modifier.width(28.82.appDp).height(30.74.appDp), NativeColors.blue)
                                         }
@@ -397,6 +414,7 @@ internal fun MainChatScreen(
                         }
                     }
                     Column(Modifier.weight(1f).animateContentSize()) {
+                        ThinkingDisclosure(chatState.thinking, thinkingDefaultCollapsed, "live-thinking", forceExpanded = chatState.busy)
                         RailReveal(chatState.answer.isBlank()) {
                             QueryLoadingCard(chatState.recognized, chatState.stage)
                         }
@@ -539,6 +557,13 @@ internal fun MainChatScreen(
                     if (chatState.busy) "main-stop-icon" else "main-send-icon")
             }
         }
+        Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(start = 8.dp).clip(RoundedCornerShape(10.dp))
+            .toggleable(value = thinkingEnabled, enabled = !chatState.busy, role = Role.Switch, onValueChange = onThinkingEnabledChange)
+            .testTag("thinking-enabled-control"), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            BasicText("思考", style = TextStyle(color = NativeColors.ink, fontSize = 14.appSp))
+            Spacer(Modifier.width(8.dp))
+            SettingsSwitch(thinkingEnabled, !chatState.busy, onThinkingEnabledChange)
+        }
         RailReveal(showImport && onImportAttachment != null, modifier = Modifier.fillMaxWidth()) {
             AttachmentImportPanel(
                 cameraAvailable = onTakePhoto != null,
@@ -556,6 +581,29 @@ internal fun MainChatScreen(
 
     saveMemory?.let { (text, source) -> SaveMessageMemoryDialog(text, source) { saveMemory = null } }
 
+}
+
+@Composable
+private fun ThinkingDisclosure(text: String, defaultCollapsed: Boolean, tag: String, forceExpanded: Boolean = false) {
+    if (text.isBlank()) return
+    var expanded by remember(tag, defaultCollapsed) { mutableStateOf(forceExpanded || !defaultCollapsed) }
+    LaunchedEffect(forceExpanded, defaultCollapsed, tag) {
+        expanded = forceExpanded || !defaultCollapsed
+    }
+    val shape = RoundedCornerShape(12.dp)
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        .background(NativeColors.panel, shape).border(1.dp, NativeColors.line, shape)
+        .clip(shape).testTag(tag)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { expanded = !expanded }
+            .semantics { contentDescription = if (expanded) "收起思考内容" else "展开思考内容"; role = Role.Button }
+            .padding(horizontal = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            BasicText("思考内容", Modifier.weight(1f), style = TextStyle(color = NativeColors.muted, fontSize = 14.appSp))
+            RailIcon(if (expanded) "chevron-down" else "chevron", Modifier.size(16.dp), NativeColors.muted)
+        }
+        RailReveal(expanded) {
+            MarkdownAnswer(text, Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp))
+        }
+    }
 }
 
 /** 输入框下方的推入式工具区；占据正常布局空间，不盖住消息或另开悬浮窗口。 */

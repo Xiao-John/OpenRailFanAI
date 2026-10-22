@@ -1,20 +1,24 @@
 # Desktop OCR language data
 
-The desktop/Web backend adapter uses a locally installed Tesseract executable.
-It never calls a hosted OCR service. Android uses its bundled ML Kit recognizer
-instead and does not need Tesseract.
+Android and desktop backend use the official PaddleOCR PP-OCRv5 mobile ONNX
+models. Android bundles these assets and runs ONNX Runtime directly. The Python
+backend uses RapidOCR and ONNX Runtime in a worker process with a hard timeout.
+Neither path contacts a hosted OCR service or downloads a model at runtime.
 
-Included language data: Simplified Chinese and English, from
-[tesseract-ocr/tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast),
-revision `87416418657359cb625c412a48b6e1d6d41c29bd`. `manifest.json` records the
-SHA-256 of each downloaded file; the upstream Apache-2.0 license is in `LICENSE`.
-No language data is downloaded at runtime.
+Model origins, pinned revisions, SHA-256 values, and licenses are recorded in
+`paddle/manifest.json`. The PaddleOCR Apache-2.0 license is included in
+`paddle/LICENSE`. The two ONNX models total about 20.5 MiB and increase the APK
+size by about that amount before compression.
 
-Install Tesseract using the platform package manager (`brew install tesseract`
-on macOS; `apt install tesseract-ocr` on Debian/Ubuntu). The adapter detects it
-on PATH. `RAILFAN_TESSERACT` may specify its executable path, and
-`RAILFAN_TESSDATA_DIR` may override this directory's `tessdata` path.
-Keep both `chi_sim.traineddata` and `eng.traineddata` when deploying this backend.
+Install the optional desktop backend OCR dependencies alongside the regular
+backend requirements with `pip install -r backend/requirements.txt -r
+backend/requirements-ocr.txt`. Android does not install these Python packages;
+it uses the ONNX Runtime Android dependency in Gradle.
 
-References: [installation](https://tesseract-ocr.github.io/tessdoc/Installation.html),
-[command line](https://github.com/tesseract-ocr/tessdoc/blob/main/Command-Line-Usage.md).
+References: [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR),
+[RapidOCR](https://github.com/RapidAI/RapidOCR).
+
+Android uses a lightweight connected-component DB postprocessor and axis-aligned
+crops rather than the full OpenCV polygon/perspective pipeline. EXIF rotations
+and tall text crops are handled; severely tilted or curved text remains a known
+limitation. Compilation is not evidence of recognition accuracy on real images.

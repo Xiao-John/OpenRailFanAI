@@ -1,0 +1,3 @@
+# Optional desktop/Web local OCR adapter. Android uses the native ONNX Runtime AAR.
+rapidocr==3.10.0
+onnxruntime==1.21.1

@@ -86,6 +86,7 @@ fun MainSettingsScreen(
     var showAdvanced by remember { mutableStateOf(false) }
     var showEditor by remember { mutableStateOf(false) }
     var theme by remember { mutableStateOf(repository.theme()) }
+    var thinkingCollapsed by remember { mutableStateOf(repository.thinkingCollapsed()) }
 
     fun loadCatalog() {
         scope.launch {
@@ -131,7 +132,7 @@ fun MainSettingsScreen(
                     feedback = "请填写接口地址、API Key 和模型后保存。"
                     feedbackError = true
                 } else {
-                    runCatching { repository.save(configs, activeId, rememberKey, theme) }
+                    runCatching { repository.save(configs, activeId, rememberKey, theme, thinkingCollapsed) }
                         .onSuccess { onSaved() }
                         .onFailure { feedback = "设置保存失败，请重试。"; feedbackError = true }
                 }
@@ -217,7 +218,7 @@ fun MainSettingsScreen(
                                             val ok = probe.optBoolean("ok", false)
                                             if (ok) {
                                                 val updated = updateConfig(configs, ready.id) { ready }
-                                                runCatching { repository.save(updated, ready.id, rememberKey, theme) }
+                                                runCatching { repository.save(updated, ready.id, rememberKey, theme, thinkingCollapsed) }
                                                     .onSuccess {
                                                         configs = updated; activeId = ready.id
                                                         feedback = "连接成功，已保存配置。"; feedbackError = false
@@ -279,6 +280,18 @@ fun MainSettingsScreen(
                     }
                 }
             }
+            SettingsCard("思考内容", "") {
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp))
+                    .toggleable(value = thinkingCollapsed, enabled = busy.isEmpty(), role = Role.Switch) { thinkingCollapsed = it }
+                    .padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        BasicText("默认折叠思考内容", style = TextStyle(color = SettingsInk, fontSize = 16.sp))
+                        BasicText("开启后，已完成回复中的思考内容默认收起。", style = TextStyle(color = SettingsMuted, fontSize = 14.sp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    SettingsSwitch(thinkingCollapsed, busy.isEmpty()) { thinkingCollapsed = it }
+                }
+            }
             PersonalMemorySection(repository, client.updateBaseUrl)
             FuckCrSettingsSection(client.updateBaseUrl)
             UpdateSettingsSection(client, onOpenUrl)
@@ -330,7 +343,7 @@ fun MainSettingsScreen(
                 onReloadCatalog = { loadCatalog() },
                 onConnectAndSave = { ready, remember ->
                     val updated = if (configs.any { it.id == ready.id }) updateConfig(configs, ready.id) { ready } else configs + ready
-                    repository.saveProviderConfiguration(ready, remember, theme)
+                    repository.saveProviderConfiguration(ready, remember, theme, thinkingCollapsed)
                     configs = updated; activeId = ready.id; selectedId = ready.id; rememberKey = remember
                     onKeyEdited()
                 },

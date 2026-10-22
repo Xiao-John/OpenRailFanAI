@@ -22,7 +22,7 @@ from app.llm.client import LLMUnavailable
 from app.config import get_settings
 from app.models import PipelineResult, SlotValue
 from app.display_result import serialize_display_results
-from app.pipeline import generate
+from app.pipeline import generate, agent_loop
 from app.pipeline.ticket_answer import direct_answer, direct_complete
 from app.pipeline import repetition, planner, prefetch as prefetch_mod, retrieve
 from app.pipeline import service_dispatch
@@ -201,6 +201,13 @@ async def run_stream(
         finally:
             if pf is not None:
                 await pf.cancel()
+        async for step in agent_loop.continue_retrieval(
+            message, slots, retrieval, intent=intent_.value, question_type=question_type, history=history,
+        ):
+            if "retrieval" in step:
+                retrieval = step["retrieval"]
+            if "event" in step:
+                yield step["event"]
         display_results = serialize_display_results(retrieval.get("data") or [], retrieval.get("display_errors") or [])
         from app.pipeline.ticket_delivery import prepare
         retrieval = prepare(retrieval, client_capabilities, display_results)
@@ -215,7 +222,7 @@ async def run_stream(
             isinstance(item, dict) and item.get("tool") in {"train.schedule", "emu.routing"}
             for item in (retrieval.get("data") or [])
         ) or bool(structured_tool_errors)
-        if direct_complete(retrieval):
+        if direct_complete(retrieval) or retrieval.get("agent_analysis"):
             buffer_structured_answer = False
         logs.append(f"[数据检索] 工具：{trace_str} · {_ms(t0)}ms")
         perf_metrics.record_stage("retrieve", _ms(t0))
@@ -244,8 +251,10 @@ async def run_stream(
                                               _ms(generation_t0))
                     first_upstream.add(kind)
                 if kind == "think":
+                    if (llm or {}).get("thinking_enabled") is False:
+                        continue
                     gathered_thinking.append(text)
-                    if not buffer_structured_answer:
+                    if not buffer_structured_answer or (llm or {}).get("thinking_enabled") is True:
                         if text and not first_think:
                             perf_metrics.record_stage("first_public_think", _ms(t_all))
                             first_think = True
@@ -361,7 +370,8 @@ async def run_stream(
             "slots": [{"name": k, "value": v} for k, v in slots_pairs],
             "sources": sources,
             "tool_trace": (retrieval.get("tool_trace") or []),
-            "thinking": "" if buffer_structured_answer else "".join(gathered_thinking),
+            "thinking": "" if ((llm or {}).get("thinking_enabled") is False or
+                (buffer_structured_answer and (llm or {}).get("thinking_enabled") is not True)) else "".join(gathered_thinking),
             "answer_done": not generation_failed,
             # 非模型产出的降级回复：answer_done 仍为 False（模型确实没答上），
             # 用这个字段如实区分"有正文但是规则排版"与"根本没有正文"
@@ -477,6 +487,11 @@ async def run(
         logs.append(f"[数据检索] 工具：{retrieval.get('tool_trace') or '(无)'} · {_ms(t0)}ms")
         record_stage("retrieve", _ms(t0))
 
+        async for step in agent_loop.continue_retrieval(
+            message, slots, retrieval, intent=intent_.value, question_type=question_type, history=history,
+        ):
+            if "retrieval" in step:
+                retrieval = step["retrieval"]
         display_results = serialize_display_results(retrieval.get("data") or [], retrieval.get("display_errors") or [])
         from app.pipeline.ticket_delivery import prepare
         retrieval = prepare(retrieval, client_capabilities, display_results)
@@ -532,7 +547,7 @@ async def run(
             question_type=question_type,
             slots=[SlotValue(name=k, value=v) for k, v in slots.non_empty().items()],
             answer=answer,
-            thinking=thinking,
+            thinking="" if (llm or {}).get("thinking_enabled") is False else thinking,
             sources=sources,
             tool_trace=retrieval.get("tool_trace", []) or [],
             process_logs=logs,

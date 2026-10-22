@@ -19,6 +19,7 @@ data class ChatUiState(
     val latencyMs: Double? = null,
     val processLogs: List<String> = emptyList(),
     val reading: Boolean = false,
+    val thinking: String = "",
 ) {
     val busy: Boolean get() = phase == ChatPhase.CONNECTING || phase == ChatPhase.STREAMING
     val terminal: Boolean get() = phase == ChatPhase.COMPLETED || phase == ChatPhase.FAILED || phase == ChatPhase.STOPPED
@@ -43,12 +44,14 @@ class ChatStateMachine(initial: ChatUiState = ChatUiState()) {
         return id
     }
 
-    fun onEvent(id: String, type: String, delta: String = "", text: String = "", message: String = "", stage: String = "", recognized: String = ""): Boolean {
+    fun onEvent(id: String, type: String, delta: String = "", text: String = "", message: String = "", stage: String = "", recognized: String = "", thinking: String = ""): Boolean {
         if (!accepts(id)) return false
         state = when (type) {
             "stage" -> state.copy(phase = ChatPhase.STREAMING, stage = stage, recognized = recognized.ifBlank { state.recognized })
             "answer" -> state.copy(phase = ChatPhase.STREAMING, answer = state.answer + delta)
             "replace" -> state.copy(phase = ChatPhase.STREAMING, answer = text)
+            "think", "thinking" -> state.copy(phase = ChatPhase.STREAMING, thinking = state.thinking + delta)
+            "done" -> state.copy(thinking = thinking.ifBlank { state.thinking })
             // An SSE error is followed by done (which can still contain useful
             // structured results). The HTTP outcome owns terminal completion.
             "error" -> state.copy(phase = ChatPhase.STREAMING, error = message.ifBlank { "查询失败" })
@@ -62,6 +65,7 @@ class ChatStateMachine(initial: ChatUiState = ChatUiState()) {
         state = state.copy(
             phase = if (outcome.error == null) ChatPhase.COMPLETED else ChatPhase.FAILED,
             answer = outcome.answer,
+            thinking = outcome.thinking,
             results = if (preserveResultsOnComplete) mergeResults(state.results, outcome.displayResults) else outcome.displayResults,
             error = outcome.error,
             intent = outcome.intent,

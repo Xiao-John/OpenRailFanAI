@@ -16,11 +16,13 @@ data class ChatStreamRequest(
     val clientCapabilities: List<String> = emptyList(),
     val agentFiles: JSONArray? = null,
     val personalMemory: List<String> = emptyList(),
+    val thinkingEnabled: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("message", message)
         .put("history", JSONArray().also { array -> history.forEach { array.put(it.toJson()) } })
         .put("session_id", sessionId)
+        .put("thinking_enabled", thinkingEnabled)
         .put("client_capabilities", JSONArray().also { array -> clientCapabilities.distinct().forEach { array.put(it) } })
         .also { body ->
             if (personalMemory.isNotEmpty()) body.put("personal_memory", JSONArray(personalMemory))
@@ -97,6 +99,7 @@ data class ChatStreamOutcome(
     val processLogs: List<String>,
     val displayResultsJson: String,
     val photoSpotJson: String? = null,
+    val thinking: String = "",
 )
 
 object DisplayResultParser {

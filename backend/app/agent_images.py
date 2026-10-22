@@ -1,11 +1,13 @@
-"""Bounded image validation and optional, entirely local Tesseract OCR.
+"""Bounded image validation and entirely local PaddleOCR/ONNX recognition.
 
-Android uses its bundled native OCR before sending text. Desktop deployments can
-use this adapter; no image is sent to an OCR service.
+Android uses the same bundled PaddleOCR models through ONNX Runtime. This
+backend adapter is for desktop deployments; it never sends an image to an OCR
+service.
 """
 from pathlib import Path
+import importlib.util
 import os
-import shutil
+import sys
 import struct
 import subprocess
 import tempfile
@@ -74,36 +76,29 @@ def image_info(content: bytes, extension: str):
 
 
 def local_ocr(content: bytes, mime: str) -> str:
-    from app.config import get_settings
-    settings = get_settings()
-    executable = settings.railfan_tesseract or shutil.which('tesseract')
-    if not executable:
-        raise LocalOCRUnavailable('本地 OCR 未安装；请配置 Tesseract 或使用客户端 OCR')
+    if importlib.util.find_spec('rapidocr') is None:
+        raise LocalOCRUnavailable('本地 PaddleOCR 未安装；请使用设备端 OCR')
     suffix = next((ext for ext, value in IMAGE_EXTENSIONS.items() if value == mime), None)
     if suffix is None:
         raise ValueError('不支持的图片类型')
     image_info(content, suffix)
-    language_dir = settings.railfan_tessdata_dir
-    bundled = Path(__file__).resolve().parents[1] / 'resources' / 'ocr' / 'tessdata'
-    if not language_dir and bundled.is_dir():
-        language_dir = str(bundled)
-    command = [str(executable)]
+    backend_root = Path(__file__).resolve().parents[1]
+    command = [sys.executable, '-m', 'app.ocr_worker']
     with tempfile.TemporaryDirectory(prefix='railfan-ocr-') as directory:
         image = Path(directory)/('input'+suffix)
         image.write_bytes(content)
-        command += [str(image), 'stdout', '-l', 'chi_sim+eng', '--psm', '3']
-        if language_dir:
-            command += ['--tessdata-dir', language_dir]
+        command += [str(image)]
         # Bound reads before decoding: PIPE would first collect arbitrary OCR
         # output into memory, including verbose errors from malformed inputs.
         with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
             try:
                 result = subprocess.run(command, stdout=output, stderr=errors,
-                                        timeout=30, check=False, env={**os.environ, 'OMP_THREAD_LIMIT': '1'})
+                                        timeout=30, check=False, cwd=backend_root,
+                                        env={**os.environ, 'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'})
             except (OSError, subprocess.TimeoutExpired) as exc:
                 raise LocalOCRUnavailable('本地 OCR 无法运行或处理超时') from exc
             if result.returncode:
-                raise LocalOCRUnavailable('本地 OCR 失败，请确认中文和英文识别组件已安装')
+                raise LocalOCRUnavailable('本地 PaddleOCR 失败，请确认 OCR 运行依赖可用')
             output.seek(0)
             raw = output.read(240001)
             if len(raw) > 240000:

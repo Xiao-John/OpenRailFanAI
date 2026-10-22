@@ -75,12 +75,18 @@ class MainSettingsRepository private constructor(private val files: File) {
 
     fun theme(): String = synchronized(lock) { readState().optString(THEME_KEY, "auto") }
 
+    fun thinkingCollapsed(): Boolean = synchronized(lock) { readState().optBoolean(THINKING_COLLAPSED_KEY, true) }
+
+    fun setThinkingCollapsed(value: Boolean) = synchronized(lock) {
+        writeState(readState().put(THINKING_COLLAPSED_KEY, value))
+    }
+
     fun setTheme(value: String) = synchronized(lock) {
         require(value in listOf("auto", "light", "dark"))
         writeState(readState().put(THEME_KEY, value))
     }
 
-    fun save(configs: List<ProviderConfig>, activeId: String, rememberKey: Boolean, theme: String? = null) = synchronized(lock) {
+    fun save(configs: List<ProviderConfig>, activeId: String, rememberKey: Boolean, theme: String? = null, thinkingCollapsed: Boolean? = null) = synchronized(lock) {
         val root = readState()
         val secrets = readSecrets()
         val previous = loadOrMigrateLlm()
@@ -116,6 +122,7 @@ class MainSettingsRepository private constructor(private val files: File) {
         val llm = JSONObject().put("entries", entries).put("activeId", activeId).put("rememberKey", rememberKey)
         root.put(LLM_KEY, llm.toString())
         if (!theme.isNullOrBlank()) root.put(THEME_KEY, theme)
+        thinkingCollapsed?.let { root.put(THINKING_COLLAPSED_KEY, it) }
         writeState(root)
     }
 
@@ -130,7 +137,7 @@ class MainSettingsRepository private constructor(private val files: File) {
     }
 
     /** A guide only activates its selected provider and preserves every other account. */
-    internal fun saveProviderConfiguration(config: ProviderConfig, remember: Boolean, theme: String) = synchronized(lock) {
+    internal fun saveProviderConfiguration(config: ProviderConfig, remember: Boolean, theme: String, thinkingCollapsed: Boolean? = null) = synchronized(lock) {
         require(providerSetupGuide(config.id) != null && providerPresetHelp(config) != null)
         val saved = loadOrMigrateLlm()
         val root = readState()
@@ -153,6 +160,7 @@ class MainSettingsRepository private constructor(private val files: File) {
         saved.put("entries", updated).put("activeId", config.id)
         if (!saved.has("rememberKey")) saved.put("rememberKey", remember)
         root.put(LLM_KEY, saved.toString()).put(THEME_KEY, theme)
+        thinkingCollapsed?.let { root.put(THINKING_COLLAPSED_KEY, it) }
         if (remember) securePut(secrets, config.id, config.key) else secrets.remove(config.id)
         try { writeSecrets(secrets); writeState(root) }
         catch (error: Exception) {
@@ -289,6 +297,7 @@ class MainSettingsRepository private constructor(private val files: File) {
         private const val LEGACY_WIZARD_SECRET = "__setup_siliconflow_v1"
         private const val LLM_KEY = "railfan_llm_v1"
         private const val THEME_KEY = "railfan_theme"
+        private const val THINKING_COLLAPSED_KEY = "railfan_thinking_collapsed_v1"
         private const val SECRETS_FILE = "secrets.json"
         private const val KEY_ALIAS = "railfan-byok-v1"
         private const val TRANSFORM = "AES/GCM/NoPadding"

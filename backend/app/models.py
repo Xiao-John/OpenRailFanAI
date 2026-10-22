@@ -31,6 +31,7 @@ class ChatRequest(BaseModel):
         description="此前已完成的多轮对话（不含本次 message），用于上下文理解",
     )
     personal_memory: list[constr(min_length=1, max_length=2100)] = Field(default_factory=list, max_items=8, repr=False, description="用户开启记忆后提供的相关片段，仅用于个性化生成")
+    thinking_enabled: Optional[bool] = Field(None, description="本次是否请求模型思考；模型不支持时不伪造思考内容")
     display_action: Optional[dict] = Field(None, description="由界面发起的结构化展示动作参数")
 
     client_capabilities: list[str] = Field(default_factory=list, max_items=32, description="可选展示能力；未声明保留旧版文字回执")
@@ -85,8 +86,9 @@ class ChatRequest(BaseModel):
                 "api_key": self.api_key,
                 "max_tokens": self.max_tokens,
                 "context_tokens": self.context_tokens,
+                "thinking_enabled": self.thinking_enabled,
             }.items()
-            if v
+            if v is not None and (v or k == "thinking_enabled")
         }
 
     @validator("message")

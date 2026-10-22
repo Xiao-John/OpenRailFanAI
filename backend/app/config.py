@@ -87,8 +87,6 @@ class Settings(BaseSettings):
     # 逗号分隔的来源白名单；空值只允许同源，原生客户端不受 CORS 限制。
     cors_allowed_origins: str = ""
     main_ticket_shared_rows_enabled: bool = True
-    railfan_tesseract: str = ""
-    railfan_tessdata_dir: str = ""
 
     @root_validator(skip_on_failure=True)
     def _remote_bind_requires_opt_in(cls, values):

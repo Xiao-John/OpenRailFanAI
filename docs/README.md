@@ -6,6 +6,7 @@
 
 | 文档 | 内容 |
 |---|---|
+| [`agent-ocr-thinking-update-20261022.md`](agent-ocr-thinking-update-20261022.md) | **Main 更新**：PaddleOCR、可续查工具循环、思考开关、侧滑与输入区跟随；编译通过，待真实使用验收 |
 | [`release-0.1.31.md`](release-0.1.31.md) | **发布说明**：开关整行点击、圆角按压层裁切、贴底时输入区同步上推 |
 | [`agent-handoff-20261021.md`](agent-handoff-20261021.md) | **交接**：0.1.30 后改动、开关修复、方角按压层审计与未决项 |
 | [`release-automation.md`](release-automation.md) | **发布工具**：一份Markdown驱动版本、构建、签名核验、源码推送与Release上传 |

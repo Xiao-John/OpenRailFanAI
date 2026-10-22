@@ -1,6 +1,7 @@
 package org.openrailfanai.app
 
 import android.util.Log
+import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -10,7 +11,8 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 
 /** Owns the HTTP/SSE contract with the existing FastAPI chat endpoint. */
-class ChatRepository(private val baseUrl: String) {
+class ChatRepository(private val baseUrl: String, context: Context? = null) {
+    private val appContext = context?.applicationContext
     @Volatile private var activeConnection: HttpURLConnection? = null
     @Volatile private var activeWorker: Thread? = null
     @Volatile private var capabilitiesChecked = false
@@ -37,6 +39,7 @@ class ChatRepository(private val baseUrl: String) {
         }
         activeConnection = connection
         val answer = StringBuilder()
+        val thinking = StringBuilder()
         var error: String? = null
         var intent: String? = null
         var sources: List<String> = emptyList()
@@ -56,9 +59,12 @@ class ChatRepository(private val baseUrl: String) {
                 readSseEvents(reader) { event ->
                     when (event.optString("type")) {
                         "answer" -> answer.append(event.optString("delta"))
+                        "think", "thinking" -> thinking.append(event.optString("delta"))
                         "replace" -> { answer.setLength(0); answer.append(event.optString("text")) }
                         "error" -> error = event.optString("message").takeIf(String::isNotBlank)
                         "done" -> {
+                            val finalThinking = event.optString("thinking").takeIf(String::isNotBlank)
+                            if (finalThinking != null) { thinking.setLength(0); thinking.append(finalThinking) }
                             intent = event.string("intent")
                             slots = event.optJSONArray("slots")
                             sources = stringArray(event.optJSONArray("sources"))
@@ -76,7 +82,7 @@ class ChatRepository(private val baseUrl: String) {
             val photoSpotJson = if (intent == "photo_spot" && error == null && !Thread.currentThread().isInterrupted) {
                 PhotoSpotRepository(baseUrl).snapshot(photoScope(slots), sources).toString()
             } else null
-            return ChatStreamOutcome(answer.toString(), error, intent, sources, results, usage, latency, processLogs, displayResultsJson, photoSpotJson)
+            return ChatStreamOutcome(answer.toString(), error, intent, sources, results, usage, latency, processLogs, displayResultsJson, photoSpotJson, thinking.toString())
         } catch (e: ChatHttpException) {
             throw e
         } catch (e: Exception) {
@@ -95,7 +101,7 @@ class ChatRepository(private val baseUrl: String) {
         var files = request.agentFiles ?: JSONArray()
         fun localOcr() {
             onEvent(JSONObject().put("type", "stage").put("stage", "local_ocr").put("msg", "正在设备上识别图片文字…"))
-            files = ImageTextRecognizer.convert(files)
+            files = ImageTextRecognizer.convert(appContext ?: error("设备端 OCR 需要应用上下文"), files)
         }
         val hasImages = (0 until files.length()).any { i -> files.optJSONObject(i)?.let { AppAgent.isImage(it.optString("name"), it.optString("mime")) } == true }
         if (!imageEnabled && hasImages) localOcr()

@@ -71,6 +71,7 @@ import java.util.concurrent.Executors
 class MainComposeActivity : ComponentActivity(), BackendService.Listener {
     private var status by mutableStateOf("等待设备内服务…")
     private var input by mutableStateOf("")
+    private var thinkingEnabled by mutableStateOf(false)
     private val stateMachine = ChatStateMachine()
     private var chatState by mutableStateOf(stateMachine.state)
     private var connectedPort by mutableStateOf(0)
@@ -181,6 +182,9 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 conversationTokens = conversationStore.all().firstOrNull { it.id == conversationId }?.totalTokens ?: 0L,
                 input = input,
                 onInputChange = { input = it },
+                thinkingEnabled = thinkingEnabled,
+                onThinkingEnabledChange = { thinkingEnabled = it },
+                thinkingDefaultCollapsed = settingsRepository.thinkingCollapsed(),
                 pendingAttachment = agentFiles[conversationId]?.optJSONObject(0)?.let { file ->
                     val encoded = file.optString("content_base64")
                     val bytes = encoded.length.toLong() * 3 / 4 - encoded.takeLast(2).count { it == '=' }
@@ -314,7 +318,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             }
             runOnUiThread {
                 if (probe.isSuccess) {
-                    repository = ChatRepository("http://127.0.0.1:$port")
+                    repository = ChatRepository("http://127.0.0.1:$port", applicationContext)
                     connectedPort = port
                     status = "后端已连接（127.0.0.1:$port）"
                 } else {
@@ -416,6 +420,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             llmSpec = settingsRepository.requestLlmSpec(),
             agentFiles = requestAttachments,
             personalMemory = runCatching { PersonalMemoryStore(this).relevant(query) }.getOrElse { Toast.makeText(this, "本轮未能读取记忆，已按普通对话继续", Toast.LENGTH_SHORT).show(); emptyList() },
+            thinkingEnabled = thinkingEnabled,
         )
         io.execute {
             val response = runCatching {
@@ -442,6 +447,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                                 requestId, type, event.optString("delta"),
                                 event.optString("text"), event.optString("message"),
                                 event.optString("stage"), event.optString("recognized"),
+                                event.optString("thinking"),
                             )) {
                             chatState = stateMachine.state
                             if (type == "stage") status = "正在查询：${event.optString("stage")}"
@@ -456,6 +462,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                         chatState = stateMachine.state
                         val meta = org.json.JSONObject()
                             .put("query", query)
+                            .put("thinking", outcome.thinking)
                             .put("intent", outcome.intent)
                             .put("sources", org.json.JSONArray(outcome.sources))
                             .put("displayResults", org.json.JSONArray(outcome.displayResultsJson))
@@ -476,7 +483,9 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                     }
                     if (stateMachine.fail(requestId, message)) {
                         chatState = stateMachine.state
-                        conversationStore.addAssistant(requestConversationId, "", org.json.JSONObject().put("error", message).put("errorCategory", mainErrorCategory(message)))
+                        conversationStore.addAssistant(requestConversationId, "", org.json.JSONObject()
+                            .put("query", query).put("thinking", chatState.thinking)
+                            .put("error", message).put("errorCategory", mainErrorCategory(message)))
                         conversationRevision++
                         status = message
                     }
@@ -507,7 +516,8 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         val id = chatState.requestId ?: return
         if (stateMachine.stop(id)) {
             chatState = stateMachine.state
-            conversationStore.addAssistant(conversationId, chatState.answer, org.json.JSONObject().put("stopped", true))
+            conversationStore.addAssistant(conversationId, chatState.answer, org.json.JSONObject()
+                .put("stopped", true).put("thinking", chatState.thinking))
             conversationRevision++
             status = "已停止生成"
             repository?.cancel()

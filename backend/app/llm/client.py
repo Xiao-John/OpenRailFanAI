@@ -222,7 +222,7 @@ _DROPPABLE_PARAMS: dict[str, tuple[str, ...]] = {
                         # json_schema 是 response_format 的"加强版"，上游不支持时必须
                         # 能被同一阶梯丢掉（否则会以 LLMUnavailable 结束整轮，而不是降级重试）
                         "json_schema", "json schema", "structured output"),
-    "enable_thinking": ("enable_thinking", "thinking", "reasoning_effort", "reasoning effort"),
+    "enable_thinking": ("enable_thinking", "thinking", "reasoning_effort", "reasoning effort", "reasoning"),
     "max_tokens": ("max_tokens", "max output", "max_output_tokens", "max tokens"),
     "stream_options": ("stream_options", "include_usage"),
 }
@@ -859,6 +859,15 @@ def _kwargs_for(
     # 供应商级的强制关思考优先于调用方：见 Provider.always_no_think
     # （运行期装上的设备端模型拿不到全局配置，只能靠这条）
     no_think = bool(no_think or provider.always_no_think)
+    if not no_think and _spec_override("thinking_enabled") is True and "enable_thinking" not in dropped:
+        if dialect == "responses":
+            extra_body["reasoning"] = {"effort": "medium", "summary": "auto"}
+            no_think_field = "reasoning"
+        elif provider.id == "deepseek":
+            extra_body["thinking"] = {"type": "enabled"}
+            no_think_field = "thinking"
+        else:
+            extra_body["enable_thinking"] = True
     if no_think and "enable_thinking" not in dropped:
         no_think_body = provider.no_think_body or {"enable_thinking": False}
         no_think_field = next(iter(no_think_body), "enable_thinking")
@@ -1087,6 +1096,9 @@ def _gen_no_think(no_think: bool | None) -> bool:
     """
     if no_think is not None:
         return no_think
+    requested = _spec_override("thinking_enabled")
+    if isinstance(requested, bool):
+        return not requested
     return bool(getattr(get_settings(), "llm_generation_no_think", False))
 
 
@@ -1317,6 +1329,7 @@ async def chat_structured(
     schema_in_prompt: bool = True,
     prompt_tail: str = "",
     images: list[dict[str, str]] | None = None,
+    max_tokens: int | None = None,
 ) -> Any:
     """结构化输出：让模型严格按提供的 JSON Schema 输出。
 
@@ -1395,7 +1408,7 @@ async def chat_structured(
         ladder.attempts += 1
         kw = _kwargs_for(
             ladder.dialect, provider, messages=messages, model=_model,
-            temperature=temperature, max_tokens=0, json_mode=True,
+            temperature=temperature, max_tokens=effective_max_tokens(messages, max_tokens) if max_tokens else 0, json_mode=True,
             no_think=no_think, dropped=ladder.dropped,
             json_schema=constrained, json_schema_name="railfan_structured",
         )
