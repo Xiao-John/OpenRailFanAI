@@ -86,7 +86,9 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
     private var previousAgentTheme: String? = null
     private var pendingImportConversationId: String? = null
     private var pendingCameraPath: String? = null
-    private val agentFiles = mutableStateMapOf<String, org.json.JSONArray>()
+    private lateinit var attachmentStore: AttachmentStore
+    private var activeRequestRef: String? = null
+    private val agentFiles = mutableStateMapOf<String, org.json.JSONObject>()
     private val busy: Boolean get() = chatState.busy
     private val io = Executors.newSingleThreadExecutor()
     private val titleIo = Executors.newSingleThreadExecutor()
@@ -119,6 +121,14 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         NativeColors.preference = settingsRepository.theme()
         NativeColors.systemDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         conversationStore = ConversationStore(this)
+        attachmentStore = AttachmentStore(this)
+        agentFiles.putAll(conversationStore.draftAttachments())
+        io.execute {
+            conversationStore.all().forEach { conversation ->
+                runCatching { attachmentStore.cleanup(conversation.id, conversationStore.requestReferences(conversation.id),
+                    listOfNotNull(conversationStore.draftAttachments()[conversation.id])) }
+            }
+        }
         if (conversationStore.current() == null) conversationStore.create()
         conversationId = conversationStore.currentId()
         input = conversationStore.draft(conversationId)
@@ -185,14 +195,13 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 thinkingEnabled = thinkingEnabled,
                 onThinkingEnabledChange = { thinkingEnabled = it },
                 thinkingDefaultCollapsed = settingsRepository.thinkingCollapsed(),
-                pendingAttachment = agentFiles[conversationId]?.optJSONObject(0)?.let { file ->
-                    val encoded = file.optString("content_base64")
-                    val bytes = encoded.length.toLong() * 3 / 4 - encoded.takeLast(2).count { it == '=' }
+                pendingAttachment = agentFiles[conversationId]?.let { file ->
+                    val bytes = file.optLong("size")
                     PendingAttachment(file.optString("name"), bytes, AppAgent.isImage(file.optString("name"), file.optString("mime")))
                 },
                 onImportAttachment = { imagesOnly -> openAgentImport(imagesOnly) },
                 onTakePhoto = { openAgentCamera() },
-                onRemoveAttachment = { if (!busy) { agentFiles.remove(conversationId); status = "附件已移除" } },
+                onRemoveAttachment = { if (!busy) { agentFiles.remove(conversationId); conversationStore.saveDraftAttachment(conversationId, null); status = "附件已移除" } },
                 onOpenHistory = { pageNavigation = pageNavigation.navigateTo(MainPage.HISTORY) },
                 onNewConversation = { openNewConversation() },
                 onBack = { navigateBackOrDelegateToActivity() },
@@ -205,7 +214,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                     }
                 },
                 onAction = { action, prompt, preserve -> submitQuery(prompt, action, preserve) },
-                onRetry = { submitQuery(chatState.query) },
+                onRetry = { retryLatestRequest(chatState.query) },
                 onSettings = { category ->
                     settingsKeyError = category == "auth"
                     pageNavigation = pageNavigation.navigateTo(MainPage.SETTINGS)
@@ -221,7 +230,8 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                     startActivity(Intent.createChooser(share, "分享回复"))
                 },
                 onRegenerate = { query -> submitQuery(query) },
-                onRetryQuery = { query -> submitQuery(query) },
+                onRegenerateMessage = { message -> regenerateMessage(message) },
+                onRetryQuery = { query -> retryLatestRequest(query) },
                 onFollowup = { draft -> input = draft },
                 ) }
                 AnimatedVisibility(pageNavigation.current == MainPage.HISTORY, enter = fadeIn(tween(160)), exit = fadeOut(tween(140))) {
@@ -246,8 +256,12 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                         },
                         onRename = { id, title -> conversationStore.rename(id, title); conversationRevision++ },
                         onDelete = { id ->
+                            if (busy && id == conversationId) stopQuery()
                             saveCurrentDraft()
                             conversationStore.delete(id)
+                            agentFiles.remove(id)
+                            io.execute { runCatching { attachmentStore.deleteConversation(id) } }
+                            if (id == conversationId) { stateMachine.reset(); chatState = stateMachine.state }
                             conversationId = conversationStore.currentId()
                             input = conversationStore.draft(conversationId)
                             conversationRevision++
@@ -348,15 +362,47 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         pageNavigation = MainPageNavigation.root()
     }
 
-    private fun submitQuery(retryQuery: String? = null, displayAction: org.json.JSONObject? = null, preserveResults: Boolean = false) {
-        val query = (retryQuery ?: input).trim()
+    private class AttachmentInputException(cause: Throwable) : IllegalStateException("原附件已丢失或损坏，请重新导入后发送；本次未发送请求。", cause)
+
+    private fun retryLatestRequest(query: String) {
+        val previous = conversationStore.all().firstOrNull { it.id == conversationId }?.messages.orEmpty()
+            .lastOrNull { it.role == "assistant" && it.meta?.optString("query") == query }
+        if (previous != null) regenerateMessage(previous) else submitQuery(query)
+    }
+
+    private fun regenerateMessage(message: StoredMessage) {
+        if (busy) return
+        val ref = message.meta?.optString("request_ref").orEmpty()
+        if (ref.isNotBlank()) {
+            runCatching { attachmentStore.request(conversationId, ref) }
+                .onSuccess { submitQuery(replay = it) }
+                .onFailure { status = it.message ?: "原请求无法恢复，请重新导入附件后发送。"; Toast.makeText(this, status, Toast.LENGTH_LONG).show() }
+        } else {
+            val query = message.meta?.optString("query").orEmpty()
+            if (query.isBlank()) { status = "旧回复缺少原提问，无法重新生成。"; return }
+            val history = conversationStore.all().firstOrNull { it.id == conversationId }?.messages.orEmpty()
+            if (AppAgent.requiresReimport(history, query)) {
+                status = "旧版未保存原附件，请重新导入后发送。"; Toast.makeText(this, status, Toast.LENGTH_LONG).show(); return
+            }
+            // Old plain-text replies must never borrow the current attachment draft.
+            val legacy = org.json.JSONObject().put("message", query).put("attachments", org.json.JSONArray())
+            submitQuery(replay = legacy)
+        }
+    }
+
+    private fun submitQuery(retryQuery: String? = null, displayAction: org.json.JSONObject? = null, preserveResults: Boolean = false, replay: org.json.JSONObject? = null) {
+        val query = (replay?.optString("message") ?: retryQuery ?: input).trim()
         if (query.isEmpty() || busy) return
-        if (retryQuery != null && displayAction == null && AppAgent.requiresReimport(conversationStore.all().firstOrNull { it.id == conversationId }?.messages.orEmpty(), query)) {
+        if (replay == null && retryQuery != null && displayAction == null && AppAgent.requiresReimport(conversationStore.all().firstOrNull { it.id == conversationId }?.messages.orEmpty(), query)) {
             status = "该提问使用了附件，请重新导入后重新发送；不会改用当前附件。"
             Toast.makeText(this, "请重新导入原附件，再发送这条问题。", Toast.LENGTH_LONG).show()
             return
         }
-        if (displayAction == null) {
+        if (replay == null && displayAction == null && query == "移除附件") {
+            agentFiles.remove(conversationId); conversationStore.saveDraftAttachment(conversationId, null)
+            input = ""; saveCurrentDraft(); status = "附件已移除"; return
+        }
+        if (displayAction == null && replay == null && !agentFiles.containsKey(conversationId)) {
             val memoryCommand = Regex("^(?:请)?记住[：:]([\\s\\S]+)$").matchEntire(query)
             if (memoryCommand != null) {
                 val answer = runCatching { PersonalMemoryStore(this).remember(memoryCommand.groupValues[1], "用户明确要求保存"); "已保存到本机个人记忆，可在设置中查看总结、删除或关闭。" }
@@ -385,19 +431,16 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 openAgentImport(query.contains("图片"))
                 return
             }
-            if (query == "移除附件") { agentFiles.remove(conversationId); input = ""; saveCurrentDraft(); status = "附件已移除"; return }
+            if (query == "移除附件") { agentFiles.remove(conversationId); conversationStore.saveDraftAttachment(conversationId, null); input = ""; saveCurrentDraft(); status = "附件已移除"; return }
         }
         val client = repository ?: return
         if (query.isEmpty() || busy) return
-        if (retryQuery == null) {
-            input = ""
-            saveCurrentDraft()
-        }
         val requestConversationId = conversationId
-        val requestAttachments = if (displayAction == null) agentFiles[requestConversationId] else null
-        conversationStore.addUser(requestConversationId, query, if (requestAttachments != null) org.json.JSONObject().put("attachment_input", true) else null)
-        conversationRevision++
-        val fileOperation = displayAction == null && (AppAgent.fileCommand(query) || agentFiles.containsKey(requestConversationId))
+        val effectiveAction = displayAction ?: replay?.optJSONObject("display_action")
+        val attachmentRefs = replay?.optJSONArray("attachments") ?: org.json.JSONArray().also { refs ->
+            if (effectiveAction == null) agentFiles[requestConversationId]?.let { refs.put(org.json.JSONObject(it.toString())) }
+        }
+        val fileOperation = effectiveAction == null && (AppAgent.fileCommand(query) || attachmentRefs.length() > 0)
         val priorMessages = conversationStore.all().firstOrNull { it.id == requestConversationId }?.messages.orEmpty()
             .filter { it.role == "user" || (it.role == "assistant" && it.meta?.has("error") != true && it.meta?.optBoolean("stopped") != true) }
             .takeLast(20).map {
@@ -409,22 +452,43 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 } else it.content
                 ChatMessage(it.role, content)
             }
+        val requestHistory = replay?.optJSONArray("history")?.let { saved ->
+            (0 until saved.length()).map { index -> saved.getJSONObject(index).let { ChatMessage(it.getString("role"), it.getString("content")) } }
+        } ?: priorMessages
+        val spec = settingsRepository.requestLlmSpec()?.let { org.json.JSONObject(it.toString()) }
+        replay?.optJSONArray("input_types")?.let { spec?.put("input_types", it) }
+        val requestThinking = replay?.optBoolean("thinking_enabled", thinkingEnabled) ?: thinkingEnabled
+        val snapshot = org.json.JSONObject().put("version", 1).put("message", query)
+            .put("history", org.json.JSONArray().also { rows -> requestHistory.forEach { rows.put(it.toJson()) } })
+            .put("attachments", attachmentRefs).put("thinking_enabled", requestThinking)
+            .put("input_types", spec?.optJSONArray("input_types") ?: org.json.JSONArray().put("text"))
+        effectiveAction?.let { snapshot.put("display_action", it) }
+        val requestRef = runCatching { attachmentStore.saveRequest(requestConversationId, snapshot) }.getOrElse {
+            status = "无法保存请求，请检查本机存储后重试。"; Toast.makeText(this, status, Toast.LENGTH_LONG).show(); return
+        }
+        activeRequestRef = requestRef
+        conversationStore.addUser(requestConversationId, query, org.json.JSONObject().put("request_ref", requestRef)
+            .put("attachment_input", attachmentRefs.length() > 0).put("attachments", attachmentRefs))
+        conversationRevision++
+        if (retryQuery == null && replay == null) { input = ""; saveCurrentDraft() }
         status = "正在查询…"
         val requestId = stateMachine.begin(query, preserveResults = preserveResults)
         chatState = stateMachine.state
         val request = ChatStreamRequest(
             query,
-            history = priorMessages.dropLast(1),
+            history = requestHistory,
             sessionId = requestConversationId,
-            displayAction = displayAction,
-            llmSpec = settingsRepository.requestLlmSpec(),
-            agentFiles = requestAttachments,
+            displayAction = effectiveAction,
+            llmSpec = spec,
             personalMemory = runCatching { PersonalMemoryStore(this).relevant(query) }.getOrElse { Toast.makeText(this, "本轮未能读取记忆，已按普通对话继续", Toast.LENGTH_SHORT).show(); emptyList() },
-            thinkingEnabled = thinkingEnabled,
+            thinkingEnabled = requestThinking,
         )
         io.execute {
             val response = runCatching {
-                client.stream(request) { event ->
+                val files = runCatching { org.json.JSONArray().also { rows ->
+                    for (index in 0 until attachmentRefs.length()) rows.put(attachmentStore.load(requestConversationId, attachmentRefs.getJSONObject(index)))
+                } }.getOrElse { throw AttachmentInputException(it) }
+                client.stream(request.copy(agentFiles = files.takeIf { it.length() > 0 })) { event ->
                     runOnUiThread {
                         val type = event.optString("type")
                         if (type == "agent_file" && chatState.requestId == requestId && chatState.busy) {
@@ -458,10 +522,14 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
             runOnUiThread {
                 response.onSuccess { outcome ->
                     if (stateMachine.complete(requestId, outcome)) {
-                        if (outcome.intent == "file_tool") agentFiles.remove(requestConversationId)
+                        if (outcome.intent == "file_tool" && replay == null &&
+                            agentFiles[requestConversationId]?.optString("id") == attachmentRefs.optJSONObject(0)?.optString("id")) {
+                            agentFiles.remove(requestConversationId)
+                            conversationStore.saveDraftAttachment(requestConversationId, null)
+                        }
                         chatState = stateMachine.state
                         val meta = org.json.JSONObject()
-                            .put("query", query)
+                            .put("query", query).put("request_ref", requestRef)
                             .put("thinking", outcome.thinking)
                             .put("intent", outcome.intent)
                             .put("sources", org.json.JSONArray(outcome.sources))
@@ -478,13 +546,14 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                     }
                 }.onFailure { error ->
                     val message = when (error) {
+                        is AttachmentInputException -> error.message.orEmpty()
                         is ChatHttpException -> "请求失败（HTTP ${error.statusCode}）"
                         else -> "连接失败：${error.message ?: error.javaClass.simpleName}"
                     }
                     if (stateMachine.fail(requestId, message)) {
                         chatState = stateMachine.state
                         conversationStore.addAssistant(requestConversationId, "", org.json.JSONObject()
-                            .put("query", query).put("thinking", chatState.thinking)
+                            .put("query", query).put("request_ref", requestRef).put("thinking", chatState.thinking)
                             .put("error", message).put("errorCategory", mainErrorCategory(message)))
                         conversationRevision++
                         status = message
@@ -517,7 +586,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
         if (stateMachine.stop(id)) {
             chatState = stateMachine.state
             conversationStore.addAssistant(conversationId, chatState.answer, org.json.JSONObject()
-                .put("stopped", true).put("thinking", chatState.thinking))
+                .put("stopped", true).put("query", chatState.query).put("request_ref", activeRequestRef).put("thinking", chatState.thinking))
             conversationRevision++
             status = "已停止生成"
             repository?.cancel()
@@ -602,7 +671,7 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                         }
                         output.toByteArray()
                     } ?: error("无法读取文件")
-                    org.json.JSONObject().put("name", name).put("mime", mime).put("content_base64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+                    attachmentStore.saveAttachment(targetConversation, name, mime, bytes)
                 }
                 cameraFile?.let {
                     revokeUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
@@ -611,11 +680,10 @@ class MainComposeActivity : ComponentActivity(), BackendService.Listener {
                 runOnUiThread {
                     result.onSuccess {
                         if (conversationStore.all().none { conversation -> conversation.id == targetConversation }) return@onSuccess
-                        agentFiles[targetConversation] = org.json.JSONArray().put(it)
+                        conversationStore.saveDraftAttachment(targetConversation, it)
+                        agentFiles[targetConversation] = it
                         if (conversationId == targetConversation) {
-                            if (input.isBlank() || AppAgent.importCommand(input.trim())) {
-                                input = if (AppAgent.isImage(it.optString("name"), it.optString("mime"))) "请阅读已导入图片，提取并整理其中的信息" else "请阅读并整理已导入文件"
-                            }
+                            if (AppAgent.importCommand(input.trim())) input = ""
                             saveCurrentDraft()
                         }
                         status = "已导入 ${it.optString("name")}；发送问题后处理，输入“移除附件”可清除。"

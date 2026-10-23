@@ -6,6 +6,8 @@
 
 | 文档 | 内容 |
 |---|---|
+| [`release-0.1.33.md`](release-0.1.33.md) | **发布说明**：原附件重生成、思考折叠及消息跟随修复 |
+| [`attachment-replay-scroll-fixes-20261023.md`](attachment-replay-scroll-fixes-20261023.md) | **实现契约**：附件引用、请求快照、会话恢复、校验与回收规则 |
 | [`release-0.1.32.md`](release-0.1.32.md) | **发布说明**：PaddleOCR、本次查询内续查、思考开关及侧滑/滚动修正 |
 | [`agent-ocr-thinking-update-20261022.md`](agent-ocr-thinking-update-20261022.md) | **Main 更新**：PaddleOCR、可续查工具循环、思考开关、侧滑与输入区跟随；编译通过，待真实使用验收 |
 | [`release-0.1.31.md`](release-0.1.31.md) | **发布说明**：开关整行点击、圆角按压层裁切、贴底时输入区同步上推 |

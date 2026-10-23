@@ -44,6 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
@@ -90,6 +91,7 @@ internal fun MainChatScreen(
     onSettings: (String?) -> Unit,
     onCopy: (String) -> Unit = {},
     onRegenerate: (String) -> Unit = {},
+    onRegenerateMessage: ((StoredMessage) -> Unit)? = null,
     onShare: (String) -> Unit = {},
     onRetryQuery: (String) -> Unit = { onRetry() },
     onFollowup: (String) -> Unit = {},
@@ -123,13 +125,22 @@ internal fun MainChatScreen(
     var lastListHeight by remember { mutableStateOf(0) }
     // 仅在“贴底/接近底部”时跟随 IME 上推；否则保持用户当前阅读位置。
     var followBottom by remember { mutableStateOf(true) }
-    val followBottomThreshold = with(LocalDensity.current) { 32.dp.toPx() }
+    val density = LocalDensity.current
     fun nearBottom(): Boolean {
         val info = listState.layoutInfo
         if (!listState.canScrollForward) return true
         val last = info.visibleItemsInfo.lastOrNull() ?: return true
         if (last.index != info.totalItemsCount - 1) return false
-        return (last.offset + last.size - info.viewportEndOffset) <= followBottomThreshold
+        val threshold = with(density) {
+            minOf(maxOf(120.dp.toPx(), info.viewportSize.height * 0.12f), info.viewportSize.height * 0.25f)
+        }
+        return (last.offset + last.size - info.viewportEndOffset) <= threshold
+    }
+    fun isActuallyAtBottom(): Boolean {
+        val info = listState.layoutInfo
+        val last = info.visibleItemsInfo.lastOrNull() ?: return info.totalItemsCount == 0
+        return !listState.canScrollForward && last.index == info.totalItemsCount - 1 &&
+            last.offset + last.size <= info.viewportEndOffset + 1
     }
     val tokenTotal = conversationTokens ?: messages.filter { it.role == "assistant" }.sumOf { replyTokenUsage(it.meta) ?: 0L }
     val persistedResults = messages.filter { it.role == "assistant" }.flatMap {
@@ -151,12 +162,29 @@ internal fun MainChatScreen(
     val inputFocusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
     var scrollingToLatest by remember { mutableStateOf(false) }
+    suspend fun scrollToActualBottom(): Boolean {
+        val itemCount = snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
+        listState.scrollToItem(itemCount - 1)
+        withFrameNanos { }
+        snapshotFlow {
+            val info = listState.layoutInfo
+            info.totalItemsCount to info.visibleItemsInfo.lastOrNull()?.index
+        }.first { (count, lastIndex) -> count > 0 && lastIndex == count - 1 }
+        var attempts = 0
+        while (listState.canScrollForward && attempts < 100) {
+            val viewport = listState.layoutInfo.viewportSize.height.coerceAtLeast(1)
+            val consumed = listState.scrollBy(viewport.toFloat())
+            withFrameNanos { }
+            if (consumed <= 0f) break
+            attempts++
+        }
+        return isActuallyAtBottom()
+    }
     LaunchedEffect(listState) {
         snapshotFlow {
             val layout = listState.layoutInfo
-            val last = layout.visibleItemsInfo.lastOrNull()
             val atBottom = if (layout.totalItemsCount > 0) {
-                !listState.canScrollForward
+                isActuallyAtBottom()
             } else null
             ScrollDiagnostics(
                 firstVisibleIndex = listState.firstVisibleItemIndex,
@@ -182,13 +210,10 @@ internal fun MainChatScreen(
     }
     LaunchedEffect(chatState.answer, chatState.thinking, chatState.results.size, chatState.phase, chatState.reading, messages.size) {
         if (autoScrollToLatest && !chatState.reading) {
-            val itemCount = snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
             if (!chatState.reading) {
                 scrollingToLatest = true
                 try {
-                    listState.scrollToItem(itemCount - 1)
-                    listState.scrollBy(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.size?.toFloat() ?: 0f)
-                    followBottom = true
+                    followBottom = scrollToActualBottom()
                 } finally { scrollingToLatest = false }
             }
         }
@@ -243,12 +268,10 @@ internal fun MainChatScreen(
                     if (previous != size.height) scope.launch {
                         scrollingToLatest = true
                         try {
-                            val lastIndex = listState.layoutInfo.totalItemsCount - 1
-                            if (lastIndex >= 0) {
-                                listState.scrollToItem(lastIndex)
-                                listState.scrollBy(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.size?.toFloat() ?: 0f)
-                                followBottom = true
-                            }
+                            withFrameNanos { }
+                            val atBottom = scrollToActualBottom()
+                            followBottom = atBottom
+                            if (atBottom) onReadingChange(false)
                         } finally { scrollingToLatest = false }
                     }
                 }
@@ -337,7 +360,7 @@ internal fun MainChatScreen(
                                     }
                                     DisplayResultCard(
                                     result, storedRequest, onAction,
-                                    onRetry = { onRetryQuery(metadata?.optString("query").orEmpty()) },
+                                    onRetry = { onRegenerateMessage?.invoke(message) ?: onRetryQuery(metadata?.optString("query").orEmpty()) },
                                     modifier = Modifier.weight(1f).captureLayoutConstraints("result-card", onLayoutDiagnostics),
                                     onSettings = {
                                         val category = (result as? ErrorDisplay)?.value?.message?.let(::mainErrorCategory)
@@ -373,7 +396,7 @@ internal fun MainChatScreen(
                                 DisplayResultCard(
                                     ErrorDisplay(ErrorResult("failed", errorMessage, metadata.optString("errorCategory"), null)),
                                     chatState, onAction,
-                                    onRetry = { onRetryQuery(metadata.optString("query")) },
+                                    onRetry = { onRegenerateMessage?.invoke(message) ?: onRetryQuery(metadata.optString("query")) },
                                     onSettings = { onSettings(mainErrorCategory(errorMessage)) },
                                     modifier = Modifier.weight(1f),
                                 )
@@ -389,7 +412,7 @@ internal fun MainChatScreen(
                             .captureLayoutConstraints("result-actions", onLayoutDiagnostics).testTag("result-actions"),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             ResultAction("复制", "copy", "result-copy", iconOnly = memoryIconOnly) { onCopy(replyText) }
-                            ResultAction("重新生成", "refresh", "result-regenerate", iconOnly = memoryIconOnly) { onRegenerate(originalQuery) }
+                            ResultAction("重新生成", "refresh", "result-regenerate", iconOnly = memoryIconOnly) { onRegenerateMessage?.invoke(message) ?: onRegenerate(originalQuery) }
                             ResultAction("分享", "share", "result-share", iconOnly = memoryIconOnly) { onShare(replyText) }
                             ResultAction("记忆", "memory", "result-memory-$index", iconOnly = memoryIconOnly) {
                                 saveMemory = replyText to "用户选定的助手回复，未经独立核实"
@@ -414,7 +437,8 @@ internal fun MainChatScreen(
                         }
                     }
                     Column(Modifier.weight(1f).animateContentSize()) {
-                        ThinkingDisclosure(chatState.thinking, thinkingDefaultCollapsed, "live-thinking", forceExpanded = chatState.busy)
+                        ThinkingDisclosure(chatState.thinking, thinkingDefaultCollapsed, "live-thinking",
+                            busy = chatState.busy, stateKey = chatState.requestId.orEmpty())
                         RailReveal(chatState.answer.isBlank()) {
                             QueryLoadingCard(chatState.recognized, chatState.stage)
                         }
@@ -450,13 +474,9 @@ internal fun MainChatScreen(
                         scope.launch {
                             scrollingToLatest = true
                             try {
-                                val lastIndex = listState.layoutInfo.totalItemsCount - 1
-                                if (lastIndex >= 0) {
-                                    listState.scrollToItem(lastIndex)
-                                    listState.scrollBy(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.size?.toFloat() ?: 0f)
-                                    followBottom = true
-                                }
-                                onReadingChange(false)
+                                val atBottom = scrollToActualBottom()
+                                followBottom = atBottom
+                                onReadingChange(!atBottom)
                             } finally { scrollingToLatest = false }
                         }
                     }
@@ -584,11 +604,17 @@ internal fun MainChatScreen(
 }
 
 @Composable
-private fun ThinkingDisclosure(text: String, defaultCollapsed: Boolean, tag: String, forceExpanded: Boolean = false) {
+private fun ThinkingDisclosure(
+    text: String,
+    defaultCollapsed: Boolean,
+    tag: String,
+    busy: Boolean = false,
+    stateKey: String = tag,
+) {
     if (text.isBlank()) return
-    var expanded by remember(tag, defaultCollapsed) { mutableStateOf(forceExpanded || !defaultCollapsed) }
-    LaunchedEffect(forceExpanded, defaultCollapsed, tag) {
-        expanded = forceExpanded || !defaultCollapsed
+    var expanded by remember(stateKey) { mutableStateOf(!defaultCollapsed) }
+    LaunchedEffect(busy, defaultCollapsed, stateKey) {
+        if (!busy) expanded = !defaultCollapsed
     }
     val shape = RoundedCornerShape(12.dp)
     Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)

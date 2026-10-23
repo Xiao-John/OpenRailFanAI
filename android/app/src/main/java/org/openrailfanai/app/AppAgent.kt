@@ -18,10 +18,9 @@ object AppAgent {
         }
     }
 
-    // The existing regenerate callback carries query text only. Ambiguous same-text rounds
-    // require a fresh import/send rather than substituting another attachment.
+    // Legacy histories have no reconstructible request; never substitute a current draft.
     fun requiresReimport(messages: List<StoredMessage>, query: String): Boolean = messages.any {
-        it.role == "user" && it.content == query && it.meta?.optBoolean("attachment_input") == true
+        it.role == "user" && it.content == query && it.meta?.optBoolean("attachment_input") == true && it.meta.optString("request_ref").isBlank()
     }
 
     fun fileCommand(message: String): Boolean = Regex("导出|生成.{0,12}(?:文件|日历|日程|表格|csv|ics)|整理.{0,12}(?:表格|文件)|读取.{0,8}文件", RegexOption.IGNORE_CASE).containsMatchIn(message)

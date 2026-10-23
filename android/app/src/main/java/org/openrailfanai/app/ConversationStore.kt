@@ -61,6 +61,23 @@ class ConversationStore private constructor(private val directory: File) {
         if (draft(id) != text) mutate(id) { it.put("draft", text) }
     }
 
+    @Synchronized fun draftAttachments(): Map<String, JSONObject> {
+        val rows = readState().optString(CONVERSATIONS_KEY).toJSONArray()
+        return buildMap {
+            for (index in 0 until rows.length()) {
+                val row = rows.optJSONObject(index) ?: continue
+                row.optJSONObject("draftAttachment")?.let { put(row.getString("id"), JSONObject(it.toString())) }
+            }
+        }
+    }
+
+    @Synchronized fun saveDraftAttachment(id: String, ref: JSONObject?) {
+        mutate(id) { if (ref == null) it.remove("draftAttachment") else it.put("draftAttachment", JSONObject(ref.toString())) }
+    }
+
+    @Synchronized fun requestReferences(id: String): Set<String> = all().firstOrNull { it.id == id }?.messages.orEmpty()
+        .mapNotNull { it.meta?.optString("request_ref")?.takeIf(String::isNotBlank) }.toSet()
+
     @Synchronized fun select(id: String) {
         if (all().none { it.id == id }) return
         persist(readState().put(CURRENT_KEY, id))
